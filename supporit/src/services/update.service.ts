@@ -3,7 +3,8 @@
  * API клиент для системы обновлений
  */
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL =
+  import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || "/api";
 
 // Типы
 export interface SystemInfo {
@@ -16,7 +17,7 @@ export interface SystemInfo {
 
 export interface LicenseInfo {
   licenseKey: string | null;
-  tier: 'BASIC' | 'PRO' | 'ENTERPRISE' | null;
+  tier: "BASIC" | "PRO" | "ENTERPRISE" | null;
   validUntil: string | null;
   features: string[];
   isValid: boolean;
@@ -47,7 +48,15 @@ export interface CheckUpdateResult {
 }
 
 export interface UpdateProgress {
-  status: 'started' | 'downloading' | 'backing_up' | 'migrating' | 'deploying' | 'completed' | 'failed' | 'rolled_back';
+  status:
+    | "started"
+    | "downloading"
+    | "backing_up"
+    | "migrating"
+    | "deploying"
+    | "completed"
+    | "failed"
+    | "rolled_back";
   progress: number;
   message: string;
   details?: Record<string, unknown>;
@@ -73,17 +82,17 @@ export interface ApiResponse<T> {
 // Хелпер для запросов
 async function request<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<ApiResponse<T>> {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   try {
@@ -100,8 +109,8 @@ async function request<T>(
 
     return { data: json.data };
   } catch (error) {
-    console.error('[Update Service] Request error:', error);
-    return { error: 'Ошибка сети' };
+    console.error("[Update Service] Request error:", error);
+    return { error: "Ошибка сети" };
   }
 }
 
@@ -113,14 +122,14 @@ export const updateService = {
    * Получить информацию о системе и лицензии
    */
   async getInfo(): Promise<ApiResponse<UpdateInfo>> {
-    return request<UpdateInfo>('/updates/info');
+    return request<UpdateInfo>("/updates/info");
   },
 
   /**
    * Проверить наличие обновлений
    */
   async checkForUpdates(): Promise<ApiResponse<CheckUpdateResult>> {
-    return request<CheckUpdateResult>('/updates/check');
+    return request<CheckUpdateResult>("/updates/check");
   },
 
   /**
@@ -128,10 +137,10 @@ export const updateService = {
    */
   async startUpdate(
     version: string,
-    downloadUrl: string
+    downloadUrl: string,
   ): Promise<ApiResponse<{ updateId: string; message: string }>> {
-    return request('/updates/start', {
-      method: 'POST',
+    return request("/updates/start", {
+      method: "POST",
       body: JSON.stringify({ version, downloadUrl }),
     });
   },
@@ -139,7 +148,9 @@ export const updateService = {
   /**
    * Получить статус обновления
    */
-  async getUpdateStatus(updateId: string): Promise<ApiResponse<UpdateProgress>> {
+  async getUpdateStatus(
+    updateId: string,
+  ): Promise<ApiResponse<UpdateProgress>> {
     return request<UpdateProgress>(`/updates/status/${updateId}`);
   },
 
@@ -147,10 +158,10 @@ export const updateService = {
    * Откатить обновление
    */
   async rollbackUpdate(
-    updateId: string
+    updateId: string,
   ): Promise<ApiResponse<{ success: boolean; message: string }>> {
     return request(`/updates/rollback/${updateId}`, {
-      method: 'POST',
+      method: "POST",
     });
   },
 
@@ -165,7 +176,7 @@ export const updateService = {
    * Получить информацию о лицензии
    */
   async getLicense(): Promise<ApiResponse<LicenseInfo>> {
-    return request<LicenseInfo>('/updates/license');
+    return request<LicenseInfo>("/updates/license");
   },
 
   /**
@@ -182,8 +193,8 @@ export const updateService = {
       };
     }>
   > {
-    return request('/updates/license', {
-      method: 'POST',
+    return request("/updates/license", {
+      method: "POST",
       body: JSON.stringify({ licenseKey }),
     });
   },

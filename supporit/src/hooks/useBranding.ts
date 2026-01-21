@@ -57,7 +57,10 @@ export const updateFavicon = (faviconUrl: string) => {
   }
 
   if (faviconUrl) {
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    const apiUrl =
+      import.meta.env.VITE_API_BASE ||
+      import.meta.env.VITE_API_URL ||
+      "http://localhost:3001/api";
     const baseUrl = apiUrl.replace("/api", "");
     link.href = `${baseUrl}${faviconUrl}`;
   } else {

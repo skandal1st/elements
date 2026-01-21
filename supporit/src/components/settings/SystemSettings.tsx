@@ -300,7 +300,9 @@ export const SystemSettings = () => {
     link.rel = "icon";
     if (url) {
       const apiUrl =
-        import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+        import.meta.env.VITE_API_BASE ||
+        import.meta.env.VITE_API_URL ||
+        "http://localhost:3001/api";
       const baseUrl = apiUrl.replace("/api", "");
       link.href = `${baseUrl}${url}`;
     } else {
@@ -450,7 +452,7 @@ export const SystemSettings = () => {
                       <div className="flex-shrink-0 w-12 h-12 border border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-700 overflow-hidden">
                         {currentFaviconUrl ? (
                           <img
-                            src={`${(import.meta.env.VITE_API_URL || "http://localhost:3001/api").replace("/api", "")}${currentFaviconUrl}`}
+                            src={`${(import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || "http://localhost:3001/api").replace("/api", "")}${currentFaviconUrl}`}
                             alt="Favicon"
                             className="w-8 h-8 object-contain"
                           />

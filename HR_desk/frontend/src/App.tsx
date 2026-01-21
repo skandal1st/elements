@@ -26,7 +26,18 @@ export default function App() {
       try {
         // Простой парсинг JWT (без проверки подписи)
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setUserRole(payload.role || null);
+        // HR токен использует roles: {"hr": "admin", "it": "user", ...}
+        // Определяем роль: если есть roles.hr или is_superuser - пользователь HR/admin
+        if (payload.is_superuser) {
+          setUserRole("admin");
+        } else if (payload.roles?.hr) {
+          setUserRole(payload.roles.hr); // "admin", "user", etc.
+        } else if (payload.role) {
+          // Fallback для совместимости со старым форматом
+          setUserRole(payload.role);
+        } else {
+          setUserRole(null);
+        }
       } catch {
         setUserRole(null);
       }
@@ -42,7 +53,16 @@ export default function App() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setUserRole(payload.role || null);
+        // HR токен использует roles: {"hr": "admin", "it": "user", ...}
+        if (payload.is_superuser) {
+          setUserRole("admin");
+        } else if (payload.roles?.hr) {
+          setUserRole(payload.roles.hr);
+        } else if (payload.role) {
+          setUserRole(payload.role);
+        } else {
+          setUserRole(null);
+        }
       } catch {
         setUserRole(null);
       }

@@ -39,7 +39,9 @@ export const authService = {
   ): Promise<AuthResponse & { requiresPassword?: boolean }> {
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+        import.meta.env.VITE_API_BASE ||
+        import.meta.env.VITE_API_URL ||
+        "http://localhost:3001/api";
       const token = localStorage.getItem("auth_token");
 
       const response = await fetch(`${API_URL}/auth/signin`, {
@@ -84,7 +86,9 @@ export const authService = {
   async setPassword(email: string, password: string): Promise<AuthResponse> {
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+        import.meta.env.VITE_API_BASE ||
+        import.meta.env.VITE_API_URL ||
+        "http://localhost:3001/api";
 
       const response = await fetch(`${API_URL}/auth/set-password`, {
         method: "POST",
