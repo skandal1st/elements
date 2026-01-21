@@ -32,6 +32,7 @@ $$ language 'plpgsql';
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(64) UNIQUE,
     password_hash VARCHAR(255),
     full_name VARCHAR(255) NOT NULL,
     role TEXT DEFAULT 'employee' CHECK (role IN ('admin', 'it_specialist', 'hr_specialist', 'employee')),
