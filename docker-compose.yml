@@ -1,0 +1,199 @@
+version: "3.9"
+
+# =============================================================================
+# Elements Platform - Общая инфраструктура
+# =============================================================================
+# Использование:
+#   docker-compose up -d              # Запустить все сервисы
+#   docker-compose up -d postgres     # Только PostgreSQL
+#   docker-compose logs -f backend-hr # Логи HR backend
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Базы данных и инфраструктура
+  # ===========================================================================
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: elements-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: elements
+      POSTGRES_PASSWORD: elements
+      POSTGRES_DB: elements
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elements -d elements"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: elements-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: elements-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: elements
+      RABBITMQ_DEFAULT_PASS: elements
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: elements-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: elements
+      MINIO_ROOT_PASSWORD: elements123
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===========================================================================
+  # Elements HR (Python/FastAPI)
+  # ===========================================================================
+
+  backend-hr:
+    build:
+      context: ./HR_desk/backend
+      dockerfile: Dockerfile
+    container_name: elements-hr-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://elements:elements@postgres:5432/elements
+
+      # Auth (общий секрет для всех модулей)
+      - SECRET_KEY=${JWT_SECRET:-elements-super-secret-key-change-in-production}
+
+      # SupporIT integration
+      - SUPPORIT_API_URL=${SUPPORIT_API_URL:-http://backend-it:3001/api}
+      - SUPPORIT_TOKEN=${SUPPORIT_TOKEN:-}
+
+      # Active Directory
+      - AD_SERVER=${AD_SERVER:-}
+      - AD_USER=${AD_USER:-}
+      - AD_PASSWORD=${AD_PASSWORD:-}
+      - AD_BASE_DN=${AD_BASE_DN:-}
+      - AD_DOMAIN=${AD_DOMAIN:-}
+      - AD_USE_SSL=${AD_USE_SSL:-true}
+
+      # Mailcow
+      - MAILCOW_API_URL=${MAILCOW_API_URL:-}
+      - MAILCOW_API_KEY=${MAILCOW_API_KEY:-}
+
+      # 1C ZUP
+      - ZUP_API_URL=${ZUP_API_URL:-}
+      - ZUP_USERNAME=${ZUP_USERNAME:-}
+      - ZUP_PASSWORD=${ZUP_PASSWORD:-}
+
+      # RabbitMQ
+      - RABBITMQ_URL=amqp://elements:elements@rabbitmq:5672/
+
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+
+      # Seed admin
+      - SEED_ADMIN_ENABLED=${SEED_ADMIN_ENABLED:-true}
+      - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-admin@elements.local}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}
+      - SEED_ADMIN_ROLE=admin
+    volumes:
+      - ./HR_desk/backend/app:/app/app:Z
+      - ./HR_desk/backend/uploads:/app/uploads:Z
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  frontend-hr:
+    build:
+      context: ./HR_desk/frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE=/api/v1
+    container_name: elements-hr-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend-hr
+
+  # ===========================================================================
+  # Elements IT (Node.js/Express) - опционально, если нужен в Docker
+  # ===========================================================================
+
+  # backend-it:
+  #   build:
+  #     context: ./supporit/server
+  #     dockerfile: Dockerfile
+  #   container_name: elements-it-backend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     - DATABASE_URL=postgresql://elements:elements@postgres:5432/elements
+  #     - JWT_SECRET=${JWT_SECRET:-elements-super-secret-key-change-in-production}
+  #     - REDIS_URL=redis://redis:6379/1
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+
+volumes:
+  postgres_data:
+    name: elements_postgres_data
+  redis_data:
+    name: elements_redis_data
+  rabbitmq_data:
+    name: elements_rabbitmq_data
+  minio_data:
+    name: elements_minio_data
+
+networks:
+  default:
+    name: elements_network

@@ -1,0 +1,154 @@
+version: "3.9"
+
+# =============================================================================
+# Elements Platform - ТЕСТОВОЕ ОКРУЖЕНИЕ
+# =============================================================================
+# Полностью изолированное окружение для тестирования перед production
+#
+# Использование:
+#   docker-compose -f docker-compose.test.yml up -d
+#   docker-compose -f docker-compose.test.yml logs -f
+#   docker-compose -f docker-compose.test.yml down -v  # удалить с данными
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Инфраструктура
+  # ===========================================================================
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: elements-test-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: elements
+      POSTGRES_PASSWORD: elements_test_pwd
+      POSTGRES_DB: elements
+    ports:
+      - "5433:5432"  # Другой порт чтобы не конфликтовать с prod
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elements -d elements"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elements-test
+
+  redis:
+    image: redis:7-alpine
+    container_name: elements-test-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - test_redis_data:/data
+    networks:
+      - elements-test
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: elements-test-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: elements
+      RABBITMQ_DEFAULT_PASS: elements_test_pwd
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - test_rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - elements-test
+
+  minio:
+    image: minio/minio:latest
+    container_name: elements-test-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: elements
+      MINIO_ROOT_PASSWORD: elements_test_pwd
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - test_minio_data:/data
+    networks:
+      - elements-test
+
+  # ===========================================================================
+  # Elements HR (новая версия с PostgreSQL)
+  # ===========================================================================
+
+  backend-hr:
+    build:
+      context: ./HR_desk/backend
+      dockerfile: Dockerfile
+    container_name: elements-test-hr-backend
+    restart: unless-stopped
+    ports:
+      - "8001:8000"  # Другой порт
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://elements:elements_test_pwd@postgres:5432/elements
+
+      # Auth
+      - SECRET_KEY=test-jwt-secret-key-for-testing-only
+
+      # SupporIT integration (можно указать реальный или оставить пустым)
+      - SUPPORIT_API_URL=${SUPPORIT_API_URL:-}
+      - SUPPORIT_TOKEN=${SUPPORIT_TOKEN:-}
+
+      # RabbitMQ
+      - RABBITMQ_URL=amqp://elements:elements_test_pwd@rabbitmq:5672/
+
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+
+      # Seed admin
+      - SEED_ADMIN_ENABLED=true
+      - SEED_ADMIN_EMAIL=admin@test.local
+      - SEED_ADMIN_PASSWORD=test123
+    volumes:
+      - ./HR_desk/backend/app:/app/app:Z
+      - ./HR_desk/backend/alembic:/app/alembic:Z
+      - test_hr_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - elements-test
+
+  frontend-hr:
+    build:
+      context: ./HR_desk/frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE=/api/v1
+    container_name: elements-test-hr-frontend
+    restart: unless-stopped
+    ports:
+      - "8081:80"  # Другой порт
+    depends_on:
+      - backend-hr
+    networks:
+      - elements-test
+
+volumes:
+  test_postgres_data:
+    name: elements_test_postgres_data
+  test_redis_data:
+    name: elements_test_redis_data
+  test_rabbitmq_data:
+    name: elements_test_rabbitmq_data
+  test_minio_data:
+    name: elements_test_minio_data
+  test_hr_uploads:
+    name: elements_test_hr_uploads
+
+networks:
+  elements-test:
+    name: elements_test_network
