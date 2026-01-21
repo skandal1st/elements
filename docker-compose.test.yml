@@ -151,8 +151,8 @@ services:
     ports:
       - "3002:3001"
     environment:
-      # Database
-      - DATABASE_URL=postgresql://elements:elements_test_pwd@postgres:5432/elements
+      # Database (sslmode=disable для локального PostgreSQL без SSL)
+      - DATABASE_URL=postgresql://elements:elements_test_pwd@postgres:5432/elements?sslmode=disable
 
       # Auth
       - JWT_SECRET=test-jwt-secret-key-for-testing-only

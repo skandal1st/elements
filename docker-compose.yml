@@ -172,8 +172,8 @@ services:
     ports:
       - "3001:3001"
     environment:
-      # Database
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-elements}:${POSTGRES_PASSWORD:-elements}@postgres:5432/${POSTGRES_DB:-elements}
+      # Database (sslmode=disable для Docker PostgreSQL)
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-elements}:${POSTGRES_PASSWORD:-elements}@postgres:5432/${POSTGRES_DB:-elements}?sslmode=disable
 
       # Auth
       - JWT_SECRET=${JWT_SECRET:-elements-super-secret-key-change-in-production}
