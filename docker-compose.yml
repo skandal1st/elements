@@ -1,7 +1,5 @@
-version: "3.9"
-
 # =============================================================================
-# Elements Platform - Общая инфраструктура
+# Elements Platform - Полная конфигурация
 # =============================================================================
 # Использование:
 #   docker-compose up -d              # Запустить все сервисы
@@ -19,9 +17,9 @@ services:
     container_name: elements-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: elements
-      POSTGRES_PASSWORD: elements
-      POSTGRES_DB: elements
+      POSTGRES_USER: ${POSTGRES_USER:-elements}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elements}
+      POSTGRES_DB: ${POSTGRES_DB:-elements}
     ports:
       - "5432:5432"
     volumes:
@@ -52,10 +50,10 @@ services:
     container_name: elements-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: elements
-      RABBITMQ_DEFAULT_PASS: elements
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-elements}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-elements}
     ports:
-      - "5672:5672"   # AMQP
+      - "5672:5672" # AMQP
       - "15672:15672" # Management UI
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
@@ -71,11 +69,11 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: elements
-      MINIO_ROOT_PASSWORD: elements123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-elements}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-elements123}
     ports:
-      - "9000:9000"   # API
-      - "9001:9001"   # Console
+      - "9000:9000" # API
+      - "9001:9001" # Console
     volumes:
       - minio_data:/data
     healthcheck:
@@ -98,13 +96,13 @@ services:
       - "8000:8000"
     environment:
       # Database
-      - DATABASE_URL=postgresql://elements:elements@postgres:5432/elements
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-elements}:${POSTGRES_PASSWORD:-elements}@postgres:5432/${POSTGRES_DB:-elements}
 
       # Auth (общий секрет для всех модулей)
       - SECRET_KEY=${JWT_SECRET:-elements-super-secret-key-change-in-production}
 
       # SupporIT integration
-      - SUPPORIT_API_URL=${SUPPORIT_API_URL:-http://backend-it:3001/api}
+      - SUPPORIT_API_URL=http://backend-it:3001/api
       - SUPPORIT_TOKEN=${SUPPORIT_TOKEN:-}
 
       # Active Directory
@@ -125,7 +123,7 @@ services:
       - ZUP_PASSWORD=${ZUP_PASSWORD:-}
 
       # RabbitMQ
-      - RABBITMQ_URL=amqp://elements:elements@rabbitmq:5672/
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-elements}:${RABBITMQ_PASSWORD:-elements}@rabbitmq:5672/
 
       # Redis
       - REDIS_URL=redis://redis:6379/0
@@ -136,8 +134,7 @@ services:
       - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}
       - SEED_ADMIN_ROLE=admin
     volumes:
-      - ./HR_desk/backend/app:/app/app:Z
-      - ./HR_desk/backend/uploads:/app/uploads:Z
+      - hr_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -163,26 +160,90 @@ services:
       - backend-hr
 
   # ===========================================================================
-  # Elements IT (Node.js/Express) - опционально, если нужен в Docker
+  # Elements IT / SupporIT (Node.js/Express)
   # ===========================================================================
 
-  # backend-it:
-  #   build:
-  #     context: ./supporit/server
-  #     dockerfile: Dockerfile
-  #   container_name: elements-it-backend
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3001:3001"
-  #   environment:
-  #     - DATABASE_URL=postgresql://elements:elements@postgres:5432/elements
-  #     - JWT_SECRET=${JWT_SECRET:-elements-super-secret-key-change-in-production}
-  #     - REDIS_URL=redis://redis:6379/1
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
+  backend-it:
+    build:
+      context: ./supporit/server
+      dockerfile: Dockerfile
+    container_name: elements-it-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-elements}:${POSTGRES_PASSWORD:-elements}@postgres:5432/${POSTGRES_DB:-elements}
+
+      # Auth
+      - JWT_SECRET=${JWT_SECRET:-elements-super-secret-key-change-in-production}
+      - JWT_EXPIRES_IN=604800
+
+      # Server
+      - PORT=3001
+      - NODE_ENV=production
+      - CORS_ORIGIN=*
+
+      # Encryption
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+
+      # Uploads
+      - UPLOAD_DIR=/app/uploads
+
+      # Telegram (optional)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_BOT_ENABLED=${TELEGRAM_BOT_ENABLED:-false}
+
+      # Email IMAP (optional)
+      - IMAP_HOST=${IMAP_HOST:-}
+      - IMAP_PORT=${IMAP_PORT:-993}
+      - IMAP_USER=${IMAP_USER:-}
+      - IMAP_PASSWORD=${IMAP_PASSWORD:-}
+      - IMAP_TLS=${IMAP_TLS:-true}
+
+      # Email SMTP (optional)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - FROM_EMAIL=${FROM_EMAIL:-}
+      - FROM_NAME=${FROM_NAME:-SupporIT}
+      - EMAIL_RECEIVER_ENABLED=${EMAIL_RECEIVER_ENABLED:-false}
+      - SMTP_ENABLED=${SMTP_ENABLED:-false}
+
+      # Zabbix (optional)
+      - ZABBIX_URL=${ZABBIX_URL:-}
+      - ZABBIX_API_TOKEN=${ZABBIX_API_TOKEN:-}
+      - ZABBIX_ENABLED=${ZABBIX_ENABLED:-false}
+
+      # HR_desk integration
+      - HR_DESK_API_TOKEN=${HR_DESK_API_TOKEN:-}
+      - INTEGRATION_API_TOKEN=${INTEGRATION_API_TOKEN:-}
+    volumes:
+      - it_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  frontend-it:
+    build:
+      context: ./supporit
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE=/api
+    container_name: elements-it-frontend
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend-it
 
 volumes:
   postgres_data:
@@ -193,6 +254,10 @@ volumes:
     name: elements_rabbitmq_data
   minio_data:
     name: elements_minio_data
+  hr_uploads:
+    name: elements_hr_uploads
+  it_uploads:
+    name: elements_it_uploads
 
 networks:
   default:

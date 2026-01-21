@@ -1,5 +1,3 @@
-version: "3.9"
-
 # =============================================================================
 # Elements Platform - ТЕСТОВОЕ ОКРУЖЕНИЕ
 # =============================================================================
@@ -25,7 +23,7 @@ services:
       POSTGRES_PASSWORD: elements_test_pwd
       POSTGRES_DB: elements
     ports:
-      - "5433:5432"  # Другой порт чтобы не конфликтовать с prod
+      - "5433:5432" # Другой порт чтобы не конфликтовать с prod
     volumes:
       - test_postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
@@ -45,6 +43,11 @@ services:
       - "6380:6379"
     volumes:
       - test_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - elements-test
 
@@ -80,7 +83,7 @@ services:
       - elements-test
 
   # ===========================================================================
-  # Elements HR (новая версия с PostgreSQL)
+  # Elements HR (Python/FastAPI)
   # ===========================================================================
 
   backend-hr:
@@ -90,7 +93,7 @@ services:
     container_name: elements-test-hr-backend
     restart: unless-stopped
     ports:
-      - "8001:8000"  # Другой порт
+      - "8001:8000"
     environment:
       # Database
       - DATABASE_URL=postgresql://elements:elements_test_pwd@postgres:5432/elements
@@ -98,8 +101,8 @@ services:
       # Auth
       - SECRET_KEY=test-jwt-secret-key-for-testing-only
 
-      # SupporIT integration (можно указать реальный или оставить пустым)
-      - SUPPORIT_API_URL=${SUPPORIT_API_URL:-}
+      # SupporIT integration
+      - SUPPORIT_API_URL=http://backend-it:3001/api
       - SUPPORIT_TOKEN=${SUPPORIT_TOKEN:-}
 
       # RabbitMQ
@@ -113,8 +116,6 @@ services:
       - SEED_ADMIN_EMAIL=admin@test.local
       - SEED_ADMIN_PASSWORD=test123
     volumes:
-      - ./HR_desk/backend/app:/app/app:Z
-      - ./HR_desk/backend/alembic:/app/alembic:Z
       - test_hr_uploads:/app/uploads
     depends_on:
       postgres:
@@ -131,9 +132,68 @@ services:
     container_name: elements-test-hr-frontend
     restart: unless-stopped
     ports:
-      - "8081:80"  # Другой порт
+      - "8082:80"
     depends_on:
       - backend-hr
+    networks:
+      - elements-test
+
+  # ===========================================================================
+  # Elements IT / SupporIT (Node.js/Express)
+  # ===========================================================================
+
+  backend-it:
+    build:
+      context: ./supporit/server
+      dockerfile: Dockerfile
+    container_name: elements-test-it-backend
+    restart: unless-stopped
+    ports:
+      - "3002:3001"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://elements:elements_test_pwd@postgres:5432/elements
+
+      # Auth
+      - JWT_SECRET=test-jwt-secret-key-for-testing-only
+      - JWT_EXPIRES_IN=604800
+
+      # Server
+      - PORT=3001
+      - NODE_ENV=production
+      - CORS_ORIGIN=*
+
+      # Encryption
+      - ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+      # Uploads
+      - UPLOAD_DIR=/app/uploads
+
+      # Disable optional integrations for testing
+      - TELEGRAM_BOT_ENABLED=false
+      - EMAIL_RECEIVER_ENABLED=false
+      - SMTP_ENABLED=false
+      - ZABBIX_ENABLED=false
+    volumes:
+      - test_it_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - elements-test
+
+  frontend-it:
+    build:
+      context: ./supporit
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE=/api
+    container_name: elements-test-it-frontend
+    restart: unless-stopped
+    ports:
+      - "8083:80"
+    depends_on:
+      - backend-it
     networks:
       - elements-test
 
@@ -148,6 +208,8 @@ volumes:
     name: elements_test_minio_data
   test_hr_uploads:
     name: elements_test_hr_uploads
+  test_it_uploads:
+    name: elements_test_it_uploads
 
 networks:
   elements-test:
