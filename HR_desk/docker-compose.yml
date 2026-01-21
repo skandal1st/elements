@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  backend:
+  backend-hr:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -41,4 +41,4 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      - backend-hr
