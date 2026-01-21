@@ -1,0 +1,33 @@
+[Unit]
+Description=Supporit API Server
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=supporit
+Group=supporit
+WorkingDirectory=/opt/supporit/server
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/supporit/server/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=supporit-api
+
+# Безопасность
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/supporit/server
+
+# Ограничения ресурсов
+LimitNOFILE=65536
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
+
