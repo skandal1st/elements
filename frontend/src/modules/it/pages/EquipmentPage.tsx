@@ -225,7 +225,6 @@ export function EquipmentPage() {
   const [addTypeModal, setAddTypeModal] = useState(false);
   const [addModelModal, setAddModelModal] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
-  const [newTypeName, setNewTypeName] = useState("");
   const [newModelName, setNewModelName] = useState("");
 
   // Модальное окно для добавления расходника в модель

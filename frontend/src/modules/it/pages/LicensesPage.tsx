@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, User, Monitor, AlertCircle, Cloud, Server } from "lucide-react";
+import { Plus, Search, User, Monitor, AlertCircle, Cloud } from "lucide-react";
 import {
   apiGet,
   apiPost,

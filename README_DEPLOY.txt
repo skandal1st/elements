@@ -27,15 +27,23 @@
    $ git clone <repo-url> elements
    $ cd elements
 
-2. Настройка:
+2. Настройка Docker Hub (важно!):
+   $ docker login
+   # Или: sudo ./fix-docker-rate-limit.sh
+
+3. Настройка:
    $ cp .env.production.example .env.production
    $ nano .env.production  # Измените пароли!
 
-3. Развертывание:
+4. Развертывание:
    $ sudo ./deploy.sh
 
-4. Готово!
+5. Готово!
    Откройте: http://your-server-ip
+
+❗ ОШИБКА "rate limit"?
+   $ sudo ./fix-docker-rate-limit.sh
+   Смотрите: РЕШЕНИЕ_ОШИБКИ_RATE_LIMIT.txt
 
 ══════════════════════════════════════════════════════════════════════════
 
@@ -72,6 +80,8 @@ $ openssl rand -base64 24
 Чеклист:           → CHECK_BEFORE_DEPLOY.md
 Подготовка Git:    → PREPARE_FOR_GIT.md
 Сводка:            → DEPLOYMENT_SUMMARY.md
+Docker Hub:        → DOCKER_HUB_SETUP.md
+Rate Limit:        → РЕШЕНИЕ_ОШИБКИ_RATE_LIMIT.txt
 
 ══════════════════════════════════════════════════════════════════════════
 

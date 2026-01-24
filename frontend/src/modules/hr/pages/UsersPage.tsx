@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Key, Users, Shield, ShieldOff } from 'lucide-react'
+import { Plus, Edit, Trash2, Key, Users, Shield } from 'lucide-react'
 import { apiGet, apiPost, apiPatch, apiDelete } from '../../../shared/api/client'
 
 type User = {
@@ -269,7 +269,7 @@ export function UsersPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {user.is_superuser && (
-                        <Shield className="w-4 h-4 text-amber-500" title="Суперпользователь" />
+                        <Shield className="w-4 h-4 text-amber-500" aria-label="Суперпользователь" />
                       )}
                       <span className="font-medium">{user.full_name}</span>
                     </div>
