@@ -84,11 +84,12 @@ info "Ожидание запуска базы данных..."
 sleep 10
 
 info "Инициализация базы данных..."
-docker exec elements-backend python scripts/init_db.py || warn "База данных уже инициализирована"
+docker exec elements-backend python backend/scripts/init_db.py || warn "База данных уже инициализирована"
 
 info "Применение миграций..."
 if [ -f backend/migrations/change_equipment_owner_to_employee.sql ]; then
-    docker exec elements-postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -f /backups/../migrations/change_equipment_owner_to_employee.sql || warn "Миграция уже применена"
+    docker cp backend/migrations/change_equipment_owner_to_employee.sql elements-postgres:/tmp/migration.sql
+    docker exec elements-postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -f /tmp/migration.sql || warn "Миграция уже применена"
 fi
 
 info "Проверка статуса контейнеров..."
