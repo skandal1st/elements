@@ -1,0 +1,33 @@
+{
+  "name": "@elements/common",
+  "version": "1.0.0",
+  "description": "Shared utilities for Elements Platform modules",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0",
+    "amqplib": "^0.10.0"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.0",
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "keywords": [
+    "elements",
+    "auth",
+    "events",
+    "shared"
+  ],
+  "license": "UNLICENSED"
+}

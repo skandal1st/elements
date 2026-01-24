@@ -21,10 +21,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elements}
       POSTGRES_DB: ${POSTGRES_DB:-elements}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+      # Инициализация через Python скрипт init_db.py
+      # - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U elements -d elements"]
       interval: 10s
@@ -83,7 +84,55 @@ services:
       retries: 5
 
   # ===========================================================================
-  # Elements HR (Python/FastAPI)
+  # Elements Platform Backend (Python/FastAPI) - Основной backend
+  # ===========================================================================
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: elements-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-elements}:${POSTGRES_PASSWORD:-elements}@postgres:5432/${POSTGRES_DB:-elements}
+      
+      # Auth
+      - SECRET_KEY=${JWT_SECRET:-elements-super-secret-key-change-in-production-min-32-chars}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      
+      # License Server
+      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-http://license-server:8001}
+      - COMPANY_ID=${COMPANY_ID:-}
+      
+      # Modules
+      - ENABLED_MODULES=${ENABLED_MODULES:-hr,it}
+      
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Seed admin
+      - SEED_ADMIN_ENABLED=${SEED_ADMIN_ENABLED:-true}
+      - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-admin@elements.local}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}
+      
+      # CORS
+      - CORS_ORIGINS=*
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===========================================================================
+  # Elements HR (Python/FastAPI) - Старый модуль (для совместимости)
   # ===========================================================================
 
   backend-hr:
@@ -93,7 +142,7 @@ services:
     container_name: elements-hr-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       # Database
       - DATABASE_URL=postgresql://${POSTGRES_USER:-elements}:${POSTGRES_PASSWORD:-elements}@postgres:5432/${POSTGRES_DB:-elements}

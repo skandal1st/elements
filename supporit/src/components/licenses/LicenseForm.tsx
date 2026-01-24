@@ -107,11 +107,11 @@ export const LicenseForm = ({ license, onSubmit, onCancel }: LicenseFormProps) =
         />
       </div>
 
-      {/* Дата покупки и срок действия */}
+      {/* Даты лицензии */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Дата покупки
+            Дата начала лицензии
           </label>
           <input
             type="date"
@@ -123,7 +123,7 @@ export const LicenseForm = ({ license, onSubmit, onCancel }: LicenseFormProps) =
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Срок действия
+            Дата окончания лицензии
           </label>
           <input
             type="date"

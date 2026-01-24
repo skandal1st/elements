@@ -194,6 +194,23 @@ CREATE TABLE IF NOT EXISTS it.consumable_issues (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Таблица поставок расходников
+CREATE TABLE IF NOT EXISTS it.consumable_supplies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    consumable_id UUID NOT NULL REFERENCES it.consumables(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL,
+    cost DECIMAL(12,2),
+    supplier TEXT,
+    invoice_number VARCHAR(100),
+    supply_date DATE,
+    notes TEXT,
+    created_by_id UUID NOT NULL REFERENCES public.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_consumable_supplies_consumable ON it.consumable_supplies(consumable_id);
+CREATE INDEX IF NOT EXISTS idx_consumable_supplies_date ON it.consumable_supplies(supply_date);
+
 -- Таблица лицензий ПО
 CREATE TABLE IF NOT EXISTS it.software_licenses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

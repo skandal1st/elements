@@ -1,0 +1,48 @@
+# =============================================================================
+# Elements Platform - Production .gitignore
+# =============================================================================
+
+# Environment variables (содержат пароли!)
+.env.production
+.env.local
+.env
+
+# SSL сертификаты
+ssl/
+*.pem
+*.key
+*.crt
+
+# Резервные копии БД
+backups/
+*.sql
+*.sql.gz
+
+# Логи
+logs/
+*.log
+nginx/logs/
+
+# Docker volumes
+*_data/
+
+# Временные файлы
+*.swp
+*.swo
+*~
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Compiled files
+*.pyc
+__pycache__/
+dist/
+build/
+node_modules/
+
+# Uploads
+uploads/

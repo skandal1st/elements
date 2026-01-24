@@ -170,7 +170,7 @@ export const LicensesPage = () => {
               <TableHeaderCell>Тип</TableHeaderCell>
               <TableHeaderCell>Лицензионный ключ</TableHeaderCell>
               <TableHeaderCell>Использовано</TableHeaderCell>
-              <TableHeaderCell>Срок действия</TableHeaderCell>
+              <TableHeaderCell>Дата окончания</TableHeaderCell>
               <TableHeaderCell>Стоимость</TableHeaderCell>
               <TableHeaderCell>Действия</TableHeaderCell>
             </TableHeader>

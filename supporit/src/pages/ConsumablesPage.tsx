@@ -199,7 +199,7 @@ export const ConsumablesPage = () => {
                 <Table>
                   <TableHeader>
                     <TableHeaderCell>Название</TableHeaderCell>
-                    <TableHeaderCell>Модель</TableHeaderCell>
+                    <TableHeaderCell>Артикул</TableHeaderCell>
                     <TableHeaderCell>Категория</TableHeaderCell>
                     <TableHeaderCell>Единица</TableHeaderCell>
                     <TableHeaderCell>В наличии</TableHeaderCell>

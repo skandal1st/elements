@@ -1,0 +1,705 @@
+import { useEffect, useState } from "react";
+import {
+  Plus,
+  Search,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Package,
+  Truck,
+  Check,
+} from "lucide-react";
+import { apiGet, apiPost, apiPatch } from "../../../shared/api/client";
+
+type EquipmentRequest = {
+  id: string;
+  title: string;
+  description?: string;
+  equipment_category: string;
+  request_type: string;
+  quantity: number;
+  urgency: string;
+  justification?: string;
+  status: string;
+  requester_id: string;
+  requester_name?: string;
+  requester_email?: string;
+  requester_department?: string;
+  reviewer_id?: string;
+  reviewer_name?: string;
+  replace_equipment_id?: string;
+  replace_equipment_name?: string;
+  replace_equipment_inventory?: string;
+  issued_equipment_id?: string;
+  issued_equipment_name?: string;
+  issued_equipment_inventory?: string;
+  estimated_cost?: number;
+  review_comment?: string;
+  reviewed_at?: string;
+  ordered_at?: string;
+  received_at?: string;
+  issued_at?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+const CATEGORIES = [
+  "computer",
+  "monitor",
+  "printer",
+  "network",
+  "server",
+  "mobile",
+  "peripheral",
+  "other",
+];
+
+const categoryLabel: Record<string, string> = {
+  computer: "Компьютер",
+  monitor: "Монитор",
+  printer: "Принтер",
+  network: "Сетевое оборудование",
+  server: "Сервер",
+  mobile: "Мобильное устройство",
+  peripheral: "Периферия",
+  other: "Прочее",
+};
+
+const REQUEST_TYPES = ["new", "replacement", "upgrade"];
+const URGENCIES = ["low", "normal", "high", "critical"];
+
+const statusLabel: Record<string, string> = {
+  pending: "На рассмотрении",
+  approved: "Одобрена",
+  rejected: "Отклонена",
+  ordered: "Заказана",
+  received: "Получена",
+  issued: "Выдана",
+  cancelled: "Отменена",
+};
+
+const urgencyLabel: Record<string, string> = {
+  low: "Низкая",
+  normal: "Обычная",
+  high: "Высокая",
+  critical: "Критическая",
+};
+
+const requestTypeLabel: Record<string, string> = {
+  new: "Новое",
+  replacement: "Замена",
+  upgrade: "Улучшение",
+};
+
+export function EquipmentRequestsPage() {
+  const [items, setItems] = useState<EquipmentRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] =
+    useState<EquipmentRequest | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [editing, setEditing] = useState<EquipmentRequest | null>(null);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    equipment_category: "computer",
+    request_type: "new",
+    quantity: 1,
+    urgency: "normal",
+    justification: "",
+    replace_equipment_id: "",
+    estimated_cost: "",
+  });
+  const [reviewForm, setReviewForm] = useState({
+    status: "approved",
+    comment: "",
+    estimated_cost: "",
+  });
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      params.set("page", String(page));
+      params.set("page_size", "20");
+      const data = await apiGet<EquipmentRequest[]>(
+        `/it/equipment-requests/?${params}`,
+      );
+      setItems(data);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  const handleSearch = () => {
+    setPage(1);
+    load();
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    setError(null);
+    setMessage(null);
+    setForm({
+      title: "",
+      description: "",
+      equipment_category: "computer",
+      request_type: "new",
+      quantity: 1,
+      urgency: "normal",
+      justification: "",
+      replace_equipment_id: "",
+      estimated_cost: "",
+    });
+    setModalOpen(true);
+  };
+
+  const openEdit = (req: EquipmentRequest) => {
+    if (req.status !== "pending") {
+      setError('Можно редактировать только заявки в статусе "На рассмотрении"');
+      return;
+    }
+    setEditing(req);
+    setError(null);
+    setMessage(null);
+    setForm({
+      title: req.title,
+      description: req.description || "",
+      equipment_category: req.equipment_category,
+      request_type: req.request_type,
+      quantity: req.quantity,
+      urgency: req.urgency,
+      justification: req.justification || "",
+      replace_equipment_id: req.replace_equipment_id || "",
+      estimated_cost: req.estimated_cost ? String(req.estimated_cost) : "",
+    });
+    setModalOpen(true);
+  };
+
+  const openDetail = async (req: EquipmentRequest) => {
+    setSelectedRequest(req);
+    setDetailModalOpen(true);
+    try {
+      const data = await apiGet<EquipmentRequest>(
+        `/it/equipment-requests/${req.id}`,
+      );
+      setSelectedRequest(data);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const openReview = (req: EquipmentRequest) => {
+    setSelectedRequest(req);
+    setReviewForm({
+      status: "approved",
+      comment: "",
+      estimated_cost: req.estimated_cost ? String(req.estimated_cost) : "",
+    });
+    setReviewModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    setError(null);
+    try {
+      const submitData = {
+        ...form,
+        quantity: Number(form.quantity) || 1,
+        estimated_cost: form.estimated_cost
+          ? Number(form.estimated_cost)
+          : undefined,
+        replace_equipment_id: form.replace_equipment_id || undefined,
+        description: form.description || undefined,
+        justification: form.justification || undefined,
+      };
+
+      if (editing) {
+        await apiPatch(`/it/equipment-requests/${editing.id}`, submitData);
+        setMessage("Заявка обновлена");
+      } else {
+        if (!form.title || !form.equipment_category) {
+          setError("Название и категория обязательны");
+          return;
+        }
+        await apiPost("/it/equipment-requests/", submitData);
+        setMessage("Заявка создана");
+      }
+      setModalOpen(false);
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleReview = async () => {
+    if (!selectedRequest) return;
+    setError(null);
+    try {
+      await apiPost(`/it/equipment-requests/${selectedRequest.id}/review`, {
+        status: reviewForm.status,
+        comment: reviewForm.comment || undefined,
+        estimated_cost: reviewForm.estimated_cost
+          ? Number(reviewForm.estimated_cost)
+          : undefined,
+      });
+      setReviewModalOpen(false);
+      setMessage(
+        `Заявка ${reviewForm.status === "approved" ? "одобрена" : "отклонена"}`,
+      );
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    if (!window.confirm("Отменить заявку?")) return;
+    try {
+      await apiPost(`/it/equipment-requests/${id}/cancel`, {});
+      setMessage("Заявка отменена");
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "rejected":
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      case "issued":
+        return <Check className="w-4 h-4 text-blue-500" />;
+      case "ordered":
+        return <Package className="w-4 h-4 text-yellow-500" />;
+      case "received":
+        return <Truck className="w-4 h-4 text-purple-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Заявки на оборудование
+        </h2>
+        <p className="text-sm text-gray-500">
+          Заявки сотрудников на новое оборудование или замену.
+        </p>
+      </div>
+      {message && <p className="text-sm text-green-600">{message}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+          <input
+            className="px-3 py-2 text-sm w-48"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск..."
+          />
+          <button
+            onClick={handleSearch}
+            className="p-2 bg-gray-100 hover:bg-gray-200"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </div>
+        <button
+          onClick={openCreate}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+        >
+          <Plus className="w-4 h-4" /> Создать заявку
+        </button>
+      </div>
+
+      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
+      {!loading && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 font-medium text-gray-700">
+                  Название
+                </th>
+                <th className="px-4 py-3 font-medium text-gray-700">
+                  Категория
+                </th>
+                <th className="px-4 py-3 font-medium text-gray-700">Тип</th>
+                <th className="px-4 py-3 font-medium text-gray-700">
+                  Срочность
+                </th>
+                <th className="px-4 py-3 font-medium text-gray-700">Статус</th>
+                <th className="px-4 py-3 font-medium text-gray-700">
+                  Заявитель
+                </th>
+                <th className="px-4 py-3 font-medium text-gray-700" />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((req) => (
+                <tr key={req.id} className="border-t border-gray-100">
+                  <td className="px-4 py-3">{req.title}</td>
+                  <td className="px-4 py-3">{categoryLabel[req.equipment_category] || req.equipment_category}</td>
+                  <td className="px-4 py-3">
+                    {requestTypeLabel[req.request_type] || req.request_type}
+                  </td>
+                  <td className="px-4 py-3">
+                    {urgencyLabel[req.urgency] || req.urgency}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(req.status)}
+                      {statusLabel[req.status] || req.status}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">{req.requester_name || "—"}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => openDetail(req)}
+                      className="text-blue-600 hover:underline mr-2"
+                    >
+                      Подробнее
+                    </button>
+                    {req.status === "pending" && (
+                      <>
+                        <button
+                          onClick={() => openEdit(req)}
+                          className="text-green-600 hover:underline mr-2"
+                        >
+                          Изменить
+                        </button>
+                        <button
+                          onClick={() => handleCancel(req.id)}
+                          className="text-orange-600 hover:underline mr-2"
+                        >
+                          Отменить
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Модальное окно создания/редактирования */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {editing
+                ? "Редактирование заявки"
+                : "Новая заявка на оборудование"}
+            </h3>
+            <input
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              placeholder="Название *"
+              value={form.title}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, title: e.target.value }))
+              }
+            />
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[80px]"
+              placeholder="Описание"
+              value={form.description}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
+            />
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              value={form.equipment_category}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, equipment_category: e.target.value }))
+              }
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {categoryLabel[c] || c}
+                </option>
+              ))}
+            </select>
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              value={form.request_type}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, request_type: e.target.value }))
+              }
+            >
+              {REQUEST_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {requestTypeLabel[t]}
+                </option>
+              ))}
+            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                type="number"
+                min="1"
+                placeholder="Количество"
+                value={form.quantity}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    quantity: Number(e.target.value) || 1,
+                  }))
+                }
+              />
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                value={form.urgency}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, urgency: e.target.value }))
+                }
+              >
+                {URGENCIES.map((u) => (
+                  <option key={u} value={u}>
+                    {urgencyLabel[u]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {form.request_type === "replacement" && (
+              <input
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                placeholder="ID оборудования для замены (UUID)"
+                value={form.replace_equipment_id}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    replace_equipment_id: e.target.value,
+                  }))
+                }
+              />
+            )}
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[60px]"
+              placeholder="Обоснование необходимости"
+              value={form.justification}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, justification: e.target.value }))
+              }
+            />
+            <input
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              type="number"
+              step="0.01"
+              placeholder="Предполагаемая стоимость (необязательно)"
+              value={form.estimated_cost}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, estimated_cost: e.target.value }))
+              }
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+              >
+                {editing ? "Сохранить" : "Создать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно детального просмотра */}
+      {detailModalOpen && selectedRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedRequest.title}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Создана:{" "}
+                  {new Date(selectedRequest.created_at).toLocaleString("ru-RU")}
+                </p>
+              </div>
+              <button
+                onClick={() => setDetailModalOpen(false)}
+                className="text-sm text-gray-500"
+              >
+                Закрыть
+              </button>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="font-medium">Категория:</span>{" "}
+                {categoryLabel[selectedRequest.equipment_category] || selectedRequest.equipment_category}
+              </div>
+              <div>
+                <span className="font-medium">Тип:</span>{" "}
+                {requestTypeLabel[selectedRequest.request_type] ||
+                  selectedRequest.request_type}
+              </div>
+              <div>
+                <span className="font-medium">Количество:</span>{" "}
+                {selectedRequest.quantity}
+              </div>
+              <div>
+                <span className="font-medium">Срочность:</span>{" "}
+                {urgencyLabel[selectedRequest.urgency] ||
+                  selectedRequest.urgency}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Статус:</span>
+                {getStatusIcon(selectedRequest.status)}
+                {statusLabel[selectedRequest.status] || selectedRequest.status}
+              </div>
+              {selectedRequest.description && (
+                <div>
+                  <span className="font-medium">Описание:</span>
+                  <p className="mt-1 text-gray-700">
+                    {selectedRequest.description}
+                  </p>
+                </div>
+              )}
+              {selectedRequest.justification && (
+                <div>
+                  <span className="font-medium">Обоснование:</span>
+                  <p className="mt-1 text-gray-700">
+                    {selectedRequest.justification}
+                  </p>
+                </div>
+              )}
+              {selectedRequest.requester_name && (
+                <div>
+                  <span className="font-medium">Заявитель:</span>{" "}
+                  {selectedRequest.requester_name}
+                </div>
+              )}
+              {selectedRequest.reviewer_name && (
+                <div>
+                  <span className="font-medium">Рассмотрел:</span>{" "}
+                  {selectedRequest.reviewer_name}
+                </div>
+              )}
+              {selectedRequest.review_comment && (
+                <div>
+                  <span className="font-medium">Комментарий:</span>
+                  <p className="mt-1 text-gray-700">
+                    {selectedRequest.review_comment}
+                  </p>
+                </div>
+              )}
+              {selectedRequest.estimated_cost && (
+                <div>
+                  <span className="font-medium">Предполагаемая стоимость:</span>{" "}
+                  {selectedRequest.estimated_cost}
+                </div>
+              )}
+            </div>
+
+            {selectedRequest.status === "pending" && (
+              <div className="flex gap-2 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    setDetailModalOpen(false);
+                    openReview(selectedRequest);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg"
+                >
+                  Рассмотреть
+                </button>
+                <button
+                  onClick={() => handleCancel(selectedRequest.id)}
+                  className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50"
+                >
+                  Отменить
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно рассмотрения */}
+      {reviewModalOpen && selectedRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Рассмотрение заявки
+            </h3>
+            <p className="text-sm text-gray-700">{selectedRequest.title}</p>
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              value={reviewForm.status}
+              onChange={(e) =>
+                setReviewForm((p) => ({ ...p, status: e.target.value }))
+              }
+            >
+              <option value="approved">Одобрить</option>
+              <option value="rejected">Отклонить</option>
+            </select>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[80px]"
+              placeholder="Комментарий (необязательно)"
+              value={reviewForm.comment}
+              onChange={(e) =>
+                setReviewForm((p) => ({ ...p, comment: e.target.value }))
+              }
+            />
+            <input
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              type="number"
+              step="0.01"
+              placeholder="Предполагаемая стоимость"
+              value={reviewForm.estimated_cost}
+              onChange={(e) =>
+                setReviewForm((p) => ({ ...p, estimated_cost: e.target.value }))
+              }
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setReviewModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleReview}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg ${
+                  reviewForm.status === "approved"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                {reviewForm.status === "approved" ? "Одобрить" : "Отклонить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

@@ -1,0 +1,237 @@
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Sidebar } from "./shared/components/layout/Sidebar";
+import { Header } from "./shared/components/layout/Header";
+import { Dashboard } from "./modules/portal/Dashboard";
+import { LoginPage } from "./pages/LoginPage";
+import { useAuthStore } from "./shared/store/auth.store";
+import { HRLayout } from "./modules/hr/HRLayout";
+import { ITLayout } from "./modules/it/ITLayout";
+import { Phonebook } from "./modules/hr/pages/Phonebook";
+import { Birthdays } from "./modules/hr/pages/Birthdays";
+import { OrgChart } from "./modules/hr/pages/OrgChart";
+import { HRPanel } from "./modules/hr/pages/HRPanel";
+import { UsersPage } from "./modules/hr/pages/UsersPage";
+import { EquipmentPage } from "./modules/it/pages/EquipmentPage";
+import { TicketsPage } from "./modules/it/pages/TicketsPage";
+import { ConsumablesPage } from "./modules/it/pages/ConsumablesPage";
+import { EquipmentRequestsPage } from "./modules/it/pages/EquipmentRequestsPage";
+import { ReportsPage } from "./modules/it/pages/ReportsPage";
+import { LicensesPage } from "./modules/it/pages/LicensesPage";
+import { DictionariesPage } from "./modules/it/pages/DictionariesPage";
+import { SettingsPage } from "./modules/it/pages/SettingsPage";
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const token = useAuthStore((state) => state.token);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const checkTokenExpiry = useAuthStore((state) => state.checkTokenExpiry);
+
+  // Проверяем срок действия токена
+  useEffect(() => {
+    if (token) {
+      checkTokenExpiry();
+    }
+  }, [token, checkTokenExpiry]);
+
+  if (!token || !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function ModuleRoute({
+  module,
+  children,
+}: {
+  module: string;
+  children: React.ReactNode;
+}) {
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkModuleAccess();
+  }, [module]);
+
+  const checkModuleAccess = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setHasAccess(false);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Декодируем токен для получения списка модулей
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const modules = payload.modules || [];
+      const isSuperuser = payload.is_superuser || false;
+
+      // Суперпользователь имеет доступ ко всем модулям
+      if (isSuperuser) {
+        setHasAccess(true);
+        setLoading(false);
+        return;
+      }
+
+      // Проверяем доступ к модулю
+      const access = modules.includes(module);
+      setHasAccess(access);
+    } catch (error) {
+      console.error("Ошибка проверки доступа к модулю:", error);
+      setHasAccess(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg">Проверка доступа...</div>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Доступ запрещен</h2>
+          <p className="text-gray-600 mb-4">
+            У вас нет доступа к модулю {module.toUpperCase()}
+          </p>
+          <Navigate to="/" replace />
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+/**
+ * Компонент-обёртка для защищённого layout с Sidebar и Header
+ */
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const location = useLocation();
+
+  // На странице логина не показываем Sidebar и Header
+  if (location.pathname === "/login" || !isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  return (
+    <>
+      <Sidebar />
+      <div className="md:ml-64">
+        <Header />
+        <main className="p-6">{children}</main>
+      </div>
+    </>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <AuthenticatedLayout>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hr"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="hr">
+                <HRLayout />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route
+            index
+            element={<Navigate to="/hr/phonebook" replace />}
+          />
+          <Route path="phonebook" element={<Phonebook />} />
+          <Route path="birthdays" element={<Birthdays />} />
+          <Route path="org" element={<OrgChart />} />
+          <Route path="requests" element={<HRPanel />} />
+          <Route path="users" element={<UsersPage />} />
+        </Route>
+        <Route
+          path="/it"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="it">
+                <ITLayout />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route
+            index
+            element={<Navigate to="/it/equipment" replace />}
+          />
+          <Route path="equipment" element={<EquipmentPage />} />
+          <Route path="tickets" element={<TicketsPage />} />
+          <Route path="consumables" element={<ConsumablesPage />} />
+          <Route
+            path="equipment-requests"
+            element={<EquipmentRequestsPage />}
+          />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="licenses" element={<LicensesPage />} />
+          <Route path="dictionaries" element={<DictionariesPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        <Route
+          path="/finance/*"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="finance">
+                <div>Finance Module (в разработке)</div>
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthenticatedLayout>
+  );
+}
+
+function App() {
+  const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
+  const checkTokenExpiry = useAuthStore((state) => state.checkTokenExpiry);
+
+  useEffect(() => {
+    // Загружаем данные из localStorage при старте
+    loadFromStorage();
+    
+    // Периодически проверяем срок действия токена (каждые 30 секунд)
+    const interval = setInterval(() => {
+      checkTokenExpiry();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [loadFromStorage, checkTokenExpiry]);
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-gray-50">
+        <AppRoutes />
+      </div>
+    </BrowserRouter>
+  );
+}
+
+export default App;
