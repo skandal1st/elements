@@ -52,6 +52,9 @@ from backend.modules.it.models import (
     TicketHistory,
 )
 
+# Модели модуля Tasks (регистрация в Base для create_all)
+import backend.modules.tasks.models  # noqa: F401, E402
+
 
 def get_password_hash(password: str) -> str:
     """Хеширует пароль используя bcrypt напрямую"""
@@ -398,9 +401,30 @@ def migrate_ticket_consumables():
             conn.rollback()
 
 
+def _get_db_user_from_url(url: str) -> str:
+    """Извлекает имя пользователя БД из DATABASE_URL."""
+    if "://" not in url:
+        return "elements"
+    rest = url.split("://", 1)[1]
+    if "@" in rest:
+        user_part = rest.split("@", 1)[0]
+        return user_part.split(":")[0]
+    return "elements"
+
+
+def ensure_tasks_schema():
+    """Создаёт схему tasks и выдаёт права, если её ещё нет."""
+    db_user = _get_db_user_from_url(settings.database_url)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS tasks"))
+        conn.execute(text(f"GRANT ALL ON SCHEMA tasks TO {db_user}"))
+    print("Схема tasks готова")
+
+
 def create_tables():
     """Создает все таблицы в БД"""
     print("Создание таблиц...")
+    ensure_tasks_schema()
     Base.metadata.create_all(bind=engine)
     print("Таблицы созданы успешно")
 
