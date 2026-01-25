@@ -16,8 +16,11 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=".env",
+        env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        # Читать переменные окружения (DATABASE_URL -> database_url)
+        env_prefix="",
     )
 
     # Основные настройки

@@ -551,9 +551,16 @@ if __name__ == "__main__":
     print("Инициализация базы данных Elements Platform")
     print("=" * 60)
 
-    print(
-        f"\nПодключение к БД: {settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url}"
-    )
+    # Отладочный вывод
+    db_url_display = settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url
+    print(f"\nПодключение к БД: {db_url_display}")
+    
+    # Проверяем, что пароль не пустой
+    if '@' in settings.database_url:
+        db_parts = settings.database_url.split('@')[0].replace('postgresql://', '').split(':')
+        if len(db_parts) >= 2 and not db_parts[1]:
+            print("⚠️  ВНИМАНИЕ: Пароль БД пустой! Проверьте переменную DATABASE_URL")
+            sys.exit(1)
 
     create_tables()
     print()
