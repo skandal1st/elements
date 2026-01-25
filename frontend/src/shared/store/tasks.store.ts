@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { apiGet, apiPost, apiPatch, apiDelete } from '../api/client'
 
 // --- Types ---
 
@@ -92,34 +93,24 @@ export interface KanbanColumn {
   tasks: Task[]
 }
 
-// --- API functions ---
+// --- API (общий клиент /api/v1, пути /tasks/...) ---
 
-const API_BASE = '/api/v1/tasks'
+const TASKS_PREFIX = '/tasks'
 
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const token = localStorage.getItem('token')
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
+async function tasksGet<T>(path: string): Promise<T> {
+  return apiGet<T>(`${TASKS_PREFIX}${path}`)
 }
 
-async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const headers = await getAuthHeaders()
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: { ...headers, ...options.headers },
-  })
+async function tasksPost<T>(path: string, body?: unknown): Promise<T> {
+  return apiPost<T>(`${TASKS_PREFIX}${path}`, body)
+}
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.detail || 'API Error')
-  }
+async function tasksPatch<T>(path: string, body: unknown): Promise<T> {
+  return apiPatch<T>(`${TASKS_PREFIX}${path}`, body)
+}
 
-  return response.json()
+async function tasksDelete(path: string): Promise<void> {
+  return apiDelete(`${TASKS_PREFIX}${path}`)
 }
 
 // --- Store ---
@@ -216,7 +207,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   loadProjects: async (includeArchived = false) => {
     set({ projectsLoading: true, projectsError: null })
     try {
-      const projects = await apiFetch<Project[]>(
+      const projects = await tasksGet<Project[]>(
         `/projects/?include_archived=${includeArchived}`
       )
       set({ projects, projectsLoading: false })
@@ -231,7 +222,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   loadProject: async (id: string) => {
     set({ projectsLoading: true, projectsError: null })
     try {
-      const project = await apiFetch<Project>(`/projects/${id}`)
+      const project = await tasksGet<Project>(`/projects/${id}`)
       set({ currentProject: project, projectsLoading: false })
     } catch (error) {
       set({
@@ -242,19 +233,13 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   createProject: async (data) => {
-    const project = await apiFetch<Project>('/projects/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    const project = await tasksPost<Project>('/projects/', data)
     set((state) => ({ projects: [project, ...state.projects] }))
     return project
   },
 
   updateProject: async (id, data) => {
-    const project = await apiFetch<Project>(`/projects/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    })
+    const project = await tasksPatch<Project>(`/projects/${id}`, data)
     set((state) => ({
       projects: state.projects.map((p) => (p.id === id ? project : p)),
       currentProject:
@@ -264,7 +249,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   deleteProject: async (id) => {
-    await apiFetch(`/projects/${id}`, { method: 'DELETE' })
+    await tasksDelete(`/projects/${id}`)
     set((state) => ({
       projects: state.projects.filter((p) => p.id !== id),
       currentProject:
@@ -273,18 +258,14 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   archiveProject: async (id) => {
-    const project = await apiFetch<Project>(`/projects/${id}/archive`, {
-      method: 'POST',
-    })
+    const project = await tasksPost<Project>(`/projects/${id}/archive`)
     set((state) => ({
       projects: state.projects.map((p) => (p.id === id ? project : p)),
     }))
   },
 
   unarchiveProject: async (id) => {
-    const project = await apiFetch<Project>(`/projects/${id}/unarchive`, {
-      method: 'POST',
-    })
+    const project = await tasksPost<Project>(`/projects/${id}/unarchive`)
     set((state) => ({
       projects: state.projects.map((p) => (p.id === id ? project : p)),
     }))
@@ -300,7 +281,7 @@ export const useTasksStore = create<TasksState>((set) => ({
       if (filters.status) params.append('status', filters.status)
       if (filters.my_tasks) params.append('my_tasks', 'true')
 
-      const tasks = await apiFetch<Task[]>(`/tasks/?${params.toString()}`)
+      const tasks = await tasksGet<Task[]>(`/tasks/?${params.toString()}`)
       set({ tasks, tasksLoading: false })
     } catch (error) {
       set({
@@ -313,7 +294,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   loadTask: async (id: string) => {
     set({ tasksLoading: true, tasksError: null })
     try {
-      const task = await apiFetch<Task>(`/tasks/${id}`)
+      const task = await tasksGet<Task>(`/tasks/${id}`)
       set({ currentTask: task, tasksLoading: false })
     } catch (error) {
       set({
@@ -326,7 +307,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   loadKanban: async (projectId: string) => {
     set({ tasksLoading: true, tasksError: null })
     try {
-      const data = await apiFetch<{ columns: Record<string, Task[]> }>(
+      const data = await tasksGet<{ columns: Record<string, Task[]> }>(
         `/tasks/kanban/${projectId}`
       )
       set({ kanbanColumns: data.columns, tasksLoading: false })
@@ -339,10 +320,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   createTask: async (data) => {
-    const task = await apiFetch<Task>('/tasks/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    const task = await tasksPost<Task>('/tasks/', data)
     set((state) => ({
       tasks: [task, ...state.tasks],
       kanbanColumns: {
@@ -354,10 +332,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   updateTask: async (id, data) => {
-    const task = await apiFetch<Task>(`/tasks/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    })
+    const task = await tasksPatch<Task>(`/tasks/${id}`, data)
     set((state) => ({
       tasks: state.tasks.map((t) => (t.id === id ? task : t)),
       currentTask: state.currentTask?.id === id ? task : state.currentTask,
@@ -366,9 +341,9 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   moveTask: async (id, status, orderIndex) => {
-    const task = await apiFetch<Task>(`/tasks/${id}/move`, {
-      method: 'POST',
-      body: JSON.stringify({ status, order_index: orderIndex }),
+    const task = await tasksPost<Task>(`/tasks/${id}/move`, {
+      status,
+      order_index: orderIndex,
     })
 
     // Update kanban columns locally
@@ -395,7 +370,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   deleteTask: async (id) => {
-    await apiFetch(`/tasks/${id}`, { method: 'DELETE' })
+    await tasksDelete(`/tasks/${id}`)
     set((state) => {
       const newColumns = { ...state.kanbanColumns }
       for (const col of Object.keys(newColumns)) {
@@ -412,10 +387,10 @@ export const useTasksStore = create<TasksState>((set) => ({
   // --- Checklist ---
 
   addChecklistItem: async (taskId, title) => {
-    const item = await apiFetch<ChecklistItem>(`/tasks/${taskId}/checklist`, {
-      method: 'POST',
-      body: JSON.stringify({ title }),
-    })
+    const item = await tasksPost<ChecklistItem>(
+      `/tasks/${taskId}/checklist`,
+      { title }
+    )
     set((state) => {
       if (state.currentTask?.id === taskId) {
         return {
@@ -434,12 +409,9 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   updateChecklistItem: async (taskId, itemId, data) => {
-    const item = await apiFetch<ChecklistItem>(
+    const item = await tasksPatch<ChecklistItem>(
       `/tasks/${taskId}/checklist/${itemId}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }
+      data
     )
     set((state) => {
       if (state.currentTask?.id === taskId) {
@@ -458,9 +430,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   deleteChecklistItem: async (taskId, itemId) => {
-    await apiFetch(`/tasks/${taskId}/checklist/${itemId}`, {
-      method: 'DELETE',
-    })
+    await tasksDelete(`/tasks/${taskId}/checklist/${itemId}`)
     set((state) => {
       if (state.currentTask?.id === taskId) {
         return {
@@ -479,23 +449,21 @@ export const useTasksStore = create<TasksState>((set) => ({
   // --- Labels ---
 
   loadLabels: async (projectId) => {
-    const labels = await apiFetch<Label[]>(`/projects/${projectId}/labels/`)
+    const labels = await tasksGet<Label[]>(`/projects/${projectId}/labels/`)
     set({ labels })
   },
 
   createLabel: async (projectId, data) => {
-    const label = await apiFetch<Label>(`/projects/${projectId}/labels/`, {
-      method: 'POST',
-      body: JSON.stringify({ ...data, project_id: projectId }),
+    const label = await tasksPost<Label>(`/projects/${projectId}/labels/`, {
+      ...data,
+      project_id: projectId,
     })
     set((state) => ({ labels: [...state.labels, label] }))
     return label
   },
 
   deleteLabel: async (projectId, labelId) => {
-    await apiFetch(`/projects/${projectId}/labels/${labelId}`, {
-      method: 'DELETE',
-    })
+    await tasksDelete(`/projects/${projectId}/labels/${labelId}`)
     set((state) => ({ labels: state.labels.filter((l) => l.id !== labelId) }))
   },
 
