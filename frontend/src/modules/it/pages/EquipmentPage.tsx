@@ -870,92 +870,109 @@ export function EquipmentPage() {
   };
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Оборудование</h2>
-        <p className="text-sm text-gray-500">Учет IT-оборудования.</p>
-      </div>
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-          <input
-            className="px-3 py-2 text-sm w-48"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск..."
-          />
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Оборудование</h2>
+            <p className="text-gray-400">Учет IT-оборудования</p>
+          </div>
           <button
-            onClick={handleSearch}
-            className="p-2 bg-gray-100 hover:bg-gray-200"
+            onClick={openCreate}
+            className="glass-button px-4 py-2.5 flex items-center gap-2"
           >
-            <Search className="w-4 h-4" />
+            <Plus className="w-5 h-5" /> Добавить
           </button>
         </div>
+      </div>
+
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="Поиск оборудования..."
+          />
+        </div>
         <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+          onClick={handleSearch}
+          className="glass-button-secondary px-4 py-2.5 flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" /> Добавить
+          <Search className="w-4 h-4" /> Найти
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-      {!loading && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-700">Инв. №</th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Название
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Категория
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">Статус</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Место</th>
-                <th className="px-4 py-3 font-medium text-gray-700" />
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-dark-600/50">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Инв. №</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категория</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Место</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-dark-700/50">
               {items.map((e) => (
-                <tr 
-                  key={e.id} 
-                  className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                <tr
+                  key={e.id}
+                  className="hover:bg-dark-700/30 cursor-pointer transition-colors"
                   onClick={() => openDetail(e)}
                 >
-                  <td className="px-4 py-3">{e.inventory_number}</td>
-                  <td className="px-4 py-3">{e.name}</td>
-                  <td className="px-4 py-3">{categoryLabel[e.category] || e.category}</td>
-                  <td className="px-4 py-3">{statusLabel[e.status] || e.status}</td>
-                  <td className="px-4 py-3">
-                    {e.room_name 
-                      ? (e.building_name ? `${e.building_name} / ${e.room_name}` : e.room_name)
-                      : ([e.location_department, e.location_room].filter(Boolean).join(" / ") || "—")
-                    }
+                  <td className="px-4 py-4 text-gray-300">{e.inventory_number}</td>
+                  <td className="px-4 py-4">
+                    <span className="text-white font-medium">{e.name}</span>
                   </td>
-                  <td className="px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
-                    <button
-                      onClick={() => openEdit(e)}
-                      className="text-blue-600 hover:underline mr-2"
-                    >
-                      Изменить
-                    </button>
-                    <button
-                      onClick={() => openQrModal(e)}
-                      className="text-purple-600 hover:underline mr-2"
-                      title="QR-код"
-                    >
-                      <QrCode className="w-4 h-4 inline" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(e.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Удалить
-                    </button>
+                  <td className="px-4 py-4 text-gray-400">{categoryLabel[e.category] || e.category}</td>
+                  <td className="px-4 py-4 text-gray-400">{statusLabel[e.status] || e.status}</td>
+                  <td className="px-4 py-4 text-gray-400">
+                    {e.room_name
+                      ? (e.building_name ? `${e.building_name} / ${e.room_name}` : e.room_name)
+                      : ([e.location_department, e.location_room].filter(Boolean).join(" / ") || "—")}
+                  </td>
+                  <td className="px-4 py-4" onClick={(ev) => ev.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEdit(e)}
+                        className="text-accent-blue hover:text-accent-purple transition-colors"
+                      >
+                        Изменить
+                      </button>
+                      <button
+                        onClick={() => openQrModal(e)}
+                        className="p-1.5 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all"
+                        title="QR-код"
+                      >
+                        <QrCode className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(e.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -965,46 +982,46 @@ export function EquipmentPage() {
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-lg p-6 max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 max-h-[90vh] overflow-hidden flex flex-col mx-4">
             {modalLoading ? (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-500">Загрузка данных...</p>
+              <div className="flex items-center justify-center py-12">
+                <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
               </div>
             ) : (
               <>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <h3 className="text-lg font-semibold text-white mb-4">
                   {editing ? "Редактирование" : "Новое оборудование"}
                 </h3>
 
                 {/* Вкладки */}
-                <div className="flex border-b border-gray-200 mb-4">
+                <div className="flex border-b border-dark-600/50 mb-4">
                   <button
                     onClick={() => setFormTab("main")}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                       formTab === "main"
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
+                        ? "border-accent-purple text-accent-purple"
+                        : "border-transparent text-gray-500 hover:text-gray-300"
                     }`}
                   >
                     Основное
                   </button>
                   <button
                     onClick={() => setFormTab("specs")}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                       formTab === "specs"
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
+                        ? "border-accent-purple text-accent-purple"
+                        : "border-transparent text-gray-500 hover:text-gray-300"
                     }`}
                   >
                     Характеристики
                   </button>
                   <button
                     onClick={() => setFormTab("location")}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                       formTab === "location"
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
+                        ? "border-accent-purple text-accent-purple"
+                        : "border-transparent text-gray-500 hover:text-gray-300"
                     }`}
                   >
                     Расположение
@@ -1017,7 +1034,7 @@ export function EquipmentPage() {
                   {formTab === "main" && (
                     <>
                       <input
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        className="glass-input w-full px-4 py-3 text-sm"
                         placeholder="Название *"
                         value={form.name}
                         onChange={(e) =>
@@ -1025,7 +1042,7 @@ export function EquipmentPage() {
                         }
                       />
                       <input
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        className="glass-input w-full px-4 py-3 text-sm disabled:opacity-60"
                         placeholder="Инв. номер *"
                         value={form.inventory_number}
                         onChange={(e) =>
@@ -1034,7 +1051,7 @@ export function EquipmentPage() {
                         readOnly={!!editing}
                       />
                       <input
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        className="glass-input w-full px-4 py-3 text-sm"
                         placeholder="Серийный номер"
                         value={form.serial_number}
                         onChange={(e) =>
@@ -1043,21 +1060,21 @@ export function EquipmentPage() {
                       />
 
                       {/* Справочник оборудования */}
-                      <div className="space-y-2 border-t border-gray-200 pt-4">
-                        <label className="text-sm font-medium text-gray-700">
+                      <div className="space-y-2 border-t border-dark-600/50 pt-4">
+                        <label className="text-sm font-medium text-gray-400">
                           Справочник оборудования
                         </label>
 
                         {/* Марка */}
                         <div className="flex gap-2">
                           <select
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            className="glass-input flex-1 px-4 py-3 text-sm"
                             value={selectedBrandId}
                             onChange={(e) => handleBrandChange(e.target.value)}
                           >
-                            <option value="">Выберите марку</option>
+                            <option value="" className="bg-dark-800">Выберите марку</option>
                             {brands.map((b) => (
-                              <option key={b.id} value={b.id}>
+                              <option key={b.id} value={b.id} className="bg-dark-800">
                                 {b.name}
                               </option>
                             ))}
@@ -1065,7 +1082,7 @@ export function EquipmentPage() {
                           <button
                             type="button"
                             onClick={() => setAddBrandModal(true)}
-                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                            className="glass-button-secondary px-3 py-2 text-sm"
                             title="Добавить марку"
                           >
                             <Plus className="w-4 h-4" />
@@ -1076,13 +1093,13 @@ export function EquipmentPage() {
                         {selectedBrandId && (
                           <div className="flex gap-2">
                             <select
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="glass-input flex-1 px-4 py-3 text-sm"
                               value={selectedTypeId}
                               onChange={(e) => handleTypeChange(e.target.value)}
                             >
-                              <option value="">Выберите тип</option>
+                              <option value="" className="bg-dark-800">Выберите тип</option>
                               {equipmentTypes.map((t) => (
-                                <option key={t.id} value={t.id}>
+                                <option key={t.id} value={t.id} className="bg-dark-800">
                                   {t.name}
                                 </option>
                               ))}
@@ -1090,7 +1107,7 @@ export function EquipmentPage() {
                             <button
                               type="button"
                               onClick={() => setAddTypeModal(true)}
-                              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                              className="glass-button-secondary px-3 py-2 text-sm"
                               title="Добавить тип"
                             >
                               <Plus className="w-4 h-4" />
@@ -1102,13 +1119,13 @@ export function EquipmentPage() {
                         {selectedTypeId && (
                           <div className="flex gap-2">
                             <select
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="glass-input flex-1 px-4 py-3 text-sm"
                               value={selectedModelId}
                               onChange={(e) => handleModelChange(e.target.value)}
                             >
-                              <option value="">Выберите модель</option>
+                              <option value="" className="bg-dark-800">Выберите модель</option>
                               {models.map((m) => (
-                                <option key={m.id} value={m.id}>
+                                <option key={m.id} value={m.id} className="bg-dark-800">
                                   {m.name}
                                 </option>
                               ))}
@@ -1116,7 +1133,7 @@ export function EquipmentPage() {
                             <button
                               type="button"
                               onClick={() => setAddModelModal(true)}
-                              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                              className="glass-button-secondary px-3 py-2 text-sm"
                               title="Добавить модель"
                             >
                               <Plus className="w-4 h-4" />
@@ -1126,25 +1143,25 @@ export function EquipmentPage() {
 
                         {/* Расходники модели */}
                         {selectedModelId && (
-                          <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                          <div className="mt-2 p-4 bg-dark-700/30 rounded-xl border border-dark-600/50">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <Package className="w-4 h-4 text-blue-600" />
-                                <span className="text-sm font-medium text-blue-900">
+                                <Package className="w-4 h-4 text-accent-purple" />
+                                <span className="text-sm font-medium text-gray-300">
                                   Расходные материалы:
                                 </span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => setAddConsumableModal(true)}
-                                className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                className="text-xs px-2 py-1 bg-accent-purple/20 text-accent-purple rounded-xl"
                               >
                                 <Plus className="w-3 h-3 inline mr-1" />
                                 Добавить
                               </button>
                             </div>
                             {modelConsumables.length > 0 ? (
-                              <ul className="text-sm text-blue-800 space-y-1">
+                              <ul className="text-sm text-gray-400 space-y-1">
                                 {modelConsumables.map((c) => (
                                   <li key={c.id}>
                                     • {c.name} {c.part_number && `(${c.part_number})`}
@@ -1152,7 +1169,7 @@ export function EquipmentPage() {
                                 ))}
                               </ul>
                             ) : (
-                              <p className="text-sm text-blue-600">
+                              <p className="text-sm text-gray-500">
                                 Нет расходных материалов
                               </p>
                             )}
@@ -1176,11 +1193,11 @@ export function EquipmentPage() {
                       {(form.category === "computer" || form.category === "server") && (
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">
                               Процессор
                             </label>
                             <input
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="glass-input w-full px-4 py-3 text-sm"
                               placeholder="Например: Intel Core i7-12700"
                               value={form.cpu}
                               onChange={(e) =>
@@ -1189,11 +1206,11 @@ export function EquipmentPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">
                               Оперативная память
                             </label>
                             <input
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="glass-input w-full px-4 py-3 text-sm"
                               placeholder="Например: 16 ГБ DDR4"
                               value={form.ram}
                               onChange={(e) =>
@@ -1202,11 +1219,11 @@ export function EquipmentPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">
                               Накопитель
                             </label>
                             <input
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="glass-input w-full px-4 py-3 text-sm"
                               placeholder="Например: SSD 512 ГБ"
                               value={form.storage}
                               onChange={(e) =>
@@ -1215,11 +1232,11 @@ export function EquipmentPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">
                               Операционная система
                             </label>
                             <input
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="glass-input w-full px-4 py-3 text-sm"
                               placeholder="Например: Windows 11 Pro"
                               value={form.os}
                               onChange={(e) =>
@@ -1234,11 +1251,11 @@ export function EquipmentPage() {
                       {form.category === "monitor" && (
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">
                               Диагональ
                             </label>
                             <input
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="glass-input w-full px-4 py-3 text-sm"
                               placeholder="Например: 27 дюймов"
                               value={form.diagonal}
                               onChange={(e) =>
@@ -1247,11 +1264,11 @@ export function EquipmentPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">
                               Разрешение
                             </label>
                             <input
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="glass-input w-full px-4 py-3 text-sm"
                               placeholder="Например: 2560x1440 (QHD)"
                               value={form.resolution}
                               onChange={(e) =>
@@ -1271,12 +1288,12 @@ export function EquipmentPage() {
 
                       {/* IP-адрес */}
                       {(form.category === "computer" || form.category === "printer" || form.category === "server" || form.category === "network") && (
-                        <div className={form.category === "computer" || form.category === "server" ? "border-t border-gray-200 pt-4 mt-4" : ""}>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <div className={form.category === "computer" || form.category === "server" ? "border-t border-dark-600/50 pt-4 mt-4" : ""}>
+                          <label className="block text-sm font-medium text-gray-400 mb-1">
                             IP-адрес
                           </label>
                           <input
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            className="glass-input w-full px-4 py-3 text-sm"
                             placeholder="Например: 192.168.1.100"
                             value={form.ip_address}
                             onChange={(e) =>
@@ -1299,19 +1316,19 @@ export function EquipmentPage() {
                   {formTab === "location" && (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-400 mb-1">
                           Здание
                         </label>
                         <select
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          className="glass-input w-full px-4 py-3 text-sm"
                           value={selectedBuildingForRoom}
                           onChange={(e) =>
                             handleBuildingForRoomChange(e.target.value)
                           }
                         >
-                          <option value="">Выберите здание</option>
+                          <option value="" className="bg-dark-800">Выберите здание</option>
                           {buildingsForRooms.map((b) => (
-                            <option key={b.id} value={b.id}>
+                            <option key={b.id} value={b.id} className="bg-dark-800">
                               {b.name}
                             </option>
                           ))}
@@ -1319,18 +1336,18 @@ export function EquipmentPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-400 mb-1">
                           Кабинет
                         </label>
                         <select
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          className="glass-input w-full px-4 py-3 text-sm"
                           value={selectedRoomId}
                           onChange={(e) => handleRoomChange(e.target.value)}
                           disabled={!selectedBuildingForRoom}
                         >
-                          <option value="">Выберите кабинет</option>
+                          <option value="" className="bg-dark-800">Выберите кабинет</option>
                           {roomsForEquipment.map((r) => (
-                            <option key={r.id} value={r.id}>
+                            <option key={r.id} value={r.id} className="bg-dark-800">
                               {r.name} {r.building_name ? `(${r.building_name})` : ""}
                             </option>
                           ))}
@@ -1338,11 +1355,11 @@ export function EquipmentPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-400 mb-1">
                           Ответственный сотрудник
                         </label>
                         <select
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          className="glass-input w-full px-4 py-3 text-sm"
                           value={form.current_owner_id}
                           onChange={(e) =>
                             setForm((p) => ({
@@ -1351,9 +1368,9 @@ export function EquipmentPage() {
                             }))
                           }
                         >
-                          <option value="">Выберите сотрудника</option>
+                          <option value="" className="bg-dark-800">Выберите сотрудника</option>
                           {employees.map((emp) => (
-                            <option key={emp.id} value={emp.id}>
+                            <option key={emp.id} value={emp.id} className="bg-dark-800">
                               {emp.full_name}
                             </option>
                           ))}
@@ -1361,18 +1378,18 @@ export function EquipmentPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-400 mb-1">
                           Состояние
                         </label>
                         <select
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          className="glass-input w-full px-4 py-3 text-sm"
                           value={form.status}
                           onChange={(e) =>
                             setForm((p) => ({ ...p, status: e.target.value }))
                           }
                         >
                           {STATUSES.map((s) => (
-                            <option key={s} value={s}>
+                            <option key={s} value={s} className="bg-dark-800">
                               {statusLabel[s] || s}
                             </option>
                           ))}
@@ -1383,19 +1400,19 @@ export function EquipmentPage() {
                 </div>
 
                 {/* Кнопки */}
-                <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 mt-4">
+                <div className="flex justify-end gap-2 pt-4 border-t border-dark-600/50 mt-4">
                   <button
                     onClick={() => {
                       setModalOpen(false);
                       setModalLoading(false);
                     }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                    className="glass-button-secondary px-4 py-2 text-sm font-medium"
                   >
                     Отмена
                   </button>
                   <button
                     onClick={handleSubmit}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                    className="glass-button px-4 py-2 text-sm font-medium"
                   >
                     {editing ? "Сохранить" : "Создать"}
                   </button>
@@ -1408,45 +1425,45 @@ export function EquipmentPage() {
 
       {/* Модальное окно детального просмотра */}
       {detailModalOpen && detailEquipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-4xl p-6 max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-4xl p-6 max-h-[90vh] overflow-hidden flex flex-col mx-4">
             {/* Заголовок */}
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="text-xl font-semibold text-white">
                   {detailEquipment.name}
                 </h3>
-                <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                <div className="flex items-center gap-4 mt-1 text-sm text-gray-400">
                   <span>Инв. № {detailEquipment.inventory_number}</span>
                   {detailEquipment.serial_number && (
                     <span>S/N: {detailEquipment.serial_number}</span>
                   )}
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    detailEquipment.status === "in_use" ? "bg-green-100 text-green-800" :
-                    detailEquipment.status === "in_stock" ? "bg-blue-100 text-blue-800" :
-                    detailEquipment.status === "in_repair" ? "bg-yellow-100 text-yellow-800" :
-                    "bg-red-100 text-red-800"
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                    detailEquipment.status === "in_use" ? "bg-green-500/20 text-green-400" :
+                    detailEquipment.status === "in_stock" ? "bg-accent-blue/20 text-accent-blue" :
+                    detailEquipment.status === "in_repair" ? "bg-amber-500/20 text-amber-400" :
+                    "bg-red-500/20 text-red-400"
                   }`}>
                     {statusLabel[detailEquipment.status] || detailEquipment.status}
                   </span>
                 </div>
               </div>
-              <button 
-                onClick={closeDetail} 
-                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              <button
+                onClick={closeDetail}
+                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Вкладки */}
-            <div className="flex border-b border-gray-200 mb-4">
+            <div className="flex border-b border-dark-600/50 mb-4">
               <button
                 onClick={() => setDetailTab("info")}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   detailTab === "info"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "border-accent-purple text-accent-purple"
+                    : "border-transparent text-gray-500 hover:text-gray-300"
                 }`}
               >
                 <Monitor className="w-4 h-4" />
@@ -1454,42 +1471,42 @@ export function EquipmentPage() {
               </button>
               <button
                 onClick={() => setDetailTab("licenses")}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   detailTab === "licenses"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "border-accent-purple text-accent-purple"
+                    : "border-transparent text-gray-500 hover:text-gray-300"
                 }`}
               >
                 <Key className="w-4 h-4" />
                 Лицензии
                 {equipmentLicenses.length > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-accent-purple/20 text-accent-purple rounded-full">
                     {equipmentLicenses.length}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setDetailTab("consumables")}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   detailTab === "consumables"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "border-accent-purple text-accent-purple"
+                    : "border-transparent text-gray-500 hover:text-gray-300"
                 }`}
               >
                 <Package className="w-4 h-4" />
                 Расходники
                 {detailConsumables.length > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-accent-purple/20 text-accent-purple rounded-full">
                     {detailConsumables.length}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setDetailTab("history")}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   detailTab === "history"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "border-accent-purple text-accent-purple"
+                    : "border-transparent text-gray-500 hover:text-gray-300"
                 }`}
               >
                 <History className="w-4 h-4" />
@@ -1504,11 +1521,11 @@ export function EquipmentPage() {
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Основная информация */}
                   <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
                       <Monitor className="w-4 h-4 text-gray-500" />
                       Основная информация
                     </h4>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div className="bg-dark-700/30 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-500">Категория</span>
                         <span className="text-sm font-medium">{categoryLabel[detailEquipment.category] || detailEquipment.category}</span>
@@ -1534,15 +1551,15 @@ export function EquipmentPage() {
                     </div>
 
                     {/* Ответственный */}
-                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mt-4">
+                    <h4 className="text-sm font-semibold text-white flex items-center gap-2 mt-4">
                       <User className="w-4 h-4 text-gray-500" />
                       Ответственный
                     </h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="bg-dark-700/30 rounded-xl p-4">
                       {detailEquipment.owner_name ? (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                            <div className="w-8 h-8 bg-accent-purple rounded-full flex items-center justify-center">
                               <User className="w-4 h-4 text-white" />
                             </div>
                             <div>
@@ -1559,11 +1576,11 @@ export function EquipmentPage() {
                     </div>
 
                     {/* Расположение */}
-                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mt-4">
+                    <h4 className="text-sm font-semibold text-white flex items-center gap-2 mt-4">
                       <MapPin className="w-4 h-4 text-gray-500" />
                       Расположение
                     </h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="bg-dark-700/30 rounded-xl p-4">
                       {detailEquipment.building_name || detailEquipment.room_name || detailEquipment.location_department || detailEquipment.location_room ? (
                         <div className="space-y-2">
                           {detailEquipment.building_name && (
@@ -1592,11 +1609,11 @@ export function EquipmentPage() {
 
                   {/* Характеристики */}
                   <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
                       <Cpu className="w-4 h-4 text-gray-500" />
                       Характеристики
                     </h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="bg-dark-700/30 rounded-xl p-4">
                       {detailEquipment.specifications && Object.keys(detailEquipment.specifications).length > 0 ? (
                         <div className="space-y-3">
                           {detailEquipment.specifications.cpu && (
@@ -1658,11 +1675,11 @@ export function EquipmentPage() {
                       {equipmentLicenses.map((lic) => (
                         <div
                           key={lic.id}
-                          className="bg-gray-50 rounded-lg p-4 border-l-4 border-green-500"
+                          className="bg-dark-700/30 rounded-xl p-4 border-l-4 border-green-500"
                         >
                           <div className="flex justify-between items-start">
                             <div>
-                              <h5 className="font-medium text-gray-900">{lic.software_name}</h5>
+                              <h5 className="font-medium text-white">{lic.software_name}</h5>
                               {lic.vendor && (
                                 <p className="text-sm text-gray-500">{lic.vendor}</p>
                               )}
@@ -1709,14 +1726,14 @@ export function EquipmentPage() {
                       {detailConsumables.map((consumable) => (
                         <div
                           key={consumable.id}
-                          className="bg-gray-50 rounded-lg p-4 flex items-center justify-between"
+                          className="bg-dark-700/30 rounded-xl p-4 flex items-center justify-between"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <div className="w-10 h-10 bg-accent-purple/20 rounded-xl flex items-center justify-center">
                               <Package className="w-5 h-5 text-blue-600" />
                             </div>
                             <div>
-                              <h5 className="font-medium text-gray-900">{consumable.name}</h5>
+                              <h5 className="font-medium text-white">{consumable.name}</h5>
                               <p className="text-sm text-gray-500">
                                 {consumable.consumable_type && (
                                   <span>{consumableTypeLabel[consumable.consumable_type] || consumable.consumable_type}</span>
@@ -1759,7 +1776,7 @@ export function EquipmentPage() {
                       {equipmentHistory.map((record) => (
                         <div
                           key={record.id}
-                          className="bg-gray-50 rounded-lg p-4 border-l-4 border-blue-500"
+                          className="bg-dark-700/30 rounded-xl p-4 border-l-4 border-accent-blue"
                         >
                           <div className="flex justify-between items-start mb-2">
                             <span className="text-xs text-gray-500">
@@ -1771,7 +1788,7 @@ export function EquipmentPage() {
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-700 space-y-1">
+                          <div className="text-sm text-gray-400 space-y-1">
                             {record.from_user_name && (
                               <div>
                                 <span className="font-medium">От:</span>{" "}
@@ -1803,7 +1820,7 @@ export function EquipmentPage() {
                               </>
                             )}
                             {record.reason && (
-                              <div className="text-xs text-gray-600 mt-2 pt-2 border-t border-gray-200">
+                              <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-dark-600/50">
                                 <span className="font-medium">Причина:</span>{" "}
                                 {record.reason}
                               </div>
@@ -1818,10 +1835,10 @@ export function EquipmentPage() {
             </div>
 
             {/* Кнопки внизу */}
-            <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-4">
+            <div className="flex justify-between items-center pt-4 border-t border-dark-600/50 mt-4">
               <button
                 onClick={() => openQrModal(detailEquipment)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
               >
                 <QrCode className="w-4 h-4" />
                 QR-код
@@ -1832,13 +1849,13 @@ export function EquipmentPage() {
                     closeDetail();
                     openEdit(detailEquipment);
                   }}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                  className="glass-button px-4 py-2.5 text-sm font-medium"
                 >
                   Редактировать
                 </button>
                 <button
                   onClick={closeDetail}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="glass-button-secondary px-4 py-2.5 text-sm font-medium"
                 >
                   Закрыть
                 </button>
@@ -1850,106 +1867,63 @@ export function EquipmentPage() {
 
       {/* Модальные окна для добавления в справочник */}
       {addBrandModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Добавить марку
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">Добавить марку</h3>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название марки"
               value={newBrandName}
               onChange={(e) => setNewBrandName(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleCreateBrand()}
             />
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setAddBrandModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleCreateBrand}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-              >
-                Создать
-              </button>
+              <button onClick={() => setAddBrandModal(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleCreateBrand} className="glass-button px-4 py-2 text-sm font-medium">Создать</button>
             </div>
           </div>
         </div>
       )}
 
       {addTypeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Выберите тип оборудования
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">Выберите тип оборудования</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тип устройства
-              </label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Тип устройства</label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 value={form.category}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, category: e.target.value }))
-                }
+                onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
               >
-                <option value="">Выберите тип</option>
+                <option value="" className="bg-dark-800">Выберите тип</option>
                 {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {categoryLabel[c] || c}
-                  </option>
+                  <option key={c} value={c} className="bg-dark-800">{categoryLabel[c] || c}</option>
                 ))}
               </select>
             </div>
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setAddTypeModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleCreateType}
-                disabled={!form.category}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Добавить
-              </button>
+              <button onClick={() => setAddTypeModal(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleCreateType} disabled={!form.category} className="glass-button px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">Добавить</button>
             </div>
           </div>
         </div>
       )}
 
       {addModelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Добавить модель
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">Добавить модель</h3>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название модели (например: ThinkPad X1 Carbon)"
               value={newModelName}
               onChange={(e) => setNewModelName(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleCreateModel()}
             />
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setAddModelModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleCreateModel}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-              >
-                Создать
-              </button>
+              <button onClick={() => setAddModelModal(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleCreateModel} className="glass-button px-4 py-2 text-sm font-medium">Создать</button>
             </div>
           </div>
         </div>
@@ -1957,31 +1931,27 @@ export function EquipmentPage() {
 
       {/* Модальное окно для добавления расходника в модель */}
       {addConsumableModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Добавить расходный материал в модель
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">Добавить расходный материал в модель</h3>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название расходника *"
               value={newConsumableName}
               onChange={(e) => setNewConsumableName(e.target.value)}
             />
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               value={newConsumableType}
               onChange={(e) => setNewConsumableType(e.target.value)}
             >
-              <option value="">Тип расходника</option>
+              <option value="" className="bg-dark-800">Тип расходника</option>
               {CONSUMABLE_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {consumableTypeLabel[t] || t}
-                </option>
+                <option key={t} value={t} className="bg-dark-800">{consumableTypeLabel[t] || t}</option>
               ))}
             </select>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Артикул/номер детали"
               value={newConsumablePartNumber}
               onChange={(e) => setNewConsumablePartNumber(e.target.value)}
@@ -1994,16 +1964,11 @@ export function EquipmentPage() {
                   setNewConsumableType("");
                   setNewConsumablePartNumber("");
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
-              <button
-                onClick={handleCreateModelConsumable}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-              >
-                Добавить
-              </button>
+              <button onClick={handleCreateModelConsumable} className="glass-button px-4 py-2 text-sm font-medium">Добавить</button>
             </div>
           </div>
         </div>
@@ -2011,56 +1976,30 @@ export function EquipmentPage() {
 
       {/* Модальное окно QR-кода */}
       {qrModalOpen && qrEquipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  QR-код оборудования
-                </h3>
-                <p className="text-sm text-gray-500">{qrEquipment.name}</p>
+                <h3 className="text-lg font-semibold text-white">QR-код оборудования</h3>
+                <p className="text-sm text-gray-400">{qrEquipment.name}</p>
               </div>
-              <button
-                onClick={closeQrModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                &times;
+              <button onClick={closeQrModal} className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all">
+                <X className="w-5 h-5" />
               </button>
             </div>
-
             <div className="flex flex-col items-center py-4" ref={qrRef}>
-              <QRCodeSVG
-                value={getQrValue(qrEquipment)}
-                size={200}
-                level="H"
-                includeMargin={true}
-              />
+              <QRCodeSVG value={getQrValue(qrEquipment)} size={200} level="H" includeMargin={true} />
               <div className="mt-4 text-center">
-                <p className="text-lg font-bold text-gray-900">
-                  Инв. № {qrEquipment.inventory_number}
-                </p>
-                {qrEquipment.serial_number && (
-                  <p className="text-sm text-gray-500">
-                    S/N: {qrEquipment.serial_number}
-                  </p>
-                )}
+                <p className="text-lg font-bold text-white">Инв. № {qrEquipment.inventory_number}</p>
+                {qrEquipment.serial_number && <p className="text-sm text-gray-400">S/N: {qrEquipment.serial_number}</p>}
               </div>
             </div>
-
-            <div className="flex justify-center gap-3 pt-2 border-t border-gray-200">
-              <button
-                onClick={printQrCode}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                <Printer className="w-4 h-4" />
-                Печать
+            <div className="flex justify-center gap-3 pt-2 border-t border-dark-600/50">
+              <button onClick={printQrCode} className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium">
+                <Printer className="w-4 h-4" /> Печать
               </button>
-              <button
-                onClick={downloadQrCode}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-              >
-                <Download className="w-4 h-4" />
-                Скачать PNG
+              <button onClick={downloadQrCode} className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium">
+                <Download className="w-4 h-4" /> Скачать PNG
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -14,8 +14,9 @@ import {
   AlertCircle,
   MapPin,
   Monitor,
-  Save,
   X,
+  Filter,
+  SortDesc,
 } from "lucide-react";
 import {
   apiGet,
@@ -84,6 +85,17 @@ type EquipmentConsumable = {
   is_low_stock: boolean;
 };
 
+type TicketConsumable = {
+  id: string;
+  ticket_id: string;
+  consumable_id: string;
+  consumable_name?: string;
+  consumable_model?: string;
+  quantity: number;
+  is_written_off: boolean;
+  written_off_at?: string;
+};
+
 type EquipmentItem = {
   id: string;
   name: string;
@@ -113,12 +125,12 @@ const statusLabel: Record<string, string> = {
 };
 
 const statusColor: Record<string, string> = {
-  new: "bg-blue-100 text-blue-800",
-  in_progress: "bg-yellow-100 text-yellow-800",
-  waiting: "bg-gray-100 text-gray-800",
-  resolved: "bg-green-100 text-green-800",
-  closed: "bg-gray-200 text-gray-600",
-  pending_user: "bg-orange-100 text-orange-800",
+  new: "bg-accent-blue/20 text-accent-blue",
+  in_progress: "bg-yellow-500/20 text-yellow-400",
+  waiting: "bg-dark-400/50 text-gray-400",
+  resolved: "bg-green-500/20 text-green-400",
+  closed: "bg-dark-500/50 text-gray-500",
+  pending_user: "bg-orange-500/20 text-orange-400",
 };
 
 const priorityLabel: Record<string, string> = {
@@ -126,6 +138,13 @@ const priorityLabel: Record<string, string> = {
   medium: "Средний",
   high: "Высокий",
   critical: "Критический",
+};
+
+const priorityColor: Record<string, string> = {
+  low: "text-gray-400",
+  medium: "text-accent-blue",
+  high: "text-orange-400",
+  critical: "text-red-400",
 };
 
 const categoryLabel: Record<string, string> = {
@@ -171,25 +190,25 @@ const SourceIcon = ({ source }: { source?: string }) => {
     case "email":
       return (
         <span title="Email">
-          <Mail className="w-4 h-4 text-blue-500" />
+          <Mail className="w-4 h-4 text-accent-blue" />
         </span>
       );
     case "telegram":
       return (
         <span title="Telegram">
-          <MessageCircle className="w-4 h-4 text-sky-500" />
+          <MessageCircle className="w-4 h-4 text-accent-cyan" />
         </span>
       );
     case "api":
       return (
         <span title="API">
-          <Link2 className="w-4 h-4 text-purple-500" />
+          <Link2 className="w-4 h-4 text-accent-purple" />
         </span>
       );
     default:
       return (
         <span title="Веб">
-          <Globe className="w-4 h-4 text-green-500" />
+          <Globe className="w-4 h-4 text-green-400" />
         </span>
       );
   }
@@ -201,6 +220,10 @@ export function TicketsPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, _setPage] = useState(1);
+  const [hideClosed, setHideClosed] = useState<boolean>(() => {
+    const saved = localStorage.getItem("tickets_hide_closed");
+    return saved === "true";
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Ticket | null>(null);
@@ -217,17 +240,14 @@ export function TicketsPage() {
     equipment_id: "",
   });
 
-  // История изменений
   const [history, setHistory] = useState<TicketHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Привязка пользователя
   const [assignUserModalOpen, setAssignUserModalOpen] = useState(false);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
 
-  // Состояния для кабинетов и оборудования (для создания)
   const [buildings, setBuildings] = useState<
     Array<{ id: string; name: string }>
   >([]);
@@ -239,7 +259,6 @@ export function TicketsPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("employee");
 
-  // Форма редактирования в карточке тикета (для IT)
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
@@ -256,19 +275,68 @@ export function TicketsPage() {
     [],
   );
 
-  // Расходники
   const [consumables, setConsumables] = useState<EquipmentConsumable[]>([]);
   const [selectedConsumables, setSelectedConsumables] = useState<Set<string>>(
     new Set(),
   );
   const [consumablesLoading, setConsumablesLoading] = useState(false);
 
+  const [writeOffModalOpen, setWriteOffModalOpen] = useState(false);
+  const [pendingCloseTicketId, setPendingCloseTicketId] = useState<
+    string | null
+  >(null);
+  const [ticketConsumables, setTicketConsumables] = useState<
+    TicketConsumable[]
+  >([]);
+  const [writeOffLoading, setWriteOffLoading] = useState(false);
+
   const [saving, setSaving] = useState(false);
+
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const user = useAuthStore((state) => state.user);
 
-  // Определяем, можно ли редактировать (IT-специалист или админ)
   const canEdit = userRole === "it";
+
+  const [sortByPriority, setSortByPriority] = useState<boolean>(() => {
+    const saved = localStorage.getItem("tickets_sort_priority");
+    return saved === "true";
+  });
+
+  const priorityWeight: Record<string, number> = {
+    critical: 4,
+    high: 3,
+    medium: 2,
+    low: 1,
+  };
+
+  const filteredItems = (() => {
+    let result = hideClosed
+      ? items.filter((t) => t.status !== "closed")
+      : items;
+
+    if (sortByPriority) {
+      result = [...result].sort((a, b) => {
+        const weightA = priorityWeight[a.priority] || 0;
+        const weightB = priorityWeight[b.priority] || 0;
+        return weightB - weightA;
+      });
+    }
+
+    return result;
+  })();
+
+  const toggleHideClosed = () => {
+    const newValue = !hideClosed;
+    setHideClosed(newValue);
+    localStorage.setItem("tickets_hide_closed", String(newValue));
+  };
+
+  const toggleSortByPriority = () => {
+    const newValue = !sortByPriority;
+    setSortByPriority(newValue);
+    localStorage.setItem("tickets_sort_priority", String(newValue));
+  };
 
   const load = async () => {
     setLoading(true);
@@ -292,33 +360,26 @@ export function TicketsPage() {
   }, [page]);
 
   useEffect(() => {
-    // Определяем роль пользователя из токена (т.к. user state может быть пустым)
     const token = localStorage.getItem("token");
 
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        console.log("Token payload:", payload);
 
-        // Суперпользователь имеет полный доступ
         if (payload.is_superuser) {
-          console.log("Setting userRole to 'it' (superuser from token)");
           setUserRole("it");
           return;
         }
 
-        // Проверяем роль в модуле IT из токена
         const roles = payload.roles || {};
         const itRole = roles.it || "employee";
         const finalRole =
           itRole === "admin" || itRole === "it_specialist" ? "it" : "employee";
-        console.log("itRole from token:", itRole, "-> finalRole:", finalRole);
         setUserRole(finalRole);
       } catch (err) {
         console.error("Error parsing token:", err);
       }
     } else if (user) {
-      // Fallback на user state
       if (user.is_superuser) {
         setUserRole("it");
         return;
@@ -330,10 +391,7 @@ export function TicketsPage() {
     }
   }, [user]);
 
-  // Примечание: загрузка зданий теперь происходит в openCreate()
-
   useEffect(() => {
-    // Загружаем кабинеты при выборе здания (для создания)
     if (selectedBuildingId) {
       loadRooms(selectedBuildingId);
     } else {
@@ -344,7 +402,6 @@ export function TicketsPage() {
   }, [selectedBuildingId]);
 
   useEffect(() => {
-    // Загружаем оборудование при выборе кабинета (для создания)
     if (selectedRoomId) {
       loadRoomEquipment(selectedRoomId);
       setForm((p) => ({ ...p, room_id: selectedRoomId }));
@@ -354,21 +411,18 @@ export function TicketsPage() {
     }
   }, [selectedRoomId]);
 
-  // Эффект для загрузки кабинетов в карточке (для IT)
   useEffect(() => {
     if (editBuildingId && detailId) {
       loadEditRooms(editBuildingId);
     }
   }, [editBuildingId, detailId]);
 
-  // Эффект для загрузки оборудования в карточке (для IT)
   useEffect(() => {
     if (editForm.room_id && detailId && canEdit) {
       loadEditRoomEquipment(editForm.room_id);
     }
   }, [editForm.room_id, detailId, canEdit]);
 
-  // Эффект для загрузки расходников при выборе оборудования
   useEffect(() => {
     if (editForm.equipment_id && detailId && canEdit) {
       loadConsumables(editForm.equipment_id);
@@ -380,9 +434,7 @@ export function TicketsPage() {
 
   const loadBuildings = async () => {
     try {
-      console.log("Загрузка зданий...");
       const data = await buildingsService.getBuildings(true);
-      console.log("Загружено зданий:", data.length, data);
       setBuildings(data.map((b) => ({ id: b.id, name: b.name })));
     } catch (err) {
       console.error("Ошибка загрузки зданий:", err);
@@ -512,7 +564,6 @@ export function TicketsPage() {
   const handleSearch = () => load();
 
   const openCreate = async () => {
-    console.log("openCreate called, userRole:", userRole);
     setForm({
       title: "",
       description: "",
@@ -527,12 +578,9 @@ export function TicketsPage() {
     setRoomEquipment([]);
     setModalOpen(true);
 
-    // Загружаем здания для IT или кабинет сотрудника
     if (userRole === "it") {
-      console.log("Loading buildings for IT user...");
       await loadBuildings();
     } else {
-      console.log("Loading employee room...");
       await loadEmployeeRoom();
     }
   };
@@ -576,7 +624,6 @@ export function TicketsPage() {
     }
   };
 
-  // Открытие карточки тикета
   const openDetail = async (id: string) => {
     setDetailId(id);
     setShowHistory(false);
@@ -591,7 +638,6 @@ export function TicketsPage() {
       setDetail(t);
       await loadComments(id);
 
-      // Для IT-специалистов: сразу инициализируем форму редактирования
       if (userRole === "it") {
         await loadBuildings();
 
@@ -604,7 +650,6 @@ export function TicketsPage() {
           equipment_id: t.equipment_id || "",
         });
 
-        // Если есть room_id, загружаем здание и кабинеты
         if (t.room_id) {
           try {
             const room = await roomsService.getRoom(t.room_id);
@@ -650,47 +695,82 @@ export function TicketsPage() {
     setSelectedConsumables(new Set());
   };
 
-  const saveChanges = async () => {
-    if (!detailId) return;
+  const saveChanges = useCallback(
+    async (
+      currentEditForm: typeof editForm,
+      currentSelectedConsumables: Set<string>,
+      currentConsumables: typeof consumables,
+    ) => {
+      if (!detailId || !detail) return;
 
-    setSaving(true);
-    setError(null);
-    try {
-      const payload: any = {};
+      setSaving(true);
+      setError(null);
+      try {
+        const payload: any = {};
 
-      if (editForm.title !== detail?.title) payload.title = editForm.title;
-      if (editForm.description !== detail?.description)
-        payload.description = editForm.description;
-      if (editForm.category !== detail?.category)
-        payload.category = editForm.category;
-      if (editForm.priority !== detail?.priority)
-        payload.priority = editForm.priority;
-      if (editForm.room_id !== (detail?.room_id || ""))
-        payload.room_id = editForm.room_id || null;
-      if (editForm.equipment_id !== (detail?.equipment_id || ""))
-        payload.equipment_id = editForm.equipment_id || null;
+        if (currentEditForm.title !== detail.title)
+          payload.title = currentEditForm.title;
+        if (currentEditForm.description !== detail.description)
+          payload.description = currentEditForm.description;
+        if (currentEditForm.category !== detail.category)
+          payload.category = currentEditForm.category;
+        if (currentEditForm.priority !== detail.priority)
+          payload.priority = currentEditForm.priority;
+        if (currentEditForm.room_id !== (detail.room_id || ""))
+          payload.room_id = currentEditForm.room_id || null;
+        if (currentEditForm.equipment_id !== (detail.equipment_id || ""))
+          payload.equipment_id = currentEditForm.equipment_id || null;
 
-      if (Object.keys(payload).length > 0) {
-        await apiPatch(`/it/tickets/${detailId}`, payload);
-        // Перезагружаем тикет
-        const t = await apiGet<Ticket>(`/it/tickets/${detailId}`);
-        setDetail(t);
-        // Обновляем форму
-        setEditForm({
-          title: t.title,
-          description: t.description,
-          category: t.category,
-          priority: t.priority,
-          room_id: t.room_id || "",
-          equipment_id: t.equipment_id || "",
-        });
-        await load();
+        if (currentSelectedConsumables.size > 0) {
+          payload.consumables = Array.from(currentSelectedConsumables).map(
+            (id) => ({
+              consumable_id: id,
+              quantity: 1,
+            }),
+          );
+        } else if (currentConsumables.length > 0) {
+          payload.consumables = [];
+        }
+
+        if (Object.keys(payload).length > 0) {
+          await apiPatch(`/it/tickets/${detailId}`, payload);
+          const t = await apiGet<Ticket>(`/it/tickets/${detailId}`);
+          setDetail(t);
+          await load();
+        }
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setSaving(false);
       }
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    },
+    [detailId, detail],
+  );
+
+  const debouncedSave = useCallback(
+    (
+      currentEditForm: typeof editForm,
+      currentSelectedConsumables: Set<string>,
+      currentConsumables: typeof consumables,
+    ) => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = setTimeout(() => {
+        saveChanges(
+          currentEditForm,
+          currentSelectedConsumables,
+          currentConsumables,
+        );
+      }, 500);
+    },
+    [saveChanges],
+  );
+
+  const updateEditField = (field: keyof typeof editForm, value: string) => {
+    const newForm = { ...editForm, [field]: value };
+    setEditForm(newForm);
+    debouncedSave(newForm, selectedConsumables, consumables);
   };
 
   const handleAddComment = async () => {
@@ -742,6 +822,20 @@ export function TicketsPage() {
 
   const updateStatus = async (id: string, status: string) => {
     try {
+      if (status === "closed") {
+        const tc = await apiGet<TicketConsumable[]>(
+          `/it/tickets/${id}/consumables`,
+        );
+        const notWrittenOff = tc.filter((c) => !c.is_written_off);
+
+        if (notWrittenOff.length > 0) {
+          setTicketConsumables(notWrittenOff);
+          setPendingCloseTicketId(id);
+          setWriteOffModalOpen(true);
+          return;
+        }
+      }
+
       await apiPatch(`/it/tickets/${id}`, { status });
       if (detailId === id) {
         const t = await apiGet<Ticket>(`/it/tickets/${id}`);
@@ -753,6 +847,67 @@ export function TicketsPage() {
       await load();
     } catch (err) {
       setError((err as Error).message);
+    }
+  };
+
+  const handleWriteOffAndClose = async () => {
+    if (!pendingCloseTicketId) return;
+
+    setWriteOffLoading(true);
+    try {
+      await apiPost(
+        `/it/tickets/${pendingCloseTicketId}/write-off-consumables`,
+        {},
+      );
+
+      await apiPatch(`/it/tickets/${pendingCloseTicketId}`, {
+        status: "closed",
+      });
+
+      if (detailId === pendingCloseTicketId) {
+        const t = await apiGet<Ticket>(`/it/tickets/${pendingCloseTicketId}`);
+        setDetail(t);
+        if (showHistory) {
+          await loadHistory(pendingCloseTicketId);
+        }
+      }
+      await load();
+
+      setWriteOffModalOpen(false);
+      setPendingCloseTicketId(null);
+      setTicketConsumables([]);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setWriteOffLoading(false);
+    }
+  };
+
+  const handleCloseWithoutWriteOff = async () => {
+    if (!pendingCloseTicketId) return;
+
+    setWriteOffLoading(true);
+    try {
+      await apiPatch(`/it/tickets/${pendingCloseTicketId}`, {
+        status: "closed",
+      });
+
+      if (detailId === pendingCloseTicketId) {
+        const t = await apiGet<Ticket>(`/it/tickets/${pendingCloseTicketId}`);
+        setDetail(t);
+        if (showHistory) {
+          await loadHistory(pendingCloseTicketId);
+        }
+      }
+      await load();
+
+      setWriteOffModalOpen(false);
+      setPendingCloseTicketId(null);
+      setTicketConsumables([]);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setWriteOffLoading(false);
     }
   };
 
@@ -803,6 +958,7 @@ export function TicketsPage() {
       newSelected.add(consumableId);
     }
     setSelectedConsumables(newSelected);
+    debouncedSave(editForm, newSelected, consumables);
   };
 
   const formatHistoryValue = (field: string, value?: string) => {
@@ -814,160 +970,201 @@ export function TicketsPage() {
   };
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Заявки</h2>
-        <p className="text-sm text-gray-500">IT-заявки и тикеты.</p>
-      </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-          <input
-            className="px-3 py-2 text-sm w-48"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск..."
-          />
+    <section className="space-y-6">
+      {/* Header */}
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Заявки</h2>
+            <p className="text-gray-400">IT-заявки и тикеты</p>
+          </div>
           <button
-            onClick={handleSearch}
-            className="p-2 bg-gray-100 hover:bg-gray-200"
+            onClick={openCreate}
+            className="glass-button px-4 py-2.5 flex items-center gap-2"
           >
-            <Search className="w-4 h-4" />
+            <Plus className="w-5 h-5" /> Создать заявку
           </button>
         </div>
+      </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="Поиск заявок..."
+          />
+        </div>
+
         <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+          onClick={toggleSortByPriority}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all ${
+            sortByPriority
+              ? "bg-accent-purple/20 text-accent-purple border-accent-purple/30"
+              : "bg-dark-700/50 text-gray-400 border-dark-600/50 hover:text-white hover:border-dark-500"
+          }`}
         >
-          <Plus className="w-4 h-4" /> Создать заявку
+          <SortDesc className="w-4 h-4" />
+          {sortByPriority ? "По приоритету" : "Сортировка"}
+        </button>
+
+        <button
+          onClick={toggleHideClosed}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all ${
+            hideClosed
+              ? "bg-dark-600/50 text-gray-300 border-dark-500/50"
+              : "bg-dark-700/50 text-gray-400 border-dark-600/50 hover:text-white hover:border-dark-500"
+          }`}
+        >
+          <Filter className="w-4 h-4" />
+          {hideClosed ? "Показать закрытые" : "Скрыть закрытые"}
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Загрузка...</p>}
-      {!loading && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-700 w-8"></th>
-                <th className="px-4 py-3 font-medium text-gray-700">
+      {/* Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-dark-600/50">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Заголовок
                 </th>
-                <th className="px-4 py-3 font-medium text-gray-700">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Категория
                 </th>
-                <th className="px-4 py-3 font-medium text-gray-700">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Приоритет
                 </th>
-                <th className="px-4 py-3 font-medium text-gray-700">Статус</th>
-                <th className="px-4 py-3 font-medium text-gray-700" />
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Статус
+                </th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24"></th>
               </tr>
             </thead>
-            <tbody>
-              {items.map((t) => (
+            <tbody className="divide-y divide-dark-700/50">
+              {filteredItems.map((t) => (
                 <tr
                   key={t.id}
-                  className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  className="hover:bg-dark-700/30 cursor-pointer transition-colors"
                   onClick={() => openDetail(t.id)}
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <SourceIcon source={t.source} />
                   </td>
-                  <td className="px-4 py-3">
-                    {t.title}
+                  <td className="px-4 py-4">
+                    <span className="text-white font-medium">{t.title}</span>
                     {t.status === "pending_user" && t.email_sender && (
                       <span className="ml-2 text-xs text-gray-500">
                         ({t.email_sender})
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4 text-gray-400">
                     {categoryLabel[t.category] ?? t.category}
                   </td>
-                  <td className="px-4 py-3">
-                    {priorityLabel[t.priority] ?? t.priority}
+                  <td className="px-4 py-4">
+                    <span className={priorityColor[t.priority] || "text-gray-400"}>
+                      {priorityLabel[t.priority] ?? t.priority}
+                    </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[t.status] || "bg-gray-100"}`}
+                      className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusColor[t.status] || "bg-dark-500/50 text-gray-400"}`}
                     >
                       {statusLabel[t.status] ?? t.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         openDetail(t.id);
                       }}
-                      className="text-blue-600 hover:underline"
+                      className="text-sm text-accent-purple hover:text-accent-violet transition-colors"
                     >
                       Подробнее
                     </button>
                   </td>
                 </tr>
               ))}
+              {filteredItems.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
+                    Заявки не найдены
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Модальное окно создания заявки */}
+      {/* Create Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-lg p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Новая заявка
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 mx-4">
+            <h3 className="text-xl font-semibold text-white">Новая заявка</h3>
+
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
               placeholder="Заголовок"
               value={form.title}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, title: e.target.value }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
             />
-            <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[80px]"
-              placeholder="Описание"
-              value={form.description}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, description: e.target.value }))
-              }
-            />
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              value={form.category}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, category: e.target.value }))
-              }
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {categoryLabel[c] ?? c}
-                </option>
-              ))}
-            </select>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              value={form.priority}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, priority: e.target.value }))
-              }
-            >
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {priorityLabel[p] ?? p}
-                </option>
-              ))}
-            </select>
 
-            {/* Выбор кабинета (для IT-сотрудников) */}
+            <textarea
+              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[100px] resize-none"
+              placeholder="Описание проблемы..."
+              value={form.description}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <select
+                className="px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
+                value={form.category}
+                onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c} className="bg-dark-800">
+                    {categoryLabel[c] ?? c}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
+                value={form.priority}
+                onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
+              >
+                {PRIORITIES.map((p) => (
+                  <option key={p} value={p} className="bg-dark-800">
+                    {priorityLabel[p] ?? p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {userRole === "it" && (
               <>
                 <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
                   value={selectedBuildingId}
                   onChange={(e) => {
                     setSelectedBuildingId(e.target.value);
@@ -975,23 +1172,23 @@ export function TicketsPage() {
                     setRoomEquipment([]);
                   }}
                 >
-                  <option value="">Выберите здание</option>
+                  <option value="" className="bg-dark-800">Выберите здание</option>
                   {buildings.map((b) => (
-                    <option key={b.id} value={b.id}>
+                    <option key={b.id} value={b.id} className="bg-dark-800">
                       {b.name}
                     </option>
                   ))}
                 </select>
 
                 <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all disabled:opacity-50"
                   value={selectedRoomId}
                   onChange={(e) => setSelectedRoomId(e.target.value)}
                   disabled={!selectedBuildingId}
                 >
-                  <option value="">Выберите кабинет</option>
+                  <option value="" className="bg-dark-800">Выберите кабинет</option>
                   {rooms.map((r) => (
-                    <option key={r.id} value={r.id}>
+                    <option key={r.id} value={r.id} className="bg-dark-800">
                       {r.name} {r.building_name ? `(${r.building_name})` : ""}
                     </option>
                   ))}
@@ -999,34 +1196,31 @@ export function TicketsPage() {
               </>
             )}
 
-            {/* Выбор оборудования из кабинета */}
             {form.room_id && (
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
                 value={form.equipment_id}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, equipment_id: e.target.value }))
-                }
+                onChange={(e) => setForm((p) => ({ ...p, equipment_id: e.target.value }))}
               >
-                <option value="">Выберите оборудование (необязательно)</option>
+                <option value="" className="bg-dark-800">Выберите оборудование (необязательно)</option>
                 {roomEquipment.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
+                  <option key={eq.id} value={eq.id} className="bg-dark-800">
                     {eq.name} ({eq.inventory_number})
                   </option>
                 ))}
               </select>
             )}
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3 pt-4">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={handleCreate}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                className="glass-button px-4 py-2.5"
               >
                 Создать
               </button>
@@ -1035,61 +1229,51 @@ export function TicketsPage() {
         </div>
       )}
 
-      {/* Карточка тикета */}
+      {/* Detail Modal */}
       {detailId && detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            {/* Заголовок карточки */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
+            {/* Header */}
             <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2 flex-1">
+              <div className="flex items-center gap-3 flex-1">
                 <SourceIcon source={detail.source} />
                 {canEdit ? (
                   <input
-                    className="text-lg font-semibold text-gray-900 border border-gray-300 rounded px-2 py-1 flex-1"
+                    className="text-xl font-semibold text-white bg-dark-700/50 border border-dark-600/50 rounded-xl px-3 py-2 flex-1 focus:outline-none focus:border-accent-purple/50 transition-all"
                     value={editForm.title}
-                    onChange={(e) =>
-                      setEditForm((p) => ({ ...p, title: e.target.value }))
-                    }
+                    onChange={(e) => updateEditField("title", e.target.value)}
                     placeholder="Заголовок заявки"
                   />
                 ) : (
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-xl font-semibold text-white">
                     {detail.title}
                   </h3>
                 )}
               </div>
               <div className="flex items-center gap-2 ml-4">
-                {canEdit && (
-                  <button
-                    onClick={saveChanges}
-                    disabled={saving}
-                    className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50"
-                  >
-                    <Save className="w-4 h-4" />
-                    {saving ? "..." : "Сохранить"}
-                  </button>
+                {saving && (
+                  <span className="text-xs text-accent-purple">Сохранение...</span>
                 )}
                 <button
                   onClick={closeDetail}
-                  className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
                 >
-                  <X className="w-4 h-4" />
-                  Закрыть
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Email sender для pending_user тикетов */}
+            {/* Email sender for pending_user */}
             {detail.status === "pending_user" && detail.email_sender && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <p className="text-sm text-orange-800">
-                  <Mail className="w-4 h-4 inline mr-1" />
+              <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                <p className="text-sm text-orange-400">
+                  <Mail className="w-4 h-4 inline mr-2" />
                   Тикет создан из email: <strong>{detail.email_sender}</strong>
                 </p>
                 {canEdit && (
                   <button
                     onClick={openAssignUserModal}
-                    className="mt-2 px-3 py-1 text-sm font-medium text-orange-700 border border-orange-300 rounded-lg hover:bg-orange-100"
+                    className="mt-3 px-4 py-2 text-sm font-medium text-orange-400 border border-orange-500/30 rounded-xl hover:bg-orange-500/10 transition-all"
                   >
                     Привязать к пользователю
                   </button>
@@ -1097,213 +1281,198 @@ export function TicketsPage() {
               </div>
             )}
 
-            {/* Описание */}
+            {/* Description */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
+              <label className="block text-xs font-medium text-gray-500 mb-2">
                 Описание
               </label>
               {canEdit ? (
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[100px]"
+                  className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[120px] resize-none"
                   value={editForm.description}
-                  onChange={(e) =>
-                    setEditForm((p) => ({ ...p, description: e.target.value }))
-                  }
+                  onChange={(e) => updateEditField("description", e.target.value)}
                   placeholder="Описание проблемы"
                 />
               ) : (
-                <p className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                <p className="text-gray-300 whitespace-pre-wrap bg-dark-700/30 p-4 rounded-xl">
                   {detail.description}
                 </p>
               )}
             </div>
 
-            {/* Основные поля */}
+            {/* Main fields */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Категория */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
+                <label className="block text-xs font-medium text-gray-500 mb-2">
                   Категория
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
                     value={editForm.category}
-                    onChange={(e) =>
-                      setEditForm((p) => ({ ...p, category: e.target.value }))
-                    }
+                    onChange={(e) => updateEditField("category", e.target.value)}
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
+                      <option key={c} value={c} className="bg-dark-800">
                         {categoryLabel[c] ?? c}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <span className="text-sm">
+                  <span className="text-gray-300">
                     {categoryLabel[detail.category] ?? detail.category}
                   </span>
                 )}
               </div>
 
-              {/* Приоритет */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
+                <label className="block text-xs font-medium text-gray-500 mb-2">
                   Приоритет
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
                     value={editForm.priority}
-                    onChange={(e) =>
-                      setEditForm((p) => ({ ...p, priority: e.target.value }))
-                    }
+                    onChange={(e) => updateEditField("priority", e.target.value)}
                   >
                     {PRIORITIES.map((p) => (
-                      <option key={p} value={p}>
+                      <option key={p} value={p} className="bg-dark-800">
                         {priorityLabel[p] ?? p}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <span className="text-sm">
+                  <span className={priorityColor[detail.priority] || "text-gray-300"}>
                     {priorityLabel[detail.priority] ?? detail.priority}
                   </span>
                 )}
               </div>
 
-              {/* Статус */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
+                <label className="block text-xs font-medium text-gray-500 mb-2">
                   Статус
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
                     value={detail.status}
                     onChange={(e) => updateStatus(detail.id, e.target.value)}
                   >
                     {STATUSES.map((s) => (
-                      <option key={s} value={s}>
+                      <option key={s} value={s} className="bg-dark-800">
                         {statusLabel[s] ?? s}
                       </option>
                     ))}
                   </select>
                 ) : (
                   <span
-                    className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusColor[detail.status] || "bg-gray-100"}`}
+                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusColor[detail.status] || "bg-dark-500/50 text-gray-400"}`}
                   >
                     {statusLabel[detail.status] ?? detail.status}
                   </span>
                 )}
               </div>
 
-              {/* Источник */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
+                <label className="block text-xs font-medium text-gray-500 mb-2">
                   Источник
                 </label>
-                <span className="text-sm">
+                <span className="text-gray-300">
                   {sourceLabel[detail.source || "web"]}
                 </span>
               </div>
             </div>
 
-            {/* Раздел: Кабинет и Оборудование (только для IT) */}
+            {/* Location and Equipment (IT only) */}
             {canEdit && (
-              <div className="border-t border-gray-200 pt-4 space-y-4">
+              <div className="border-t border-dark-600/50 pt-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="w-4 h-4 text-gray-500" />
-                  <h4 className="text-sm font-semibold text-gray-900">
+                  <MapPin className="w-4 h-4 text-accent-purple" />
+                  <h4 className="text-sm font-semibold text-white">
                     Местоположение и оборудование
                   </h4>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Здание */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
                       Здание
                     </label>
                     <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
                       value={editBuildingId}
                       onChange={(e) => {
                         setEditBuildingId(e.target.value);
-                        setEditForm((p) => ({
-                          ...p,
+                        const newForm = {
+                          ...editForm,
                           room_id: "",
                           equipment_id: "",
-                        }));
+                        };
+                        setEditForm(newForm);
                         setEditRooms([]);
                         setEditRoomEquipment([]);
                         setConsumables([]);
                         setSelectedConsumables(new Set());
+                        debouncedSave(newForm, new Set(), []);
                       }}
                     >
-                      <option value="">Выберите здание</option>
+                      <option value="" className="bg-dark-800">Выберите здание</option>
                       {buildings.map((b) => (
-                        <option key={b.id} value={b.id}>
+                        <option key={b.id} value={b.id} className="bg-dark-800">
                           {b.name}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* Кабинет */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
                       Кабинет
                     </label>
                     <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all disabled:opacity-50"
                       value={editForm.room_id}
                       onChange={(e) => {
-                        setEditForm((p) => ({
-                          ...p,
+                        const newForm = {
+                          ...editForm,
                           room_id: e.target.value,
                           equipment_id: "",
-                        }));
+                        };
+                        setEditForm(newForm);
                         setConsumables([]);
                         setSelectedConsumables(new Set());
+                        debouncedSave(newForm, new Set(), []);
                       }}
                       disabled={!editBuildingId}
                     >
-                      <option value="">Выберите кабинет</option>
+                      <option value="" className="bg-dark-800">Выберите кабинет</option>
                       {editRooms.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}{" "}
-                          {r.building_name ? `(${r.building_name})` : ""}
+                        <option key={r.id} value={r.id} className="bg-dark-800">
+                          {r.name} {r.building_name ? `(${r.building_name})` : ""}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
 
-                {/* Оборудование */}
                 {editForm.room_id && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <Monitor className="w-4 h-4 text-gray-500" />
+                      <Monitor className="w-4 h-4 text-accent-blue" />
                       <label className="text-xs font-medium text-gray-500">
                         Оборудование
                       </label>
                     </div>
                     <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
                       value={editForm.equipment_id}
-                      onChange={(e) =>
-                        setEditForm((p) => ({
-                          ...p,
-                          equipment_id: e.target.value,
-                        }))
-                      }
+                      onChange={(e) => updateEditField("equipment_id", e.target.value)}
                     >
-                      <option value="">
+                      <option value="" className="bg-dark-800">
                         Выберите оборудование (необязательно)
                       </option>
                       {editRoomEquipment.map((eq) => (
-                        <option key={eq.id} value={eq.id}>
+                        <option key={eq.id} value={eq.id} className="bg-dark-800">
                           {eq.name} ({eq.inventory_number})
                         </option>
                       ))}
@@ -1311,23 +1480,22 @@ export function TicketsPage() {
                   </div>
                 )}
 
-                {/* Расходники */}
                 {editForm.equipment_id && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="p-4 rounded-xl bg-accent-blue/10 border border-accent-blue/20">
                     <div className="flex items-center gap-2 mb-3">
-                      <Package className="w-5 h-5 text-blue-600" />
-                      <h4 className="font-medium text-blue-900">
+                      <Package className="w-5 h-5 text-accent-blue" />
+                      <h4 className="font-medium text-white">
                         Расходные материалы
                       </h4>
                     </div>
 
                     {consumablesLoading ? (
-                      <p className="text-sm text-blue-700">
+                      <p className="text-sm text-gray-400">
                         Загрузка расходников...
                       </p>
                     ) : consumables.length > 0 ? (
                       <div className="space-y-2">
-                        <p className="text-xs text-blue-700 mb-2">
+                        <p className="text-xs text-gray-400 mb-2">
                           Выберите расходные материалы для заявки:
                         </p>
                         {consumables.map((consumable) => {
@@ -1337,33 +1505,30 @@ export function TicketsPage() {
                           return (
                             <label
                               key={consumable.consumable_id}
-                              className={`flex items-center justify-between p-2 rounded border cursor-pointer ${
+                              className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
                                 isSelected
-                                  ? "bg-blue-100 border-blue-300"
-                                  : "bg-white border-gray-200"
+                                  ? "bg-accent-blue/20 border-accent-blue/30"
+                                  : "bg-dark-700/30 border-dark-600/50 hover:border-dark-500"
                               }`}
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-3">
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() =>
-                                    handleConsumableToggle(
-                                      consumable.consumable_id,
-                                    )
+                                    handleConsumableToggle(consumable.consumable_id)
                                   }
-                                  className="h-4 w-4 text-blue-600 rounded"
+                                  className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
                                 />
-                                <span className="text-sm text-gray-900">
+                                <span className="text-sm text-white">
                                   {consumable.consumable_name}
                                   {consumable.consumable_model &&
                                     ` (${consumable.consumable_model})`}
                                   {consumable.consumable_type && (
-                                    <span className="ml-2 text-xs text-blue-600">
+                                    <span className="ml-2 text-xs text-accent-blue">
                                       [
-                                      {consumableTypeLabel[
-                                        consumable.consumable_type
-                                      ] || consumable.consumable_type}
+                                      {consumableTypeLabel[consumable.consumable_type] ||
+                                        consumable.consumable_type}
                                       ]
                                     </span>
                                   )}
@@ -1371,10 +1536,10 @@ export function TicketsPage() {
                               </div>
                               <div className="flex items-center gap-2">
                                 {consumable.is_low_stock && (
-                                  <AlertCircle className="w-4 h-4 text-yellow-500" />
+                                  <AlertCircle className="w-4 h-4 text-yellow-400" />
                                 )}
                                 <span
-                                  className={`text-xs ${consumable.is_low_stock ? "text-yellow-600" : "text-gray-500"}`}
+                                  className={`text-xs ${consumable.is_low_stock ? "text-yellow-400" : "text-gray-500"}`}
                                 >
                                   В наличии: {consumable.quantity_in_stock}
                                   {consumable.min_quantity > 0 &&
@@ -1386,7 +1551,7 @@ export function TicketsPage() {
                         })}
                       </div>
                     ) : (
-                      <p className="text-sm text-blue-700">
+                      <p className="text-sm text-gray-400">
                         Для данного оборудования не указаны расходные материалы
                       </p>
                     )}
@@ -1395,15 +1560,15 @@ export function TicketsPage() {
               </div>
             )}
 
-            {/* Действия для IT */}
+            {/* IT Actions */}
             {canEdit && (
-              <div className="flex flex-wrap gap-2 border-t border-gray-200 pt-4">
+              <div className="flex flex-wrap gap-2 border-t border-dark-600/50 pt-4">
                 <button
                   onClick={handleToggleHistory}
-                  className={`px-3 py-1 text-sm font-medium border rounded-lg flex items-center gap-1 ${
+                  className={`px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all ${
                     showHistory
-                      ? "bg-blue-50 border-blue-300 text-blue-700"
-                      : "border-gray-300 hover:bg-gray-50"
+                      ? "bg-accent-purple/20 text-accent-purple border border-accent-purple/30"
+                      : "bg-dark-700/50 text-gray-400 border border-dark-600/50 hover:text-white"
                   }`}
                 >
                   <History className="w-4 h-4" />
@@ -1411,20 +1576,20 @@ export function TicketsPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(detail.id)}
-                  className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
+                  className="px-4 py-2 text-sm font-medium text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 flex items-center gap-2 transition-all"
                 >
-                  <Trash2 className="w-4 h-4 inline mr-1" />
+                  <Trash2 className="w-4 h-4" />
                   Удалить
                 </button>
               </div>
             )}
 
-            {/* История изменений */}
+            {/* History */}
             {showHistory && (
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <History className="w-4 h-4 text-gray-500" />
-                  <h4 className="text-sm font-semibold text-gray-900">
+              <div className="border-t border-dark-600/50 pt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <History className="w-4 h-4 text-accent-purple" />
+                  <h4 className="text-sm font-semibold text-white">
                     История изменений
                   </h4>
                 </div>
@@ -1442,15 +1607,15 @@ export function TicketsPage() {
                     {history.map((h) => (
                       <div
                         key={h.id}
-                        className="bg-gray-50 rounded-lg p-3 text-sm"
+                        className="bg-dark-700/30 rounded-xl p-4 text-sm"
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-medium">
+                            <span className="font-medium text-white">
                               {fieldLabel[h.field] || h.field}
                             </span>
                             <span className="text-gray-500"> изменено </span>
-                            <span className="text-gray-600">
+                            <span className="text-gray-400">
                               {h.changed_by_name || "Пользователь"}
                             </span>
                           </div>
@@ -1458,12 +1623,12 @@ export function TicketsPage() {
                             {new Date(h.created_at).toLocaleString("ru-RU")}
                           </span>
                         </div>
-                        <div className="mt-1 text-gray-600">
-                          <span className="text-red-600 line-through">
+                        <div className="mt-2 text-gray-400">
+                          <span className="text-red-400 line-through">
                             {formatHistoryValue(h.field, h.old_value)}
                           </span>
                           {" -> "}
-                          <span className="text-green-600">
+                          <span className="text-green-400">
                             {formatHistoryValue(h.field, h.new_value)}
                           </span>
                         </div>
@@ -1474,11 +1639,11 @@ export function TicketsPage() {
               </div>
             )}
 
-            {/* Комментарии (доступны всем) */}
-            <div className="border-t border-gray-200 pt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="w-4 h-4 text-gray-500" />
-                <h4 className="text-sm font-semibold text-gray-900">
+            {/* Comments */}
+            <div className="border-t border-dark-600/50 pt-4">
+              <div className="flex items-center gap-2 mb-4">
+                <MessageSquare className="w-4 h-4 text-accent-blue" />
+                <h4 className="text-sm font-semibold text-white">
                   Комментарии
                 </h4>
               </div>
@@ -1494,41 +1659,39 @@ export function TicketsPage() {
               {!commentsLoading && comments.length > 0 && (
                 <div className="space-y-3 mb-4">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex justify-between items-start mb-1">
+                    <div key={comment.id} className="bg-dark-700/30 rounded-xl p-4">
+                      <div className="flex justify-between items-start mb-2">
                         <div>
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-white">
                             {comment.user_name || "Пользователь"}
                           </span>
                           <span className="text-xs text-gray-500 ml-2">
-                            {new Date(comment.created_at).toLocaleString(
-                              "ru-RU",
-                            )}
+                            {new Date(comment.created_at).toLocaleString("ru-RU")}
                           </span>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-2">
                           {editingCommentId !== comment.id && (
                             <>
                               <button
                                 onClick={() => startEditComment(comment)}
-                                className="text-xs text-blue-600 hover:underline"
+                                className="p-1 text-gray-500 hover:text-accent-blue transition-colors"
                               >
-                                <Edit2 className="w-3 h-3" />
+                                <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleDeleteComment(comment.id)}
-                                className="text-xs text-red-600 hover:underline"
+                                className="p-1 text-gray-500 hover:text-red-400 transition-colors"
                               >
-                                <Trash2 className="w-3 h-3" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </>
                           )}
                         </div>
                       </div>
                       {editingCommentId === comment.id ? (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <textarea
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all resize-none"
                             value={commentForm}
                             onChange={(e) => setCommentForm(e.target.value)}
                             rows={3}
@@ -1536,20 +1699,20 @@ export function TicketsPage() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleEditComment(comment.id)}
-                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                              className="px-3 py-1.5 text-xs font-medium glass-button"
                             >
                               Сохранить
                             </button>
                             <button
                               onClick={cancelEditComment}
-                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                              className="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-white transition-colors"
                             >
                               Отмена
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        <p className="text-sm text-gray-300 whitespace-pre-wrap">
                           {comment.content}
                         </p>
                       )}
@@ -1558,11 +1721,10 @@ export function TicketsPage() {
                 </div>
               )}
 
-              {/* Форма добавления комментария (доступна всем) */}
               {editingCommentId === null && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <textarea
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all resize-none"
                     placeholder="Добавить комментарий..."
                     value={commentForm}
                     onChange={(e) => setCommentForm(e.target.value)}
@@ -1571,7 +1733,7 @@ export function TicketsPage() {
                   <button
                     onClick={handleAddComment}
                     disabled={!commentForm.trim()}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="glass-button px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Добавить комментарий
                   </button>
@@ -1582,41 +1744,128 @@ export function TicketsPage() {
         </div>
       )}
 
-      {/* Модальное окно привязки пользователя */}
+      {/* Assign User Modal */}
       {assignUserModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-xl font-semibold text-white">
               Привязать к пользователю
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               Выберите пользователя, к которому нужно привязать email-тикет.
             </p>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
             >
-              <option value="">Выберите пользователя</option>
+              <option value="" className="bg-dark-800">Выберите пользователя</option>
               {users.map((u) => (
-                <option key={u.id} value={u.id}>
+                <option key={u.id} value={u.id} className="bg-dark-800">
                   {u.full_name} ({u.email})
                 </option>
               ))}
             </select>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3 pt-4">
               <button
                 onClick={() => setAssignUserModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={handleAssignUser}
                 disabled={!selectedUserId}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                className="glass-button px-4 py-2.5 disabled:opacity-50"
               >
                 Привязать
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Write-off Modal */}
+      {writeOffModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 mx-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-500/20 rounded-xl">
+                <Package className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  Списание расходников
+                </h3>
+                <p className="text-sm text-gray-400">
+                  К заявке привязаны расходные материалы
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-dark-700/30 rounded-xl p-4">
+              <p className="text-sm text-gray-300 mb-3">
+                Следующие расходники будут списаны со склада:
+              </p>
+              <div className="space-y-2">
+                {ticketConsumables.map((tc) => (
+                  <div
+                    key={tc.id}
+                    className="flex items-center justify-between bg-dark-800/50 px-4 py-3 rounded-xl border border-dark-600/50"
+                  >
+                    <div>
+                      <span className="text-sm font-medium text-white">
+                        {tc.consumable_name}
+                      </span>
+                      {tc.consumable_model && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          ({tc.consumable_model})
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-400">
+                      {tc.quantity} шт.
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                onClick={() => {
+                  setWriteOffModalOpen(false);
+                  setPendingCloseTicketId(null);
+                  setTicketConsumables([]);
+                }}
+                disabled={writeOffLoading}
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleCloseWithoutWriteOff}
+                disabled={writeOffLoading}
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 border border-dark-600/50 rounded-xl hover:bg-dark-700/50 transition-colors disabled:opacity-50"
+              >
+                Закрыть без списания
+              </button>
+              <button
+                onClick={handleWriteOffAndClose}
+                disabled={writeOffLoading}
+                className="glass-button px-4 py-2.5 flex items-center gap-2 disabled:opacity-50"
+              >
+                {writeOffLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Списание...
+                  </>
+                ) : (
+                  <>
+                    <Package className="w-4 h-4" />
+                    Списать и закрыть
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -10,17 +10,17 @@ const links = [
 
 export function HRLayout() {
   return (
-    <div className="space-y-4">
-      <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
+    <div className="space-y-6">
+      <nav className="flex flex-wrap gap-2 border-b border-dark-600/50 pb-4">
         {links.map(({ to, label }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              `px-4 py-2.5 text-sm font-medium rounded-xl transition-colors ${
                 isActive
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-accent-purple/20 text-accent-purple border border-accent-purple/30'
+                  : 'text-gray-400 hover:text-white hover:bg-dark-700/50 border border-transparent'
               }`
             }
           >

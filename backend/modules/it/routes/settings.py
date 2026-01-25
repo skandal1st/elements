@@ -41,6 +41,9 @@ SETTING_TYPE_MAP = {
         "smtp_from_email",
         "smtp_from_name",
         "smtp_use_tls",
+        "email_enabled",
+        "email_from",
+        "email_from_name",
     ],
     "imap": [
         "imap_host",
@@ -376,6 +379,9 @@ def delete_setting(
 @router.post("/test/smtp", dependencies=[Depends(require_it_roles(["admin"]))])
 def test_smtp_connection(db: Session = Depends(get_db)) -> dict:
     """Тестировать SMTP подключение."""
+    import smtplib
+    import ssl
+
     settings = (
         db.query(SystemSettings)
         .filter(
@@ -390,25 +396,78 @@ def test_smtp_connection(db: Session = Depends(get_db)) -> dict:
     if not settings_dict.get("smtp_host"):
         raise HTTPException(status_code=400, detail="SMTP сервер не настроен")
 
-    # TODO: Реализовать реальное тестирование SMTP
-    # import smtplib
-    # try:
-    #     server = smtplib.SMTP(settings_dict["smtp_host"], int(settings_dict.get("smtp_port", 587)))
-    #     if settings_dict.get("smtp_use_tls", "true").lower() == "true":
-    #         server.starttls()
-    #     if settings_dict.get("smtp_user") and settings_dict.get("smtp_password"):
-    #         server.login(settings_dict["smtp_user"], settings_dict["smtp_password"])
-    #     server.quit()
-    #     return {"status": "success", "message": "SMTP подключение успешно"}
-    # except Exception as e:
-    #     raise HTTPException(status_code=400, detail=f"Ошибка подключения: {str(e)}")
+    server = None
+    try:
+        host = settings_dict["smtp_host"]
+        port = int(settings_dict.get("smtp_port") or 587)
+        use_tls = settings_dict.get("smtp_use_tls", "true").lower() == "true"
+        user = settings_dict.get("smtp_user")
+        password = settings_dict.get("smtp_password")
 
-    return {"status": "pending", "message": "Тестирование SMTP будет реализовано"}
+        # Порт 465 использует SSL сразу, 587 использует STARTTLS
+        if port == 465:
+            # Implicit SSL
+            context = ssl.create_default_context()
+            server = smtplib.SMTP_SSL(host, port, timeout=15, context=context)
+        else:
+            # STARTTLS для портов 25, 587 и других
+            server = smtplib.SMTP(host, port, timeout=15)
+            server.ehlo()
+            if use_tls:
+                context = ssl.create_default_context()
+                server.starttls(context=context)
+                server.ehlo()
+
+        if user and password:
+            server.login(user, password)
+
+        server.quit()
+        return {
+            "status": "success",
+            "message": f"SMTP подключение к {host}:{port} успешно",
+        }
+    except smtplib.SMTPAuthenticationError as e:
+        return {
+            "status": "error",
+            "message": f"Ошибка аутентификации SMTP: {e.smtp_code} - {e.smtp_error.decode() if isinstance(e.smtp_error, bytes) else e.smtp_error}",
+        }
+    except smtplib.SMTPConnectError as e:
+        return {
+            "status": "error",
+            "message": f"Не удалось подключиться к SMTP серверу: {str(e)}",
+        }
+    except smtplib.SMTPServerDisconnected as e:
+        return {"status": "error", "message": f"Сервер разорвал соединение: {str(e)}"}
+    except ssl.SSLError as e:
+        return {"status": "error", "message": f"Ошибка SSL: {str(e)}"}
+    except TimeoutError:
+        return {"status": "error", "message": "Таймаут подключения к SMTP серверу"}
+    except ConnectionRefusedError:
+        return {
+            "status": "error",
+            "message": f"Подключение отклонено сервером {host}:{port}",
+        }
+    except OSError as e:
+        return {"status": "error", "message": f"Сетевая ошибка: {str(e)}"}
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Ошибка SMTP: {type(e).__name__}: {str(e)}",
+        }
+    finally:
+        if server:
+            try:
+                server.quit()
+            except Exception:
+                pass
 
 
 @router.post("/test/imap", dependencies=[Depends(require_it_roles(["admin"]))])
 def test_imap_connection(db: Session = Depends(get_db)) -> dict:
     """Тестировать IMAP подключение."""
+    import imaplib
+    import ssl
+
     settings = (
         db.query(SystemSettings)
         .filter(
@@ -423,13 +482,59 @@ def test_imap_connection(db: Session = Depends(get_db)) -> dict:
     if not settings_dict.get("imap_host"):
         raise HTTPException(status_code=400, detail="IMAP сервер не настроен")
 
-    # TODO: Реализовать реальное тестирование IMAP
-    return {"status": "pending", "message": "Тестирование IMAP будет реализовано"}
+    server = None
+    try:
+        host = settings_dict["imap_host"]
+        port = int(settings_dict.get("imap_port") or 993)
+        use_ssl = settings_dict.get("imap_use_ssl", "true").lower() == "true"
+        user = settings_dict.get("imap_user")
+        password = settings_dict.get("imap_password")
+
+        if use_ssl:
+            context = ssl.create_default_context()
+            server = imaplib.IMAP4_SSL(host, port, ssl_context=context)
+        else:
+            server = imaplib.IMAP4(host, port)
+
+        if user and password:
+            server.login(user, password)
+
+        server.logout()
+        return {
+            "status": "success",
+            "message": f"IMAP подключение к {host}:{port} успешно",
+        }
+    except imaplib.IMAP4.error as e:
+        return {"status": "error", "message": f"Ошибка IMAP: {str(e)}"}
+    except ssl.SSLError as e:
+        return {"status": "error", "message": f"Ошибка SSL: {str(e)}"}
+    except TimeoutError:
+        return {"status": "error", "message": "Таймаут подключения к IMAP серверу"}
+    except ConnectionRefusedError:
+        return {
+            "status": "error",
+            "message": f"Подключение отклонено сервером {host}:{port}",
+        }
+    except OSError as e:
+        return {"status": "error", "message": f"Сетевая ошибка: {str(e)}"}
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Ошибка IMAP: {type(e).__name__}: {str(e)}",
+        }
+    finally:
+        if server:
+            try:
+                server.logout()
+            except Exception:
+                pass
 
 
 @router.post("/test/ldap", dependencies=[Depends(require_it_roles(["admin"]))])
 def test_ldap_connection(db: Session = Depends(get_db)) -> dict:
     """Тестировать LDAP/AD подключение."""
+    import socket
+
     settings = (
         db.query(SystemSettings)
         .filter(
@@ -450,5 +555,70 @@ def test_ldap_connection(db: Session = Depends(get_db)) -> dict:
     if not settings_dict.get("ldap_server"):
         raise HTTPException(status_code=400, detail="LDAP сервер не настроен")
 
-    # TODO: Реализовать реальное тестирование LDAP
-    return {"status": "pending", "message": "Тестирование LDAP будет реализовано"}
+    try:
+        host = settings_dict["ldap_server"]
+        port = int(settings_dict.get("ldap_port", 389))
+        use_ssl = settings_dict.get("ldap_use_ssl", "false").lower() == "true"
+
+        # Проверяем доступность порта
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        result = sock.connect_ex((host, port))
+        sock.close()
+
+        if result != 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Не удалось подключиться к LDAP серверу {host}:{port}",
+            )
+
+        # Попытка подключения через ldap3 если установлен
+        try:
+            import ldap3
+            from ldap3 import ALL, Connection, Server
+
+            server = Server(
+                host, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=5
+            )
+
+            bind_dn = settings_dict.get("ldap_bind_dn")
+            bind_password = settings_dict.get("ldap_bind_password")
+
+            if bind_dn and bind_password:
+                conn = Connection(
+                    server, user=bind_dn, password=bind_password, auto_bind=True
+                )
+                conn.unbind()
+                return {
+                    "status": "success",
+                    "message": "LDAP подключение и аутентификация успешны",
+                }
+            else:
+                conn = Connection(server, auto_bind=True)
+                conn.unbind()
+                return {
+                    "status": "success",
+                    "message": "LDAP подключение успешно (анонимный доступ)",
+                }
+
+        except ImportError:
+            # ldap3 не установлен, возвращаем результат проверки порта
+            return {
+                "status": "success",
+                "message": f"LDAP сервер {host}:{port} доступен (установите ldap3 для полной проверки)",
+            }
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, detail=f"Ошибка LDAP аутентификации: {str(e)}"
+            )
+
+    except socket.timeout:
+        raise HTTPException(
+            status_code=400, detail="Таймаут подключения к LDAP серверу"
+        )
+    except socket.gaierror:
+        raise HTTPException(
+            status_code=400, detail=f"Не удалось разрешить имя хоста: {host}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Ошибка LDAP: {str(e)}")

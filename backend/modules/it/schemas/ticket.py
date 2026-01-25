@@ -23,6 +23,13 @@ class TicketCreate(TicketBase):
     email_message_id: Optional[str] = None
 
 
+class TicketConsumableItem(BaseModel):
+    """Расходник для списания"""
+
+    consumable_id: UUID
+    quantity: int = 1
+
+
 class TicketUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -37,6 +44,8 @@ class TicketUpdate(BaseModel):
     closed_at: Optional[datetime] = None
     rating: Optional[int] = None
     rating_comment: Optional[str] = None
+    # Расходники для списания при закрытии
+    consumables: Optional[List[TicketConsumableItem]] = None
 
 
 class TicketOut(TicketBase):
@@ -63,6 +72,22 @@ class TicketAssignUser(BaseModel):
     """Схема для привязки email-тикета к пользователю"""
 
     user_id: UUID
+
+
+class TicketConsumableOut(BaseModel):
+    """Выходная схема для расходника тикета"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    ticket_id: UUID
+    consumable_id: UUID
+    consumable_name: Optional[str] = None
+    consumable_model: Optional[str] = None
+    quantity: int
+    is_written_off: bool
+    written_off_at: Optional[datetime] = None
+    created_at: datetime
 
 
 class TicketHistoryOut(BaseModel):

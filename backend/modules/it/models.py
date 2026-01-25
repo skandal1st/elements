@@ -144,8 +144,12 @@ class EquipmentHistory(Base):
         ForeignKey("equipment.id", ondelete="CASCADE"),
         nullable=False,
     )
-    from_user_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
-    to_user_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
+    from_user_id = Column(
+        Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True
+    )
+    to_user_id = Column(
+        Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True
+    )
     from_location = Column(String(255), nullable=True)
     to_location = Column(String(255), nullable=True)
     reason = Column(Text, nullable=True)
@@ -254,6 +258,36 @@ class TicketHistory(Base):
     # Relationships
     ticket = relationship("Ticket", foreign_keys=[ticket_id])
     changed_by = relationship("User", foreign_keys=[changed_by_id])
+
+
+class TicketConsumable(Base):
+    """Связь тикета с расходными материалами (использованные при решении)"""
+
+    __tablename__ = "ticket_consumables"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    ticket_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    consumable_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("consumables.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    quantity = Column(Integer, default=1, nullable=False)  # Количество для списания
+    is_written_off = Column(Boolean, default=False, nullable=False)  # Списано со склада
+    written_off_at = Column(DateTime(timezone=True), nullable=True)  # Дата списания
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    ticket = relationship("Ticket", foreign_keys=[ticket_id])
+    consumable = relationship("Consumable", foreign_keys=[consumable_id])
+
+    __table_args__ = (
+        UniqueConstraint("ticket_id", "consumable_id", name="unique_ticket_consumable"),
+    )
 
 
 class Consumable(Base):

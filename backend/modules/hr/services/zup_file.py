@@ -19,7 +19,7 @@ from backend.modules.hr.models.department import Department
 from backend.modules.hr.models.employee import Employee
 from backend.modules.hr.models.hr_request import HRRequest
 from backend.modules.hr.models.position import Position
-from backend.modules.hr.services.integrations import create_supporit_ticket
+from backend.modules.hr.services.integrations import create_it_ticket
 from backend.modules.hr.utils.naming import generate_corporate_email
 
 
@@ -309,10 +309,11 @@ def _create_hire_request(
         f"Дата выхода: {effective_date or 'Не указана'}\n"
     )
     
-    create_supporit_ticket(
+    create_it_ticket(
+        db=db,
         title=f"Онбординг: {employee.full_name}",
         description=description,
-        category="other",
+        category="hr",
     )
 
 
@@ -351,10 +352,11 @@ def _create_fire_request(
         f"- Принять оборудование\n"
     )
     
-    create_supporit_ticket(
+    create_it_ticket(
+        db=db,
         title=f"Увольнение: {employee.full_name}",
         description=description,
-        category="other",
+        category="hr",
     )
 
 

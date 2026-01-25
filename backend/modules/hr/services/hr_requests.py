@@ -11,7 +11,7 @@ from backend.modules.hr.services.integrations import (
     ad_create_user,
     ad_disable_user,
     block_it_accounts,
-    create_supporit_ticket,
+    create_it_ticket,
     fetch_equipment_for_employee,
     mailcow_create_mailbox,
     mailcow_disable_mailbox,
@@ -83,7 +83,8 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
                     f"\n\nДобавить пропуск в систему СКУД:\n"
                     f"Данные пропуска: {pass_number}"
                 )
-            create_supporit_ticket(
+            create_it_ticket(
+                db=db,
                 title=f"Онбординг: {employee.full_name}",
                 description=ticket_description,
                 category="hr",
@@ -91,7 +92,8 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
         else:
             # Сотрудник НЕ использует ИТ - создаем отдельный тикет только для СКУД
             if pass_number:
-                create_supporit_ticket(
+                create_it_ticket(
+                    db=db,
                     title=f"Добавить пропуск в СКУД: {employee.full_name}",
                     description=(
                         f"ФИО: {employee.full_name}\n"
@@ -122,7 +124,7 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
         for account in accounts:
             account.status = "blocked"
 
-        equipment = fetch_equipment_for_employee(employee.id, employee.email)
+        equipment = fetch_equipment_for_employee(db, employee.id, employee.email)
         
         # Создаем заявку на сбор оборудования
         equipment_lines = "\n".join(
@@ -130,7 +132,8 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
             for item in equipment
         ) if equipment else "Нет данных"
         
-        create_supporit_ticket(
+        create_it_ticket(
+            db=db,
             title=f"Увольнение: сбор оборудования - {employee.full_name}",
             description=(
                 f"ФИО: {employee.full_name}\n"

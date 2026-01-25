@@ -143,74 +143,87 @@ export function HRPanel() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">HR-панель</h2>
-        <p className="text-sm text-gray-500">Создание заявок на прием или увольнение.</p>
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">HR-панель</h2>
+            <p className="text-gray-400">Создание заявок на прием или увольнение</p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="glass-button px-4 py-2.5 text-sm font-medium"
+          >
+            Добавить сотрудника (прием)
+          </button>
+        </div>
       </div>
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="flex justify-between items-center">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-        >
-          Добавить сотрудника (прием)
-        </button>
-      </div>
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900">Увольнение сотрудника</h3>
-        <div className="flex flex-wrap gap-2 items-center">
+      <div className="glass-card p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-white">Увольнение сотрудника</h3>
+        <div className="flex flex-wrap gap-3 items-center">
           <select
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+            className="glass-input px-4 py-2.5 text-sm"
             value={fireEmployeeId}
             onChange={(e) => setFireEmployeeId(e.target.value)}
           >
-            <option value="">Выберите сотрудника</option>
+            <option value="" className="bg-dark-800">Выберите сотрудника</option>
             {employees.map((e) => (
-              <option key={e.id} value={e.id}>{e.full_name}</option>
+              <option key={e.id} value={e.id} className="bg-dark-800">{e.full_name}</option>
             ))}
           </select>
           <input
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+            className="glass-input px-4 py-2.5 text-sm"
             type="date"
             value={fireDate}
             onChange={(e) => setFireDate(e.target.value)}
           />
           <button
             onClick={handleFire}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+            className="glass-button px-4 py-2.5 text-sm font-medium"
           >
             Создать заявку на увольнение
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <h3 className="px-4 py-3 text-lg font-semibold text-gray-900 bg-gray-50 border-b">
+      <div className="glass-card overflow-hidden">
+        <h3 className="px-6 py-4 text-lg font-semibold text-white border-b border-dark-600/50">
           Заявки
         </h3>
-        {loading && <p className="p-4 text-sm text-gray-500">Загрузка…</p>}
-        {!loading && (
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+          </div>
+        ) : (
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-700">ID</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Тип</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Сотрудник</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Дата</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Статус</th>
+            <thead>
+              <tr className="border-b border-dark-600/50">
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Сотрудник</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-dark-700/50">
               {requests.map((r) => (
-                <tr key={r.id} className="border-t border-gray-100">
-                  <td className="px-4 py-3">{r.id}</td>
-                  <td className="px-4 py-3">{r.type === 'hire' ? 'Прием' : 'Увольнение'}</td>
-                  <td className="px-4 py-3">{empName(r.employee_id)}</td>
-                  <td className="px-4 py-3">{r.effective_date ?? r.request_date}</td>
-                  <td className="px-4 py-3">{r.status}</td>
+                <tr key={r.id} className="hover:bg-dark-700/30 transition-colors">
+                  <td className="px-4 py-4 text-gray-400">{r.id}</td>
+                  <td className="px-4 py-4 text-white">{r.type === 'hire' ? 'Прием' : 'Увольнение'}</td>
+                  <td className="px-4 py-4 text-gray-300">{empName(r.employee_id)}</td>
+                  <td className="px-4 py-4 text-gray-400">{r.effective_date ?? r.request_date}</td>
+                  <td className="px-4 py-4 text-gray-400">{r.status}</td>
                 </tr>
               ))}
             </tbody>
@@ -219,140 +232,63 @@ export function HRPanel() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">Новый сотрудник (прием)</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-sm text-gray-500">
+              <h3 className="text-lg font-semibold text-white">Новый сотрудник (прием)</h3>
+              <button onClick={() => setIsModalOpen(false)} className="glass-button-secondary px-3 py-2 text-sm font-medium">
                 Закрыть
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ФИО <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  placeholder="Иванов Иван Иванович"
-                  value={newEmployee.full_name}
-                  onChange={(e) => setNewEmployee((p) => ({ ...p, full_name: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">ФИО <span className="text-red-400">*</span></label>
+                <input className="glass-input w-full px-4 py-3 text-sm" placeholder="Иванов Иван Иванович" value={newEmployee.full_name} onChange={(e) => setNewEmployee((p) => ({ ...p, full_name: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Дата рождения
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  type="date"
-                  value={newEmployee.birthday}
-                  onChange={(e) => setNewEmployee((p) => ({ ...p, birthday: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Дата рождения</label>
+                <input className="glass-input w-full px-4 py-3 text-sm" type="date" value={newEmployee.birthday} onChange={(e) => setNewEmployee((p) => ({ ...p, birthday: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Подразделение
-                </label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  value={newEmployee.department_id}
-                  onChange={(e) => handleDepartmentChange(e.target.value)}
-                >
-                  <option value="">Выберите подразделение</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
+                <label className="block text-sm font-medium text-gray-400 mb-1">Подразделение</label>
+                <select className="glass-input w-full px-4 py-3 text-sm" value={newEmployee.department_id} onChange={(e) => handleDepartmentChange(e.target.value)}>
+                  <option value="" className="bg-dark-800">Выберите подразделение</option>
+                  {departments.map((d) => <option key={d.id} value={d.id} className="bg-dark-800">{d.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Должность
-                </label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  value={newEmployee.position_id}
-                  onChange={(e) => setNewEmployee((p) => ({ ...p, position_id: e.target.value }))}
-                >
-                  <option value="">Выберите должность</option>
-                  {positions
-                    .filter((p) => !newEmployee.department_id || p.department_id === Number(newEmployee.department_id))
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
+                <label className="block text-sm font-medium text-gray-400 mb-1">Должность</label>
+                <select className="glass-input w-full px-4 py-3 text-sm" value={newEmployee.position_id} onChange={(e) => setNewEmployee((p) => ({ ...p, position_id: e.target.value }))}>
+                  <option value="" className="bg-dark-800">Выберите должность</option>
+                  {positions.filter((p) => !newEmployee.department_id || p.department_id === Number(newEmployee.department_id)).map((p) => <option key={p.id} value={p.id} className="bg-dark-800">{p.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Дата выхода на работу
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  type="date"
-                  value={hireDate}
-                  onChange={(e) => setHireDate(e.target.value)}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Дата выхода на работу</label>
+                <input className="glass-input w-full px-4 py-3 text-sm" type="date" value={hireDate} onChange={(e) => setHireDate(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  type="email"
-                  placeholder="email@example.com"
-                  value={newEmployee.email}
-                  onChange={(e) => setNewEmployee((p) => ({ ...p, email: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                <input className="glass-input w-full px-4 py-3 text-sm" type="email" placeholder="email@example.com" value={newEmployee.email} onChange={(e) => setNewEmployee((p) => ({ ...p, email: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Внутренний телефон
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  placeholder="123"
-                  value={newEmployee.internal_phone}
-                  onChange={(e) => setNewEmployee((p) => ({ ...p, internal_phone: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Внутренний телефон</label>
+                <input className="glass-input w-full px-4 py-3 text-sm" placeholder="123" value={newEmployee.internal_phone} onChange={(e) => setNewEmployee((p) => ({ ...p, internal_phone: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Номер пропуска
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  placeholder="00001"
-                  value={newEmployee.pass_number}
-                  onChange={(e) => setNewEmployee((p) => ({ ...p, pass_number: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Номер пропуска</label>
+                <input className="glass-input w-full px-4 py-3 text-sm" placeholder="00001" value={newEmployee.pass_number} onChange={(e) => setNewEmployee((p) => ({ ...p, pass_number: e.target.value }))} />
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center md:col-span-2">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300"
-                    checked={newEmployee.uses_it_equipment}
-                    onChange={(e) => setNewEmployee((p) => ({ ...p, uses_it_equipment: e.target.checked }))}
-                  />
-                  <span className="text-sm text-gray-700">Нужно IT-оборудование</span>
+                  <input type="checkbox" className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30" checked={newEmployee.uses_it_equipment} onChange={(e) => setNewEmployee((p) => ({ ...p, uses_it_equipment: e.target.checked }))} />
+                  <span className="text-sm text-gray-400">Нужно IT-оборудование</span>
                 </label>
               </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleCreateEmployeeAndHire}
-                disabled={!newEmployee.full_name}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
-              >
-                Создать сотрудника и заявку
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setIsModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleCreateEmployeeAndHire} disabled={!newEmployee.full_name} className="glass-button px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">Создать сотрудника и заявку</button>
             </div>
           </div>
         </div>

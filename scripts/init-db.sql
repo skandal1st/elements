@@ -8,11 +8,13 @@
 CREATE SCHEMA IF NOT EXISTS hr;
 CREATE SCHEMA IF NOT EXISTS it;
 CREATE SCHEMA IF NOT EXISTS doc;
+CREATE SCHEMA IF NOT EXISTS tasks;
 
 -- Даём права пользователю elements на все схемы
 GRANT ALL ON SCHEMA hr TO elements;
 GRANT ALL ON SCHEMA it TO elements;
 GRANT ALL ON SCHEMA doc TO elements;
+GRANT ALL ON SCHEMA tasks TO elements;
 GRANT ALL ON SCHEMA public TO elements;
 
 -- =============================================================================
@@ -210,6 +212,21 @@ CREATE TABLE IF NOT EXISTS it.consumable_supplies (
 
 CREATE INDEX IF NOT EXISTS idx_consumable_supplies_consumable ON it.consumable_supplies(consumable_id);
 CREATE INDEX IF NOT EXISTS idx_consumable_supplies_date ON it.consumable_supplies(supply_date);
+
+-- Таблица связи тикетов с расходниками (использованные при решении)
+CREATE TABLE IF NOT EXISTS it.ticket_consumables (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ticket_id UUID NOT NULL REFERENCES it.tickets(id) ON DELETE CASCADE,
+    consumable_id UUID NOT NULL REFERENCES it.consumables(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    is_written_off BOOLEAN DEFAULT FALSE,
+    written_off_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_ticket_consumable UNIQUE (ticket_id, consumable_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_consumables_ticket ON it.ticket_consumables(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_consumables_consumable ON it.ticket_consumables(consumable_id);
 
 -- Таблица лицензий ПО
 CREATE TABLE IF NOT EXISTS it.software_licenses (
@@ -457,10 +474,139 @@ CREATE OR REPLACE TRIGGER update_it_accounts_updated_at BEFORE UPDATE ON hr.it_a
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================================================
+-- Tasks Schema - Task Management Module
+-- =============================================================================
+
+-- Таблица проектов
+CREATE TABLE IF NOT EXISTS tasks.projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    color VARCHAR(50) DEFAULT '#3B82F6',
+    icon VARCHAR(50),
+    is_personal BOOLEAN DEFAULT true,
+    is_archived BOOLEAN DEFAULT false,
+    settings JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_projects_owner ON tasks.projects(owner_id);
+CREATE INDEX IF NOT EXISTS idx_projects_archived ON tasks.projects(is_archived);
+
+-- Таблица шаринга проектов
+CREATE TABLE IF NOT EXISTS tasks.project_shares (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES tasks.projects(id) ON DELETE CASCADE,
+    share_type VARCHAR(20) NOT NULL CHECK (share_type IN ('user', 'department')),
+    target_id UUID NOT NULL,  -- user_id или department_id
+    permission VARCHAR(20) NOT NULL DEFAULT 'view' CHECK (permission IN ('view', 'edit', 'admin')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_project_share UNIQUE (project_id, share_type, target_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_shares_project ON tasks.project_shares(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_shares_target ON tasks.project_shares(share_type, target_id);
+
+-- Таблица меток проекта
+CREATE TABLE IF NOT EXISTS tasks.labels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES tasks.projects(id) ON DELETE CASCADE,
+    name VARCHAR(50) NOT NULL,
+    color VARCHAR(50) DEFAULT '#6B7280',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_labels_project ON tasks.labels(project_id);
+
+-- Таблица задач
+CREATE TABLE IF NOT EXISTS tasks.tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES tasks.projects(id) ON DELETE CASCADE,
+    parent_id UUID REFERENCES tasks.tasks(id) ON DELETE CASCADE,
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'review', 'done', 'cancelled')),
+    priority VARCHAR(20) NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    creator_id UUID NOT NULL REFERENCES public.users(id),
+    assignee_id UUID REFERENCES public.users(id),
+    due_date TIMESTAMPTZ,
+    start_date TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    order_index INTEGER DEFAULT 0,
+    labels UUID[] DEFAULT '{}',
+    recurrence JSONB,  -- {type: 'daily'|'weekly'|'monthly', interval: 1, end_date: null}
+    estimated_hours DECIMAL(5,2),
+    actual_hours DECIMAL(5,2),
+    -- Интеграция с другими модулями
+    linked_ticket_id UUID,
+    linked_employee_id UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks.tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks.tasks(parent_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks.tasks(assignee_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks.tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks.tasks(priority);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks.tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_order ON tasks.tasks(project_id, status, order_index);
+
+-- Таблица чеклист-пунктов внутри задачи
+CREATE TABLE IF NOT EXISTS tasks.checklist_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES tasks.tasks(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    is_completed BOOLEAN DEFAULT false,
+    order_index INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_checklist_items_task ON tasks.checklist_items(task_id);
+
+-- Таблица комментариев к задачам
+CREATE TABLE IF NOT EXISTS tasks.task_comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES tasks.tasks(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id),
+    content TEXT NOT NULL,
+    attachments TEXT[],
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_comments_task ON tasks.task_comments(task_id);
+
+-- Таблица истории изменений задач
+CREATE TABLE IF NOT EXISTS tasks.task_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES tasks.tasks(id) ON DELETE CASCADE,
+    changed_by_id UUID NOT NULL REFERENCES public.users(id),
+    field VARCHAR(50) NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_history_task ON tasks.task_history(task_id);
+
+-- Триггеры для Tasks схемы
+CREATE OR REPLACE TRIGGER update_projects_updated_at BEFORE UPDATE ON tasks.projects
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks.tasks
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE TRIGGER update_task_comments_updated_at BEFORE UPDATE ON tasks.task_comments
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =============================================================================
 -- Информационное сообщение
 -- =============================================================================
 DO $$
 BEGIN
     RAISE NOTICE 'Elements database initialized successfully!';
-    RAISE NOTICE 'Schemas created: public, hr, it, doc';
+    RAISE NOTICE 'Schemas created: public, hr, it, doc, tasks';
 END $$;

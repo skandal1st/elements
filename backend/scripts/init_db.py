@@ -48,6 +48,7 @@ from backend.modules.it.models import (
     SoftwareLicense,
     Ticket,
     TicketComment,
+    TicketConsumable,
     TicketHistory,
 )
 
@@ -370,6 +371,33 @@ def migrate_consumable_supplies():
             conn.rollback()
 
 
+def migrate_ticket_consumables():
+    """Создает таблицу ticket_consumables для связи тикетов с расходниками"""
+    print("Проверка миграции ticket_consumables...")
+
+    with engine.connect() as conn:
+        try:
+            # Проверяем существование таблицы ticket_consumables
+            result = conn.execute(
+                text("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_name = 'ticket_consumables'
+            """)
+            )
+
+            if not result.fetchone():
+                print("Создание таблицы ticket_consumables...")
+                TicketConsumable.__table__.create(bind=engine, checkfirst=True)
+                print("✅ Таблица ticket_consumables создана")
+            else:
+                print("Таблица ticket_consumables уже существует")
+
+        except Exception as e:
+            print(f"⚠️  Ошибка миграции ticket_consumables: {e}")
+            conn.rollback()
+
+
 def create_tables():
     """Создает все таблицы в БД"""
     print("Создание таблиц...")
@@ -381,6 +409,7 @@ def create_tables():
     migrate_rooms_and_related()
     migrate_ticket_history_and_source()
     migrate_consumable_supplies()
+    migrate_ticket_consumables()
 
 
 def seed_admin_user():

@@ -295,86 +295,85 @@ export function EquipmentRequestsPage() {
   };
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">
-          Заявки на оборудование
-        </h2>
-        <p className="text-sm text-gray-500">
-          Заявки сотрудников на новое оборудование или замену.
-        </p>
-      </div>
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-          <input
-            className="px-3 py-2 text-sm w-48"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск..."
-          />
-          <button
-            onClick={handleSearch}
-            className="p-2 bg-gray-100 hover:bg-gray-200"
-          >
-            <Search className="w-4 h-4" />
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Заявки на оборудование</h2>
+            <p className="text-gray-400">Заявки сотрудников на новое оборудование или замену</p>
+          </div>
+          <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
+            <Plus className="w-5 h-5" /> Создать заявку
           </button>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-        >
-          <Plus className="w-4 h-4" /> Создать заявку
+      </div>
+
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="Поиск заявок..."
+          />
+        </div>
+        <button onClick={handleSearch} className="glass-button-secondary px-4 py-2.5 flex items-center gap-2">
+          <Search className="w-4 h-4" /> Найти
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-      {!loading && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Название
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Категория
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">Тип</th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Срочность
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">Статус</th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Заявитель
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700" />
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-dark-600/50">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категория</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Срочность</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Заявитель</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-dark-700/50">
               {items.map((req) => (
-                <tr key={req.id} className="border-t border-gray-100">
-                  <td className="px-4 py-3">{req.title}</td>
-                  <td className="px-4 py-3">{categoryLabel[req.equipment_category] || req.equipment_category}</td>
-                  <td className="px-4 py-3">
-                    {requestTypeLabel[req.request_type] || req.request_type}
+                <tr key={req.id} className="hover:bg-dark-700/30 transition-colors">
+                  <td className="px-4 py-4">
+                    <span className="text-white font-medium">{req.title}</span>
                   </td>
-                  <td className="px-4 py-3">
-                    {urgencyLabel[req.urgency] || req.urgency}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <td className="px-4 py-4 text-gray-400">{categoryLabel[req.equipment_category] || req.equipment_category}</td>
+                  <td className="px-4 py-4 text-gray-400">{requestTypeLabel[req.request_type] || req.request_type}</td>
+                  <td className="px-4 py-4 text-gray-400">{urgencyLabel[req.urgency] || req.urgency}</td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2 text-gray-400">
                       {getStatusIcon(req.status)}
                       {statusLabel[req.status] || req.status}
                     </div>
                   </td>
-                  <td className="px-4 py-3">{req.requester_name || "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4 text-gray-400">{req.requester_name || "—"}</td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
                     <button
                       onClick={() => openDetail(req)}
-                      className="text-blue-600 hover:underline mr-2"
+                      className="text-accent-purple hover:text-accent-blue transition-colors"
                     >
                       Подробнее
                     </button>
@@ -382,18 +381,19 @@ export function EquipmentRequestsPage() {
                       <>
                         <button
                           onClick={() => openEdit(req)}
-                          className="text-green-600 hover:underline mr-2"
+                          className="text-green-400 hover:text-green-300 transition-colors"
                         >
                           Изменить
                         </button>
                         <button
                           onClick={() => handleCancel(req.id)}
-                          className="text-orange-600 hover:underline mr-2"
+                          className="text-amber-400 hover:text-amber-300 transition-colors"
                         >
                           Отменить
                         </button>
                       </>
                     )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -404,15 +404,15 @@ export function EquipmentRequestsPage() {
 
       {/* Модальное окно создания/редактирования */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
+            <h3 className="text-lg font-semibold text-white">
               {editing
                 ? "Редактирование заявки"
                 : "Новая заявка на оборудование"}
             </h3>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название *"
               value={form.title}
               onChange={(e) =>
@@ -420,7 +420,7 @@ export function EquipmentRequestsPage() {
               }
             />
             <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[80px]"
+              className="glass-input w-full px-4 py-3 text-sm min-h-[80px] resize-none"
               placeholder="Описание"
               value={form.description}
               onChange={(e) =>
@@ -428,34 +428,34 @@ export function EquipmentRequestsPage() {
               }
             />
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               value={form.equipment_category}
               onChange={(e) =>
                 setForm((p) => ({ ...p, equipment_category: e.target.value }))
               }
             >
               {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
+                <option key={c} value={c} className="bg-dark-800">
                   {categoryLabel[c] || c}
                 </option>
               ))}
             </select>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               value={form.request_type}
               onChange={(e) =>
                 setForm((p) => ({ ...p, request_type: e.target.value }))
               }
             >
               {REQUEST_TYPES.map((t) => (
-                <option key={t} value={t}>
+                <option key={t} value={t} className="bg-dark-800">
                   {requestTypeLabel[t]}
                 </option>
               ))}
             </select>
             <div className="grid grid-cols-2 gap-2">
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 type="number"
                 min="1"
                 placeholder="Количество"
@@ -468,14 +468,14 @@ export function EquipmentRequestsPage() {
                 }
               />
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 value={form.urgency}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, urgency: e.target.value }))
                 }
               >
                 {URGENCIES.map((u) => (
-                  <option key={u} value={u}>
+                  <option key={u} value={u} className="bg-dark-800">
                     {urgencyLabel[u]}
                   </option>
                 ))}
@@ -483,7 +483,7 @@ export function EquipmentRequestsPage() {
             </div>
             {form.request_type === "replacement" && (
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="ID оборудования для замены (UUID)"
                 value={form.replace_equipment_id}
                 onChange={(e) =>
@@ -495,7 +495,7 @@ export function EquipmentRequestsPage() {
               />
             )}
             <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[60px]"
+              className="glass-input w-full px-4 py-3 text-sm min-h-[60px] resize-none"
               placeholder="Обоснование необходимости"
               value={form.justification}
               onChange={(e) =>
@@ -503,7 +503,7 @@ export function EquipmentRequestsPage() {
               }
             />
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               type="number"
               step="0.01"
               placeholder="Предполагаемая стоимость (необязательно)"
@@ -515,13 +515,13 @@ export function EquipmentRequestsPage() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                className="glass-button px-4 py-2 text-sm font-medium"
               >
                 {editing ? "Сохранить" : "Создать"}
               </button>
@@ -532,11 +532,11 @@ export function EquipmentRequestsPage() {
 
       {/* Модальное окно детального просмотра */}
       {detailModalOpen && selectedRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-white">
                   {selectedRequest.title}
                 </h3>
                 <p className="text-sm text-gray-500">
@@ -645,24 +645,24 @@ export function EquipmentRequestsPage() {
 
       {/* Модальное окно рассмотрения */}
       {reviewModalOpen && selectedRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">
               Рассмотрение заявки
             </h3>
             <p className="text-sm text-gray-700">{selectedRequest.title}</p>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               value={reviewForm.status}
               onChange={(e) =>
                 setReviewForm((p) => ({ ...p, status: e.target.value }))
               }
             >
-              <option value="approved">Одобрить</option>
-              <option value="rejected">Отклонить</option>
+              <option value="approved" className="bg-dark-800">Одобрить</option>
+              <option value="rejected" className="bg-dark-800">Отклонить</option>
             </select>
             <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[80px]"
+              className="glass-input w-full px-4 py-3 text-sm min-h-[80px] resize-none"
               placeholder="Комментарий (необязательно)"
               value={reviewForm.comment}
               onChange={(e) =>
@@ -670,7 +670,7 @@ export function EquipmentRequestsPage() {
               }
             />
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               type="number"
               step="0.01"
               placeholder="Предполагаемая стоимость"
@@ -682,7 +682,7 @@ export function EquipmentRequestsPage() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setReviewModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>

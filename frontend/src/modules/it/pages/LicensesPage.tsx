@@ -333,134 +333,115 @@ export function LicensesPage() {
   };
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Лицензии ПО</h2>
-        <p className="text-sm text-gray-500">
-          Учет лицензий программного обеспечения.
-        </p>
-      </div>
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-          <input
-            className="px-3 py-2 text-sm w-48"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск..."
-          />
-          <button
-            onClick={handleSearch}
-            className="p-2 bg-gray-100 hover:bg-gray-200"
-          >
-            <Search className="w-4 h-4" />
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Лицензии ПО</h2>
+            <p className="text-gray-400">Учет лицензий программного обеспечения</p>
+          </div>
+          <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
+            <Plus className="w-5 h-5" /> Добавить лицензию
           </button>
         </div>
+      </div>
+
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="Поиск лицензий..."
+          />
+        </div>
         <select
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          className="glass-input px-4 py-2.5 text-sm"
           value={expiredFilter}
-          onChange={(e) => {
-            setExpiredFilter(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => { setExpiredFilter(e.target.value); setPage(1); }}
         >
-          <option value="">Все лицензии</option>
-          <option value="false">Действующие</option>
-          <option value="true">Истекшие</option>
+          <option value="" className="bg-dark-800">Все лицензии</option>
+          <option value="false" className="bg-dark-800">Действующие</option>
+          <option value="true" className="bg-dark-800">Истекшие</option>
         </select>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-        >
-          <Plus className="w-4 h-4" /> Добавить лицензию
+        <button onClick={handleSearch} className="glass-button-secondary px-4 py-2.5 flex items-center gap-2">
+          <Search className="w-4 h-4" /> Найти
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-      {!loading && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-700">ПО</th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Производитель
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Использовано
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Доступно
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Срок действия
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700" />
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-dark-600/50">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ПО</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Производитель</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Использовано</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Доступно</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Срок действия</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-dark-700/50">
               {items.map((lic) => (
                 <tr
                   key={lic.id}
-                  className={`border-t border-gray-100 ${
-                    isExpired(lic)
-                      ? "bg-red-50"
-                      : isLowAvailable(lic)
-                        ? "bg-yellow-50"
-                        : ""
+                  className={`hover:bg-dark-700/30 transition-colors ${
+                    isExpired(lic) ? "bg-red-500/10" : isLowAvailable(lic) ? "bg-amber-500/10" : ""
                   }`}
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
-                      {isExpired(lic) && (
-                        <AlertCircle className="w-4 h-4 text-red-500" />
-                      )}
-                      {isLowAvailable(lic) && !isExpired(lic) && (
-                        <AlertCircle className="w-4 h-4 text-yellow-500" />
-                      )}
-                      {lic.software_name}
+                      {isExpired(lic) && <AlertCircle className="w-4 h-4 text-red-400" />}
+                      {isLowAvailable(lic) && !isExpired(lic) && <AlertCircle className="w-4 h-4 text-amber-400" />}
+                      <span className="text-white font-medium">{lic.software_name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3">{lic.vendor || "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-medium">{lic.used_licenses}</span> /{" "}
-                    {lic.total_licenses}
+                  <td className="px-4 py-4 text-gray-400">{lic.vendor || "—"}</td>
+                  <td className="px-4 py-4 text-gray-400">
+                    <span className="font-medium text-white">{lic.used_licenses}</span> / {lic.total_licenses}
                   </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`font-medium ${
-                        (lic.available_licenses ?? 0) === 0
-                          ? "text-red-600"
-                          : ""
-                      }`}
-                    >
-                      {lic.available_licenses ??
-                        lic.total_licenses - lic.used_licenses}
+                  <td className="px-4 py-4">
+                    <span className={`font-medium ${(lic.available_licenses ?? 0) === 0 ? "text-red-400" : "text-gray-300"}`}>
+                      {lic.available_licenses ?? lic.total_licenses - lic.used_licenses}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    {lic.expires_at
-                      ? new Date(lic.expires_at).toLocaleDateString("ru-RU")
-                      : "Бессрочная"}
+                  <td className="px-4 py-4 text-gray-400">
+                    {lic.expires_at ? new Date(lic.expires_at).toLocaleDateString("ru-RU") : "Бессрочная"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <button
                       onClick={() => openDetail(lic)}
-                      className="text-blue-600 hover:underline mr-2"
+                      className="text-accent-purple hover:text-accent-blue mr-2 transition-colors"
                     >
                       Подробнее
                     </button>
                     <button
                       onClick={() => openEdit(lic)}
-                      className="text-green-600 hover:underline mr-2"
+                      className="text-green-400 hover:text-green-300 mr-2 transition-colors"
                     >
                       Изменить
                     </button>
                     <button
                       onClick={() => handleDelete(lic.id)}
-                      className="text-red-600 hover:underline"
+                      className="text-red-400 hover:text-red-300 transition-colors"
                     >
                       Удалить
                     </button>
@@ -474,13 +455,13 @@ export function LicensesPage() {
 
       {/* Модальное окно создания/редактирования */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
+            <h3 className="text-lg font-semibold text-white">
               {editing ? "Редактирование лицензии" : "Новая лицензия ПО"}
             </h3>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название ПО *"
               value={form.software_name}
               onChange={(e) =>
@@ -488,7 +469,7 @@ export function LicensesPage() {
               }
             />
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Производитель"
               value={form.vendor}
               onChange={(e) =>
@@ -496,26 +477,26 @@ export function LicensesPage() {
               }
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Тип лицензии
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 value={form.license_type}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, license_type: e.target.value }))
                 }
               >
-                <option value="">Тип не выбран</option>
+                <option value="" className="bg-dark-800">Тип не выбран</option>
                 {LICENSE_TYPES.map((t) => (
-                  <option key={t} value={t}>
+                  <option key={t} value={t} className="bg-dark-800">
                     {LICENSE_TYPE_LABELS[t] || t}
                   </option>
                 ))}
               </select>
             </div>
             <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[60px]"
+              className="glass-input w-full px-4 py-3 text-sm min-h-[60px] resize-none"
               placeholder="Лицензионный ключ"
               value={form.license_key}
               onChange={(e) =>
@@ -524,11 +505,11 @@ export function LicensesPage() {
             />
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Количество лицензий
                 </label>
                 <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   type="number"
                   min="1"
                   placeholder="1"
@@ -542,11 +523,11 @@ export function LicensesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Стоимость
                 </label>
                 <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   type="number"
                   step="0.01"
                   placeholder="0.00"
@@ -559,11 +540,11 @@ export function LicensesPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Дата начала лицензии
                 </label>
                 <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   type="date"
                   value={form.purchase_date}
                   onChange={(e) =>
@@ -572,11 +553,11 @@ export function LicensesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Дата окончания лицензии
                 </label>
                 <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   type="date"
                   value={form.expires_at}
                   onChange={(e) =>
@@ -586,7 +567,7 @@ export function LicensesPage() {
               </div>
             </div>
             <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[60px]"
+              className="glass-input w-full px-4 py-3 text-sm min-h-[60px] resize-none"
               placeholder="Примечания"
               value={form.notes}
               onChange={(e) =>
@@ -596,13 +577,13 @@ export function LicensesPage() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                className="glass-button px-4 py-2 text-sm font-medium"
               >
                 {editing ? "Сохранить" : "Создать"}
               </button>
@@ -613,27 +594,27 @@ export function LicensesPage() {
 
       {/* Модальное окно детального просмотра */}
       {detailModalOpen && selectedLicense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-white">
                   {selectedLicense.software_name}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-400">
                   Создана:{" "}
                   {new Date(selectedLicense.created_at).toLocaleString("ru-RU")}
                 </p>
               </div>
               <button
                 onClick={() => setDetailModalOpen(false)}
-                className="text-sm text-gray-500"
+                className="glass-button-secondary px-3 py-2 text-sm font-medium"
               >
                 Закрыть
               </button>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-400">
               <div>
                 <span className="font-medium">Производитель:</span>{" "}
                 {selectedLicense.vendor || "—"}
@@ -681,7 +662,7 @@ export function LicensesPage() {
               {selectedLicense.license_key && (
                 <div className="md:col-span-2">
                   <span className="font-medium">Лицензионный ключ:</span>
-                  <p className="mt-1 text-gray-700 font-mono text-xs break-all">
+                  <p className="mt-1 text-gray-400 font-mono text-xs break-all">
                     {selectedLicense.license_key}
                   </p>
                 </div>
@@ -689,23 +670,18 @@ export function LicensesPage() {
               {selectedLicense.notes && (
                 <div className="md:col-span-2">
                   <span className="font-medium">Примечания:</span>
-                  <p className="mt-1 text-gray-700">{selectedLicense.notes}</p>
+                  <p className="mt-1 text-gray-400">{selectedLicense.notes}</p>
                 </div>
               )}
             </div>
 
             {/* Привязки */}
-            <div className="border-t border-gray-200 pt-4">
+            <div className="border-t border-dark-600/50 pt-4">
               <div className="flex justify-between items-center mb-3">
-                <h4 className="text-sm font-semibold text-gray-900">
-                  Привязки лицензий
-                </h4>
+                <h4 className="text-sm font-semibold text-white">Привязки лицензий</h4>
                 <button
-                  onClick={() => {
-                    setDetailModalOpen(false);
-                    openAssign(selectedLicense);
-                  }}
-                  className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg"
+                  onClick={() => { setDetailModalOpen(false); openAssign(selectedLicense); }}
+                  className="px-3 py-2 text-sm font-medium text-green-400 bg-green-500/20 border border-green-500/30 rounded-xl hover:bg-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={(selectedLicense.available_licenses ?? 0) === 0}
                 >
                   Назначить
@@ -718,7 +694,7 @@ export function LicensesPage() {
                   {selectedLicense.assignments.map((assignment) => (
                     <div
                       key={assignment.id}
-                      className="bg-gray-50 rounded-lg p-3 flex justify-between items-center"
+                      className="bg-dark-700/30 rounded-xl p-3 flex justify-between items-center"
                     >
                       <div className="text-sm">
                         {assignment.user_name && (
@@ -747,7 +723,7 @@ export function LicensesPage() {
                         {!assignment.user_name && !assignment.equipment_name && (
                           <div className="flex items-center gap-2">
                             <Cloud className="w-4 h-4 text-purple-500" />
-                            <span className="text-purple-700">SaaS / Облачный сервис</span>
+                            <span className="text-accent-purple">SaaS / Облачный сервис</span>
                           </div>
                         )}
                         <div className="text-xs text-gray-500 mt-1">
@@ -776,35 +752,28 @@ export function LicensesPage() {
 
       {/* Модальное окно назначения */}
       {assignModalOpen && selectedLicense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">
               Назначить лицензию: {selectedLicense.software_name}
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               Доступно:{" "}
               {selectedLicense.available_licenses ??
-                selectedLicense.total_licenses -
-                  selectedLicense.used_licenses}{" "}
+                selectedLicense.total_licenses - selectedLicense.used_licenses}{" "}
               лицензий
             </p>
 
-            {/* Выбор типа назначения */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Тип назначения
-              </label>
+              <label className="block text-sm font-medium text-gray-400 mb-2">Тип назначения</label>
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setAssignType("equipment");
-                    setAssignForm((p) => ({ ...p, user_id: "", is_saas: false }));
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border ${
+                  onClick={() => { setAssignType("equipment"); setAssignForm((p) => ({ ...p, user_id: "", is_saas: false })); }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
                     assignType === "equipment"
-                      ? "bg-blue-50 border-blue-500 text-blue-700"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
+                      : "bg-dark-700/50 border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500"
                   }`}
                 >
                   <Monitor className="w-4 h-4" />
@@ -812,14 +781,11 @@ export function LicensesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setAssignType("user");
-                    setAssignForm((p) => ({ ...p, equipment_id: "", is_saas: false }));
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border ${
+                  onClick={() => { setAssignType("user"); setAssignForm((p) => ({ ...p, equipment_id: "", is_saas: false })); }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
                     assignType === "user"
-                      ? "bg-blue-50 border-blue-500 text-blue-700"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
+                      : "bg-dark-700/50 border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500"
                   }`}
                 >
                   <User className="w-4 h-4" />
@@ -827,14 +793,11 @@ export function LicensesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setAssignType("saas");
-                    setAssignForm((p) => ({ ...p, user_id: "", equipment_id: "", is_saas: true }));
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border ${
+                  onClick={() => { setAssignType("saas"); setAssignForm((p) => ({ ...p, user_id: "", equipment_id: "", is_saas: true })); }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
                     assignType === "saas"
-                      ? "bg-purple-50 border-purple-500 text-purple-700"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
+                      : "bg-dark-700/50 border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500"
                   }`}
                 >
                   <Cloud className="w-4 h-4" />
@@ -846,19 +809,19 @@ export function LicensesPage() {
             {/* Выбор оборудования */}
             {assignType === "equipment" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Оборудование (компьютер / сервер)
                 </label>
                 <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   value={assignForm.equipment_id}
                   onChange={(e) =>
                     setAssignForm((p) => ({ ...p, equipment_id: e.target.value }))
                   }
                 >
-                  <option value="">Выберите оборудование</option>
+                  <option value="" className="bg-dark-800">Выберите оборудование</option>
                   {equipmentList.map((eq) => (
-                    <option key={eq.id} value={eq.id}>
+                    <option key={eq.id} value={eq.id} className="bg-dark-800">
                       {eq.category === "computer" ? "💻" : "🖥️"} {eq.name} ({eq.inventory_number})
                     </option>
                   ))}
@@ -874,19 +837,19 @@ export function LicensesPage() {
             {/* Выбор пользователя */}
             {assignType === "user" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Пользователь
                 </label>
                 <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   value={assignForm.user_id}
                   onChange={(e) =>
                     setAssignForm((p) => ({ ...p, user_id: e.target.value }))
                   }
                 >
-                  <option value="">Выберите пользователя</option>
+                  <option value="" className="bg-dark-800">Выберите пользователя</option>
                   {usersList.map((user) => (
-                    <option key={user.id} value={user.id}>
+                    <option key={user.id} value={user.id} className="bg-dark-800">
                       {user.full_name} ({user.email})
                     </option>
                   ))}
@@ -894,17 +857,14 @@ export function LicensesPage() {
               </div>
             )}
 
-            {/* SaaS информация */}
             {assignType === "saas" && (
-              <div className="bg-purple-50 rounded-lg p-4">
+              <div className="bg-accent-purple/10 rounded-xl p-4 border border-accent-purple/20">
                 <div className="flex items-start gap-3">
-                  <Cloud className="w-5 h-5 text-purple-600 mt-0.5" />
+                  <Cloud className="w-5 h-5 text-accent-purple mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-purple-900">
-                      SaaS / Облачный сервис
-                    </p>
-                    <p className="text-xs text-purple-700 mt-1">
-                      Лицензия будет отмечена как используемая без привязки к конкретному оборудованию. 
+                    <p className="text-sm font-medium text-white">SaaS / Облачный сервис</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Лицензия будет отмечена как используемая без привязки к конкретному оборудованию.
                       Подходит для облачных сервисов и подписок.
                     </p>
                   </div>
@@ -912,12 +872,12 @@ export function LicensesPage() {
               </div>
             )}
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-400">{error}</p>}
 
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setAssignModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
@@ -927,7 +887,7 @@ export function LicensesPage() {
                   assignType === "equipment" && !assignForm.equipment_id ||
                   assignType === "user" && !assignForm.user_id
                 }
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-green-400 bg-green-500/20 border border-green-500/30 rounded-xl hover:bg-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 Назначить
               </button>

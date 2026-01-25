@@ -341,35 +341,52 @@ export function ConsumablesPage() {
   };
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">
-          Расходные материалы
-        </h2>
-        <p className="text-sm text-gray-500">
-          Учет расходных материалов IT-отдела.
-        </p>
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Расходные материалы</h2>
+            <p className="text-gray-400">Учет расходных материалов IT-отдела</p>
+          </div>
+          {!showFromCatalog && (
+            <div className="flex items-center gap-2">
+              <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
+                <Plus className="w-5 h-5" /> Добавить
+              </button>
+              <button onClick={openSupply} className="glass-button-secondary px-4 py-2.5 flex items-center gap-2 border border-green-500/30 text-green-400 hover:bg-green-500/10">
+                <Truck className="w-5 h-5" /> Добавить поставку
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            className="px-3 py-2 text-sm w-48"
+            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск..."
-            onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           />
-          <button
-            onClick={handleSearch}
-            className="p-2 bg-gray-100 hover:bg-gray-200"
-          >
-            <Search className="w-4 h-4" />
-          </button>
         </div>
-        <label className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+        <button onClick={handleSearch} className="glass-button-secondary px-4 py-2.5 flex items-center gap-2">
+          <Search className="w-4 h-4" /> Найти
+        </button>
+        <label className="flex items-center gap-2 px-4 py-2.5 text-sm bg-dark-700/50 border border-dark-600/50 rounded-xl cursor-pointer hover:border-dark-500 text-gray-400 hover:text-white transition-all">
           <input
             type="checkbox"
             checked={showFromCatalog}
@@ -377,100 +394,63 @@ export function ConsumablesPage() {
               setShowFromCatalog(e.target.checked);
               setPage(1);
             }}
+            className="rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
           />
           <span>Показать из справочника моделей</span>
         </label>
-        {!showFromCatalog && (
-          <>
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-            >
-              <Plus className="w-4 h-4" /> Добавить
-            </button>
-            <button
-              onClick={openSupply}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg"
-            >
-              <Truck className="w-4 h-4" /> Добавить поставку
-            </button>
-          </>
-        )}
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-      {!loading && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-700">
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-dark-600/50">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Название
                 </th>
                 {showFromCatalog && (
                   <>
-                    <th className="px-4 py-3 font-medium text-gray-700">
-                      Марка
-                    </th>
-                    <th className="px-4 py-3 font-medium text-gray-700">Тип</th>
-                    <th className="px-4 py-3 font-medium text-gray-700">
-                      Модель
-                    </th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Марка</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Модель</th>
                   </>
                 )}
-                <th className="px-4 py-3 font-medium text-gray-700">
-                  Тип расходника
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-700">Артикул</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип расходника</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Артикул</th>
                 {!showFromCatalog && (
                   <>
-                    <th className="px-4 py-3 font-medium text-gray-700">
-                      На складе
-                    </th>
-                    <th className="px-4 py-3 font-medium text-gray-700">
-                      Мин. кол-во
-                    </th>
-                    <th className="px-4 py-3 font-medium text-gray-700">
-                      Ед. изм.
-                    </th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">На складе</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Мин. кол-во</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ед. изм.</th>
                   </>
                 )}
-                <th className="px-4 py-3 font-medium text-gray-700" />
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-dark-700/50">
               {showFromCatalog ? (
-                // Расходники из справочника моделей
                 modelConsumables.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-8 text-center text-gray-500"
-                    >
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                       Нет расходных материалов в справочнике моделей
                     </td>
                   </tr>
                 ) : (
                   modelConsumables.map((item) => (
-                    <tr key={item.id} className="border-t border-gray-100">
-                      <td className="px-4 py-3">{item.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {(item as any).brand_name || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {(item as any).type_name || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {(item as any).model_name || "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {item.consumable_type ? (CONSUMABLE_TYPE_LABELS[item.consumable_type] || item.consumable_type) : "—"}
-                      </td>
-                      <td className="px-4 py-3">{item.part_number || "—"}</td>
-                      <td className="px-4 py-3">
+                    <tr key={item.id} className="hover:bg-dark-700/30 transition-colors">
+                      <td className="px-4 py-4 text-white font-medium">{item.name}</td>
+                      <td className="px-4 py-4 text-gray-400">{(item as any).brand_name || "—"}</td>
+                      <td className="px-4 py-4 text-gray-400">{(item as any).type_name || "—"}</td>
+                      <td className="px-4 py-4 text-gray-400">{(item as any).model_name || "—"}</td>
+                      <td className="px-4 py-4 text-gray-400">{item.consumable_type ? (CONSUMABLE_TYPE_LABELS[item.consumable_type] || item.consumable_type) : "—"}</td>
+                      <td className="px-4 py-4 text-gray-400">{item.part_number || "—"}</td>
+                      <td className="px-4 py-4">
                         <button
                           onClick={async () => {
-                            // Создаем расходник в основном справочнике из расходника модели
                             try {
                               await apiPost("/it/consumables/", {
                                 name: item.name,
@@ -480,16 +460,14 @@ export function ConsumablesPage() {
                                 quantity_in_stock: 0,
                                 min_quantity: 0,
                               });
-                              setMessage(
-                                `Расходник "${item.name}" добавлен в основной справочник`,
-                              );
+                              setMessage(`Расходник "${item.name}" добавлен в основной справочник`);
                               setShowFromCatalog(false);
                               await load();
                             } catch (err) {
                               setError((err as Error).message);
                             }
                           }}
-                          className="text-blue-600 hover:underline text-sm"
+                          className="text-accent-purple hover:text-accent-blue text-sm transition-colors"
                         >
                           Добавить в справочник
                         </button>
@@ -497,13 +475,9 @@ export function ConsumablesPage() {
                     </tr>
                   ))
                 )
-              ) : // Обычные расходники
-              items.length === 0 ? (
+              ) : items.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                     Нет расходных материалов
                   </td>
                 </tr>
@@ -511,40 +485,36 @@ export function ConsumablesPage() {
                 items.map((item) => (
                   <tr
                     key={item.id}
-                    className={`border-t border-gray-100 ${isLowStock(item) ? "bg-red-50" : ""}`}
+                    className={`hover:bg-dark-700/30 transition-colors ${isLowStock(item) ? "bg-red-500/10" : ""}`}
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        {isLowStock(item) && (
-                          <TrendingDown className="w-4 h-4 text-red-500" />
-                        )}
-                        {item.name}
+                        {isLowStock(item) && <TrendingDown className="w-4 h-4 text-red-400" />}
+                        <span className="text-white font-medium">{item.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">{item.consumable_type ? (CONSUMABLE_TYPE_LABELS[item.consumable_type] || item.consumable_type) : "—"}</td>
-                    <td className="px-4 py-3">{item.model || "—"}</td>
-                    <td className="px-4 py-3 font-medium">
-                      {item.quantity_in_stock}
-                    </td>
-                    <td className="px-4 py-3">{item.min_quantity}</td>
-                    <td className="px-4 py-3">{item.unit}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4 text-gray-400">{item.consumable_type ? (CONSUMABLE_TYPE_LABELS[item.consumable_type] || item.consumable_type) : "—"}</td>
+                    <td className="px-4 py-4 text-gray-400">{item.model || "—"}</td>
+                    <td className="px-4 py-4 text-gray-400 font-medium">{item.quantity_in_stock}</td>
+                    <td className="px-4 py-4 text-gray-400">{item.min_quantity}</td>
+                    <td className="px-4 py-4 text-gray-400">{item.unit}</td>
+                    <td className="px-4 py-4">
                       <button
                         onClick={() => openIssue(item)}
-                        className="text-green-600 hover:underline mr-2"
+                        className="text-green-400 hover:text-green-300 mr-2 transition-colors"
                         disabled={item.quantity_in_stock === 0}
                       >
                         Выдать
                       </button>
                       <button
                         onClick={() => openEdit(item)}
-                        className="text-blue-600 hover:underline mr-2"
+                        className="text-accent-purple hover:text-accent-blue mr-2 transition-colors"
                       >
                         Изменить
                       </button>
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="text-red-600 hover:underline"
+                        className="text-red-400 hover:text-red-300 transition-colors"
                       >
                         Удалить
                       </button>
@@ -559,23 +529,23 @@ export function ConsumablesPage() {
 
       {/* Модальное окно создания/редактирования */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
+            <h3 className="text-lg font-semibold text-white">
               {editing ? "Редактирование" : "Новый расходный материал"}
             </h3>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название *"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Артикул
               </label>
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="Например: HP 85A"
                 value={form.model}
                 onChange={(e) =>
@@ -584,7 +554,7 @@ export function ConsumablesPage() {
               />
             </div>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Категория"
               value={form.category}
               onChange={(e) =>
@@ -592,19 +562,19 @@ export function ConsumablesPage() {
               }
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Тип расходника
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 value={form.consumable_type}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, consumable_type: e.target.value }))
                 }
               >
-                <option value="">Тип не выбран</option>
+                <option value="" className="bg-dark-800">Тип не выбран</option>
                 {CONSUMABLE_TYPES.map((t) => (
-                  <option key={t} value={t}>
+                  <option key={t} value={t} className="bg-dark-800">
                     {CONSUMABLE_TYPE_LABELS[t] || t}
                   </option>
                 ))}
@@ -612,11 +582,11 @@ export function ConsumablesPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Количество на складе
                 </label>
                 <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   type="number"
                   placeholder="0"
                   value={form.quantity_in_stock}
@@ -629,11 +599,11 @@ export function ConsumablesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Минимальное количество
                 </label>
                 <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   type="number"
                   placeholder="0"
                   value={form.min_quantity}
@@ -647,13 +617,13 @@ export function ConsumablesPage() {
               </div>
             </div>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Единица измерения"
               value={form.unit}
               onChange={(e) => setForm((p) => ({ ...p, unit: e.target.value }))}
             />
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               type="number"
               step="0.01"
               placeholder="Стоимость за единицу"
@@ -663,7 +633,7 @@ export function ConsumablesPage() {
               }
             />
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Поставщик"
               value={form.supplier}
               onChange={(e) =>
@@ -671,7 +641,7 @@ export function ConsumablesPage() {
               }
             />
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               type="date"
               placeholder="Дата последней покупки"
               value={form.last_purchase_date}
@@ -682,13 +652,13 @@ export function ConsumablesPage() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                className="glass-button px-4 py-2 text-sm font-medium"
               >
                 {editing ? "Сохранить" : "Создать"}
               </button>
@@ -699,17 +669,17 @@ export function ConsumablesPage() {
 
       {/* Модальное окно выдачи */}
       {issueModalOpen && selectedConsumable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">
               Выдача: {selectedConsumable.name}
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               В наличии: {selectedConsumable.quantity_in_stock}{" "}
               {selectedConsumable.unit}
             </p>
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="ID получателя (UUID)"
               value={issueForm.issued_to_id}
               onChange={(e) =>
@@ -717,7 +687,7 @@ export function ConsumablesPage() {
               }
             />
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               type="number"
               min="1"
               max={selectedConsumable.quantity_in_stock}
@@ -731,7 +701,7 @@ export function ConsumablesPage() {
               }
             />
             <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[80px]"
+              className="glass-input w-full px-4 py-3 text-sm min-h-[80px] resize-none"
               placeholder="Причина выдачи (необязательно)"
               value={issueForm.reason}
               onChange={(e) =>
@@ -741,13 +711,13 @@ export function ConsumablesPage() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setIssueModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
               <button
                 onClick={handleIssue}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-green-400 bg-green-500/20 border border-green-500/30 rounded-xl hover:bg-green-500/30 transition-all"
               >
                 Выдать
               </button>
@@ -758,22 +728,22 @@ export function ConsumablesPage() {
 
       {/* Модальное окно добавления поставки */}
       {supplyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
+            <h3 className="text-lg font-semibold text-white">
               Добавить поставку
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               Добавьте информацию о поступлении расходных материалов на склад
             </p>
 
             {/* Выбор расходного материала */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Расходный материал *
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 value={supplyForm.consumable_id}
                 onChange={(e) =>
                   setSupplyForm((p) => ({
@@ -782,9 +752,9 @@ export function ConsumablesPage() {
                   }))
                 }
               >
-                <option value="">Выберите расходный материал</option>
+                <option value="" className="bg-dark-800">Выберите расходный материал</option>
                 {items.map((item) => (
-                  <option key={item.id} value={item.id}>
+                  <option key={item.id} value={item.id} className="bg-dark-800">
                     {item.name} {item.model ? `(${item.model})` : ""} — на
                     складе: {item.quantity_in_stock} {item.unit}
                   </option>
@@ -794,11 +764,11 @@ export function ConsumablesPage() {
 
             {/* Количество */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Количество *
               </label>
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 type="number"
                 min="1"
                 placeholder="Количество"
@@ -814,11 +784,11 @@ export function ConsumablesPage() {
 
             {/* Стоимость поставки */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Стоимость поставки
               </label>
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 type="number"
                 step="0.01"
                 placeholder="Общая стоимость поставки"
@@ -831,11 +801,11 @@ export function ConsumablesPage() {
 
             {/* Поставщик */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Поставщик
               </label>
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="Название поставщика"
                 value={supplyForm.supplier}
                 onChange={(e) =>
@@ -846,11 +816,11 @@ export function ConsumablesPage() {
 
             {/* Номер накладной */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Номер накладной
               </label>
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="Номер накладной или счета"
                 value={supplyForm.invoice_number}
                 onChange={(e) =>
@@ -864,11 +834,11 @@ export function ConsumablesPage() {
 
             {/* Дата поставки */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Дата поставки
               </label>
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 type="date"
                 value={supplyForm.supply_date}
                 onChange={(e) =>
@@ -879,11 +849,11 @@ export function ConsumablesPage() {
 
             {/* Примечания */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Примечания
               </label>
               <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[80px]"
+                className="glass-input w-full px-4 py-3 text-sm min-h-[80px] resize-none"
                 placeholder="Дополнительная информация о поставке"
                 value={supplyForm.notes}
                 onChange={(e) =>
@@ -895,7 +865,7 @@ export function ConsumablesPage() {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setSupplyModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>

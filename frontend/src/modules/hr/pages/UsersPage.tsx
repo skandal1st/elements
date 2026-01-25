@@ -212,11 +212,11 @@ export function UsersPage() {
 
   const getRolesDisplay = (roles: Record<string, string>) => {
     const entries = Object.entries(roles)
-    if (entries.length === 0) return <span className="text-gray-400">Нет ролей</span>
+    if (entries.length === 0) return <span className="text-gray-500">Нет ролей</span>
     return entries.map(([module, role]) => (
       <span
         key={module}
-        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mr-1"
+        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-accent-purple/20 text-accent-purple mr-1"
       >
         {MODULE_LABELS[module] || module}: {ROLE_LABELS[role] || role}
       </span>
@@ -224,99 +224,83 @@ export function UsersPage() {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Пользователи</h2>
-          <p className="text-sm text-gray-500">Управление учётными записями системы.</p>
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Пользователи</h2>
+            <p className="text-gray-400">Управление учётными записями системы</p>
+          </div>
+          <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
+            <Plus className="w-5 h-5" /> Добавить пользователя
+          </button>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-        >
-          <Plus className="w-4 h-4" />
-          Добавить пользователя
-        </button>
       </div>
 
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-
-      {!loading && users.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">Пользователи не найдены</p>
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
 
-      {!loading && users.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : users.length === 0 ? (
+        <div className="glass-card text-center py-12">
+          <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-400">Пользователи не найдены</p>
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-700">Пользователь</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Email / Логин</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Роли</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Статус</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Последний вход</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Действия</th>
+            <thead>
+              <tr className="border-b border-dark-600/50">
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Email / Логин</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Роли</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Последний вход</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Действия</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-dark-700/50">
               {users.map((user) => (
-                <tr key={user.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                <tr key={user.id} className="hover:bg-dark-700/30 transition-colors">
+                  <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
-                      {user.is_superuser && (
-                        <Shield className="w-4 h-4 text-amber-500" aria-label="Суперпользователь" />
-                      )}
-                      <span className="font-medium">{user.full_name}</span>
+                      {user.is_superuser && <Shield className="w-4 h-4 text-amber-400" aria-label="Суперпользователь" />}
+                      <span className="font-medium text-white">{user.full_name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div>{user.email}</div>
-                    {user.username && (
-                      <div className="text-xs text-gray-500">@{user.username}</div>
-                    )}
+                  <td className="px-4 py-4">
+                    <div className="text-gray-300">{user.email}</div>
+                    {user.username && <div className="text-xs text-gray-500">@{user.username}</div>}
                   </td>
-                  <td className="px-4 py-3">{getRolesDisplay(user.roles)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">{getRolesDisplay(user.roles)}</td>
+                  <td className="px-4 py-4">
                     {user.is_active ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                        Активен
-                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400">Активен</span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                        Заблокирован
-                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-400">Заблокирован</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {formatDate(user.last_login_at)}
-                  </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4 text-gray-500 text-xs">{formatDate(user.last_login_at)}</td>
+                  <td className="px-4 py-4">
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => openEdit(user)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Редактировать"
-                      >
+                      <button onClick={() => openEdit(user)} className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => openResetPassword(user)}
-                        className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                        title="Сбросить пароль"
-                      >
+                      <button onClick={() => openResetPassword(user)} className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Сбросить пароль">
                         <Key className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(user)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Удалить"
-                        disabled={user.is_superuser}
-                      >
+                      <button onClick={() => handleDelete(user)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Удалить" disabled={user.is_superuser}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -328,99 +312,50 @@ export function UsersPage() {
         </div>
       )}
 
-      {/* Модальное окно создания/редактирования */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {editingUser ? 'Редактирование пользователя' : 'Новый пользователь'}
-            </h3>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
+            <h3 className="text-lg font-semibold text-white">{editingUser ? 'Редактирование пользователя' : 'Новый пользователь'}</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                ФИО <span className="text-red-500">*</span>
-              </label>
-              <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Иванов Иван Иванович"
-                value={form.full_name}
-                onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">ФИО <span className="text-red-400">*</span></label>
+              <input className="glass-input w-full px-4 py-3 text-sm" placeholder="Иванов Иван Иванович" value={form.full_name} onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))} />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                  type="email"
-                  placeholder="user@example.com"
-                  value={form.email}
-                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                  disabled={!!editingUser}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Email <span className="text-red-400">*</span></label>
+                <input className="glass-input w-full px-4 py-3 text-sm disabled:opacity-60" type="email" placeholder="user@example.com" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} disabled={!!editingUser} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Логин
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                  placeholder="ivanov"
-                  value={form.username}
-                  onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}
-                  disabled={!!editingUser}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Логин</label>
+                <input className="glass-input w-full px-4 py-3 text-sm disabled:opacity-60" placeholder="ivanov" value={form.username} onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))} disabled={!!editingUser} />
               </div>
             </div>
-
             {!editingUser && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Пароль <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  type="password"
-                  placeholder="Минимум 6 символов"
-                  value={form.password}
-                  onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Пароль <span className="text-red-400">*</span></label>
+                <input className="glass-input w-full px-4 py-3 text-sm" type="password" placeholder="Минимум 6 символов" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
               </div>
             )}
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Телефон
-              </label>
-              <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="+7 (999) 123-45-67"
-                value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Телефон</label>
+              <input className="glass-input w-full px-4 py-3 text-sm" placeholder="+7 (999) 123-45-67" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Роли по модулям
-              </label>
+              <label className="block text-sm font-medium text-gray-400 mb-2">Роли по модулям</label>
               <div className="space-y-3">
                 {Object.entries(MODULE_LABELS).map(([module, moduleLabel]) => (
-                  <div key={module} className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-sm font-medium text-gray-700 mb-2">{moduleLabel}</div>
+                  <div key={module} className="bg-dark-700/30 rounded-xl p-4">
+                    <div className="text-sm font-medium text-white mb-2">{moduleLabel}</div>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(ROLE_LABELS).map(([role, roleLabel]) => (
                         <button
                           key={role}
                           type="button"
                           onClick={() => toggleRole(module, role)}
-                          className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                          className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-all ${
                             form.roles[module] === role
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                              ? 'bg-accent-purple/30 text-accent-purple border border-accent-purple/50'
+                              : 'bg-dark-700/50 border border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500'
                           }`}
                         >
                           {roleLabel}
@@ -431,85 +366,34 @@ export function UsersPage() {
                 ))}
               </div>
             </div>
-
             {editingUser && (
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  checked={form.is_active}
-                  onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <label htmlFor="is_active" className="text-sm text-gray-700">
-                  Учётная запись активна
-                </label>
+                <input type="checkbox" id="is_active" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30" />
+                <label htmlFor="is_active" className="text-sm text-gray-400">Учётная запись активна</label>
               </div>
             )}
-
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-
+            {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-              >
-                {editingUser ? 'Сохранить' : 'Создать'}
-              </button>
+              <button onClick={() => setModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleSubmit} className="glass-button px-4 py-2 text-sm font-medium">{editingUser ? 'Сохранить' : 'Создать'}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Модальное окно сброса пароля */}
       {resetPasswordModalOpen && resetPasswordUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Сброс пароля
-            </h3>
-            <p className="text-sm text-gray-600">
-              Сброс пароля для: <strong>{resetPasswordUser.full_name}</strong>
-            </p>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">Сброс пароля</h3>
+            <p className="text-sm text-gray-400">Сброс пароля для: <strong className="text-white">{resetPasswordUser.full_name}</strong></p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Новый пароль <span className="text-red-500">*</span>
-              </label>
-              <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                type="password"
-                placeholder="Минимум 6 символов"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Новый пароль <span className="text-red-400">*</span></label>
+              <input className="glass-input w-full px-4 py-3 text-sm" type="password" placeholder="Минимум 6 символов" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </div>
-
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-
+            {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setResetPasswordModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleResetPassword}
-                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg"
-              >
-                Сбросить пароль
-              </button>
+              <button onClick={() => setResetPasswordModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleResetPassword} className="px-4 py-2 text-sm font-medium text-amber-400 bg-amber-500/20 border border-amber-500/30 rounded-xl hover:bg-amber-500/30 transition-all">Сбросить пароль</button>
             </div>
           </div>
         </div>

@@ -180,77 +180,74 @@ export function Phonebook() {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Телефонная книга</h2>
-          <p className="text-sm text-gray-500">Поиск по сотрудникам и контактам.</p>
-        </div>
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <h2 className="text-2xl font-bold text-white mb-1">Телефонная книга</h2>
+        <p className="text-gray-400">Поиск по сотрудникам и контактам</p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+
+      <div className="flex flex-wrap items-center gap-3">
         <input
-          className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+          className="glass-input flex-1 max-w-md px-4 py-2.5 text-sm"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && load()}
           placeholder="Поиск по ФИО"
         />
-        <button
-          onClick={load}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-        >
+        <button onClick={load} className="glass-button-secondary px-4 py-2.5 text-sm font-medium">
           Найти
         </button>
       </div>
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-      {!loading && items.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">Сотрудники не найдены</p>
+
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
         </div>
       )}
-      {!loading && items.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="glass-card text-center py-12">
+          <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-400">Сотрудники не найдены</p>
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-700">ФИО</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Отдел</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Должность</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Внутренний</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Внешний</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Email</th>
-                <th className="px-4 py-3 font-medium text-gray-700">Действия</th>
+            <thead>
+              <tr className="border-b border-dark-600/50">
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">ФИО</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Отдел</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Должность</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Внутренний</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Внешний</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Действия</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-dark-700/50">
               {items.map((item) => (
-                <tr key={item.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{item.full_name}</td>
-                  <td className="px-4 py-3">
-                    {departments.find((d) => d.id === item.department_id)?.name ?? '-'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {positions.find((p) => p.id === item.position_id)?.name ?? '-'}
-                  </td>
-                  <td className="px-4 py-3">{item.internal_phone ?? '-'}</td>
-                  <td className="px-4 py-3">{item.external_phone ?? '-'}</td>
-                  <td className="px-4 py-3">{item.email ?? '-'}</td>
-                  <td className="px-4 py-3">
+                <tr key={item.id} className="hover:bg-dark-700/30 transition-colors">
+                  <td className="px-4 py-4 font-medium text-white">{item.full_name}</td>
+                  <td className="px-4 py-4 text-gray-400">{departments.find((d) => d.id === item.department_id)?.name ?? '-'}</td>
+                  <td className="px-4 py-4 text-gray-400">{positions.find((p) => p.id === item.position_id)?.name ?? '-'}</td>
+                  <td className="px-4 py-4 text-gray-400">{item.internal_phone ?? '-'}</td>
+                  <td className="px-4 py-4 text-gray-400">{item.external_phone ?? '-'}</td>
+                  <td className="px-4 py-4 text-gray-400">{item.email ?? '-'}</td>
+                  <td className="px-4 py-4">
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => openEdit(item)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Редактировать"
-                      >
+                      <button onClick={() => openEdit(item)} className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => openTransfer(item)}
-                        className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                        title="Перевести на другую должность"
-                      >
+                      <button onClick={() => openTransfer(item)} className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Перевести на другую должность">
                         <ArrowRightLeft className="w-4 h-4" />
                       </button>
                     </div>
@@ -262,225 +259,95 @@ export function Phonebook() {
         </div>
       )}
 
-      {/* Модальное окно редактирования сотрудника */}
       {editModalOpen && editingEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-lg p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Редактирование сотрудника
-            </h3>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
+            <h3 className="text-lg font-semibold text-white">Редактирование сотрудника</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ФИО <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={editForm.full_name}
-                  onChange={(e) => setEditForm((p) => ({ ...p, full_name: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">ФИО <span className="text-red-400">*</span></label>
+                <input className="glass-input w-full px-4 py-3 text-sm" value={editForm.full_name} onChange={(e) => setEditForm((p) => ({ ...p, full_name: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Дата рождения
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  type="date"
-                  value={editForm.birthday}
-                  onChange={(e) => setEditForm((p) => ({ ...p, birthday: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Дата рождения</label>
+                <input className="glass-input w-full px-4 py-3 text-sm" type="date" value={editForm.birthday} onChange={(e) => setEditForm((p) => ({ ...p, birthday: e.target.value }))} />
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Подразделение
-                </label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={editForm.department_id}
-                  onChange={(e) => setEditForm((p) => ({ ...p, department_id: e.target.value, position_id: '' }))}
-                >
-                  <option value="">Не выбрано</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
+                <label className="block text-sm font-medium text-gray-400 mb-1">Подразделение</label>
+                <select className="glass-input w-full px-4 py-3 text-sm" value={editForm.department_id} onChange={(e) => setEditForm((p) => ({ ...p, department_id: e.target.value, position_id: '' }))}>
+                  <option value="" className="bg-dark-800">Не выбрано</option>
+                  {departments.map((d) => <option key={d.id} value={d.id} className="bg-dark-800">{d.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Должность
-                </label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={editForm.position_id}
-                  onChange={(e) => setEditForm((p) => ({ ...p, position_id: e.target.value }))}
-                >
-                  <option value="">Не выбрано</option>
-                  {getFilteredPositions(editForm.department_id).map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
+                <label className="block text-sm font-medium text-gray-400 mb-1">Должность</label>
+                <select className="glass-input w-full px-4 py-3 text-sm" value={editForm.position_id} onChange={(e) => setEditForm((p) => ({ ...p, position_id: e.target.value }))}>
+                  <option value="" className="bg-dark-800">Не выбрано</option>
+                  {getFilteredPositions(editForm.department_id).map((p) => <option key={p.id} value={p.id} className="bg-dark-800">{p.name}</option>)}
                 </select>
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Внутренний телефон
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="123"
-                  value={editForm.internal_phone}
-                  onChange={(e) => setEditForm((p) => ({ ...p, internal_phone: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Внутренний телефон</label>
+                <input className="glass-input w-full px-4 py-3 text-sm" placeholder="123" value={editForm.internal_phone} onChange={(e) => setEditForm((p) => ({ ...p, internal_phone: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Внешний телефон
-                </label>
-                <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="+7 (999) 123-45-67"
-                  value={editForm.external_phone}
-                  onChange={(e) => setEditForm((p) => ({ ...p, external_phone: e.target.value }))}
-                />
+                <label className="block text-sm font-medium text-gray-400 mb-1">Внешний телефон</label>
+                <input className="glass-input w-full px-4 py-3 text-sm" placeholder="+7 (999) 123-45-67" value={editForm.external_phone} onChange={(e) => setEditForm((p) => ({ ...p, external_phone: e.target.value }))} />
               </div>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                type="email"
-                placeholder="email@example.com"
-                value={editForm.email}
-                onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
+              <input className="glass-input w-full px-4 py-3 text-sm" type="email" placeholder="email@example.com" value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} />
             </div>
-
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-
+            {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setEditModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleEditSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-              >
-                Сохранить
-              </button>
+              <button onClick={() => setEditModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleEditSubmit} className="glass-button px-4 py-2 text-sm font-medium">Сохранить</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Модальное окно перевода сотрудника */}
       {transferModalOpen && transferEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-lg p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Перевод сотрудника
-            </h3>
-            <p className="text-sm text-gray-600">
-              Перевод: <strong>{transferEmployee.full_name}</strong>
-            </p>
-
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
-              <div className="text-gray-500 mb-1">Текущее назначение:</div>
-              <div>
-                <strong>Подразделение:</strong> {departments.find((d) => d.id === transferEmployee.department_id)?.name ?? 'Не указано'}
-              </div>
-              <div>
-                <strong>Должность:</strong> {positions.find((p) => p.id === transferEmployee.position_id)?.name ?? 'Не указано'}
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
+            <h3 className="text-lg font-semibold text-white">Перевод сотрудника</h3>
+            <p className="text-sm text-gray-400">Перевод: <strong className="text-white">{transferEmployee.full_name}</strong></p>
+            <div className="bg-dark-700/30 rounded-xl p-4 text-sm">
+              <div className="text-gray-500 mb-2">Текущее назначение:</div>
+              <div className="text-gray-400"><strong className="text-gray-300">Подразделение:</strong> {departments.find((d) => d.id === transferEmployee.department_id)?.name ?? 'Не указано'}</div>
+              <div className="text-gray-400"><strong className="text-gray-300">Должность:</strong> {positions.find((p) => p.id === transferEmployee.position_id)?.name ?? 'Не указано'}</div>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Новое подразделение <span className="text-red-500">*</span>
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={transferForm.new_department_id}
-                onChange={(e) => setTransferForm((p) => ({ ...p, new_department_id: e.target.value, new_position_id: '' }))}
-              >
-                <option value="">Выберите подразделение</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
+              <label className="block text-sm font-medium text-gray-400 mb-1">Новое подразделение <span className="text-red-400">*</span></label>
+              <select className="glass-input w-full px-4 py-3 text-sm" value={transferForm.new_department_id} onChange={(e) => setTransferForm((p) => ({ ...p, new_department_id: e.target.value, new_position_id: '' }))}>
+                <option value="" className="bg-dark-800">Выберите подразделение</option>
+                {departments.map((d) => <option key={d.id} value={d.id} className="bg-dark-800">{d.name}</option>)}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Новая должность <span className="text-red-500">*</span>
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={transferForm.new_position_id}
-                onChange={(e) => setTransferForm((p) => ({ ...p, new_position_id: e.target.value }))}
-              >
-                <option value="">Выберите должность</option>
-                {getFilteredPositions(transferForm.new_department_id).map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
+              <label className="block text-sm font-medium text-gray-400 mb-1">Новая должность <span className="text-red-400">*</span></label>
+              <select className="glass-input w-full px-4 py-3 text-sm" value={transferForm.new_position_id} onChange={(e) => setTransferForm((p) => ({ ...p, new_position_id: e.target.value }))}>
+                <option value="" className="bg-dark-800">Выберите должность</option>
+                {getFilteredPositions(transferForm.new_department_id).map((p) => <option key={p.id} value={p.id} className="bg-dark-800">{p.name}</option>)}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Дата перевода
-              </label>
-              <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                type="date"
-                value={transferForm.effective_date}
-                onChange={(e) => setTransferForm((p) => ({ ...p, effective_date: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Дата перевода</label>
+              <input className="glass-input w-full px-4 py-3 text-sm" type="date" value={transferForm.effective_date} onChange={(e) => setTransferForm((p) => ({ ...p, effective_date: e.target.value }))} />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Причина перевода
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[80px]"
-                placeholder="Например: Повышение в должности, Реорганизация отдела"
-                value={transferForm.reason}
-                onChange={(e) => setTransferForm((p) => ({ ...p, reason: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Причина перевода</label>
+              <textarea className="glass-input w-full px-4 py-3 text-sm min-h-[80px] resize-none" placeholder="Например: Повышение в должности, Реорганизация отдела" value={transferForm.reason} onChange={(e) => setTransferForm((p) => ({ ...p, reason: e.target.value }))} />
             </div>
-
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-
+            {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setTransferModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleTransferSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg"
-              >
-                Перевести
-              </button>
+              <button onClick={() => setTransferModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleTransferSubmit} className="px-4 py-2 text-sm font-medium text-amber-400 bg-amber-500/20 border border-amber-500/30 rounded-xl hover:bg-amber-500/30 transition-all">Перевести</button>
             </div>
           </div>
         </div>

@@ -175,88 +175,89 @@ export function DictionariesPage() {
   );
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Справочники</h2>
-        <p className="text-sm text-gray-500">
-          Управление справочниками системы.
-        </p>
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Справочники</h2>
+            <p className="text-gray-400">Управление справочниками системы</p>
+          </div>
+          <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
+            <Plus className="w-5 h-5" /> Добавить элемент
+          </button>
+        </div>
       </div>
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="flex flex-wrap gap-2 items-center">
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3 items-center">
         <select
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          className="glass-input px-4 py-2.5 text-sm"
           value={selectedType}
           onChange={(e) => setSelectedType(e.target.value)}
         >
-          <option value="">Все типы</option>
+          <option value="" className="bg-dark-800">Все типы</option>
           {DICTIONARY_TYPES.map((t) => (
-            <option key={t} value={t}>
+            <option key={t} value={t} className="bg-dark-800">
               {dictionaryTypeLabel[t] || t}
             </option>
           ))}
         </select>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-        >
-          <Plus className="w-4 h-4" /> Добавить элемент
-        </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-      {!loading && (
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : (
         <div className="space-y-6">
           {Object.entries(grouped).map(([type, items]) => (
-            <div
-              key={type}
-              className="bg-white rounded-xl border border-gray-200 p-4"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div key={type} className="glass-card p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 {dictionaryTypeLabel[type] || type}
               </h3>
               <div className="space-y-2">
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                    className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
                       item.is_active
-                        ? "bg-gray-50 border-gray-200"
-                        : "bg-gray-100 border-gray-300 opacity-60"
+                        ? "bg-dark-700/30 border-dark-600/50"
+                        : "bg-dark-800/50 border-dark-700/50 opacity-60"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      {item.is_system && (
-                        <Lock className="w-4 h-4 text-gray-500" />
-                      )}
+                      {item.is_system && <Lock className="w-4 h-4 text-gray-500" />}
                       {item.color && (
-                        <div
-                          className="w-4 h-4 rounded"
-                          style={{ backgroundColor: item.color }}
-                        />
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: item.color }} />
                       )}
                       <div>
-                        <div className="font-medium text-gray-900">
-                          {item.label}
-                        </div>
+                        <div className="font-medium text-white">{item.label}</div>
                         <div className="text-xs text-gray-500">{item.key}</div>
                       </div>
                       {item.is_active ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <CheckCircle className="w-4 h-4 text-green-400" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-gray-400" />
+                        <XCircle className="w-4 h-4 text-gray-500" />
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       {!item.is_system && (
                         <button
                           onClick={() => toggleActive(item)}
-                          className={`px-2 py-1 text-xs rounded ${
+                          className={`px-3 py-1.5 text-xs rounded-xl transition-all ${
                             item.is_active
-                              ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                              : "bg-green-100 text-green-700 hover:bg-green-200"
+                              ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30"
+                              : "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
                           }`}
                         >
                           {item.is_active ? "Деактивировать" : "Активировать"}
@@ -264,14 +265,14 @@ export function DictionariesPage() {
                       )}
                       <button
                         onClick={() => openEdit(item)}
-                        className="text-blue-600 hover:underline"
+                        className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       {!item.is_system && (
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="text-red-600 hover:underline"
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -287,28 +288,24 @@ export function DictionariesPage() {
 
       {/* Модальное окно создания/редактирования */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {editing
-                ? "Редактирование элемента"
-                : "Новый элемент справочника"}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">
+              {editing ? "Редактирование элемента" : "Новый элемент справочника"}
             </h3>
             {editing && editing.is_system && (
-              <p className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+              <p className="text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl">
                 Системный элемент: можно изменять только название, цвет и иконку
               </p>
             )}
             {!editing && (
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 value={form.dictionary_type}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, dictionary_type: e.target.value }))
-                }
+                onChange={(e) => setForm((p) => ({ ...p, dictionary_type: e.target.value }))}
               >
                 {DICTIONARY_TYPES.map((t) => (
-                  <option key={t} value={t}>
+                  <option key={t} value={t} className="bg-dark-800">
                     {dictionaryTypeLabel[t] || t}
                   </option>
                 ))}
@@ -316,7 +313,7 @@ export function DictionariesPage() {
             )}
             {!editing && (
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="Ключ (только латиница и _)"
                 value={form.key}
                 onChange={(e) =>
@@ -325,13 +322,12 @@ export function DictionariesPage() {
               />
             )}
             {editing && (
-              <div className="text-sm text-gray-500">
-                Ключ: <span className="font-mono">{form.key}</span> (нельзя
-                изменить)
+              <div className="text-sm text-gray-400">
+                Ключ: <span className="font-mono text-gray-300">{form.key}</span> (нельзя изменить)
               </div>
             )}
             <input
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название *"
               value={form.label}
               onChange={(e) =>
@@ -340,7 +336,7 @@ export function DictionariesPage() {
             />
             <div className="grid grid-cols-2 gap-2">
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 type="color"
                 placeholder="Цвет"
                 value={form.color || "#000000"}
@@ -349,7 +345,7 @@ export function DictionariesPage() {
                 }
               />
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="Иконка"
                 value={form.icon}
                 onChange={(e) =>
@@ -360,7 +356,7 @@ export function DictionariesPage() {
             {!editing || !editing.is_system ? (
               <>
                 <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="glass-input w-full px-4 py-3 text-sm"
                   type="number"
                   min="0"
                   placeholder="Порядок сортировки"
@@ -380,20 +376,20 @@ export function DictionariesPage() {
                       setForm((p) => ({ ...p, is_active: e.target.checked }))
                     }
                   />
-                  <span className="text-sm text-gray-700">Активен</span>
+                  <span className="text-sm text-gray-400">Активен</span>
                 </label>
               </>
             ) : null}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                className="glass-button px-4 py-2 text-sm font-medium"
               >
                 {editing ? "Сохранить" : "Создать"}
               </button>

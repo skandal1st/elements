@@ -150,179 +150,138 @@ export function ReportsPage() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Отчеты</h2>
-        <p className="text-sm text-gray-500">
-          Статистика по заявкам IT-отдела.
-        </p>
+      <div className="glass-card-purple p-6">
+        <h2 className="text-2xl font-bold text-white mb-1">Отчеты</h2>
+        <p className="text-gray-400">Статистика по заявкам IT-отдела</p>
       </div>
 
       {/* Фильтры */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+      <div className="glass-card p-6 space-y-4">
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => handlePresetClick("week")}
-            className={`px-3 py-1 text-sm rounded-lg ${
-              activePreset === "week"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Неделя
-          </button>
-          <button
-            onClick={() => handlePresetClick("month")}
-            className={`px-3 py-1 text-sm rounded-lg ${
-              activePreset === "month"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Месяц
-          </button>
-          <button
-            onClick={() => handlePresetClick("lastMonth")}
-            className={`px-3 py-1 text-sm rounded-lg ${
-              activePreset === "lastMonth"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Прошлый месяц
-          </button>
-          <button
-            onClick={() => handlePresetClick("year")}
-            className={`px-3 py-1 text-sm rounded-lg ${
-              activePreset === "year"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Год
-          </button>
+          {(["week", "month", "lastMonth", "year"] as const).map((preset) => (
+            <button
+              key={preset}
+              onClick={() => handlePresetClick(preset)}
+              className={`px-4 py-2 text-sm rounded-xl transition-all ${
+                activePreset === preset
+                  ? "bg-accent-purple/20 text-accent-purple border border-accent-purple/30"
+                  : "bg-dark-700/50 text-gray-400 border border-dark-600/50 hover:text-white hover:border-dark-500"
+              }`}
+            >
+              {preset === "week" && "Неделя"}
+              {preset === "month" && "Месяц"}
+              {preset === "lastMonth" && "Прошлый месяц"}
+              {preset === "year" && "Год"}
+            </button>
+          ))}
         </div>
-
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs text-gray-600 mb-1">От</label>
+            <label className="block text-xs text-gray-500 mb-1">От</label>
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setActivePreset("");
-              }}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+              onChange={(e) => { setDateFrom(e.target.value); setActivePreset(""); }}
+              className="glass-input w-full px-4 py-3 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">До</label>
+            <label className="block text-xs text-gray-500 mb-1">До</label>
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setActivePreset("");
-              }}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+              onChange={(e) => { setDateTo(e.target.value); setActivePreset(""); }}
+              className="glass-input w-full px-4 py-3 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">
-              Категория
-            </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
-            >
-              <option value="">Все</option>
+            <label className="block text-xs text-gray-500 mb-1">Категория</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="glass-input w-full px-4 py-3 text-sm">
+              <option value="" className="bg-dark-800">Все</option>
               {Object.keys(categoryLabel).map((c) => (
-                <option key={c} value={c}>
-                  {categoryLabel[c]}
-                </option>
+                <option key={c} value={c} className="bg-dark-800">{categoryLabel[c]}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">
-              Приоритет
-            </label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
-            >
-              <option value="">Все</option>
+            <label className="block text-xs text-gray-500 mb-1">Приоритет</label>
+            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="glass-input w-full px-4 py-3 text-sm">
+              <option value="" className="bg-dark-800">Все</option>
               {Object.keys(priorityLabel).map((p) => (
-                <option key={p} value={p}>
-                  {priorityLabel[p]}
-                </option>
+                <option key={p} value={p} className="bg-dark-800">{priorityLabel[p]}</option>
               ))}
             </select>
           </div>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
 
-      {loading && <p className="text-sm text-gray-500">Загрузка отчета…</p>}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      )}
 
       {!loading && reportData && (
         <div className="space-y-6">
           {/* Сводная статистика */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-5 h-5 text-blue-500" />
+                <FileText className="w-5 h-5 text-accent-purple" />
                 <span className="text-sm text-gray-600">Всего</span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-white">
                 {reportData.summary.total_tickets}
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <AlertCircle className="w-5 h-5 text-orange-500" />
                 <span className="text-sm text-gray-600">Открытые</span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-white">
                 {reportData.summary.open_tickets}
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-green-500" />
                 <span className="text-sm text-gray-600">Решены</span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-white">
                 {reportData.summary.resolved_tickets}
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-gray-500" />
                 <span className="text-sm text-gray-600">Закрыты</span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-white">
                 {reportData.summary.closed_tickets}
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-5 h-5 text-purple-500" />
-                <span className="text-sm text-gray-600">Среднее время</span>
+                <span className="text-sm text-gray-400">Среднее время</span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-white">
                 {formatHours(reportData.summary.avg_resolution_time_hours)}
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Star className="w-5 h-5 text-yellow-500" />
-                <span className="text-sm text-gray-600">Средний рейтинг</span>
+                <span className="text-sm text-gray-400">Средний рейтинг</span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-white">
                 {reportData.summary.avg_rating
                   ? reportData.summary.avg_rating.toFixed(1)
                   : "—"}
@@ -332,8 +291,8 @@ export function ReportsPage() {
 
           {/* Статистика по статусам и категориям */}
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="glass-card p-5">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 По статусам
               </h3>
               <div className="space-y-2">
@@ -342,10 +301,10 @@ export function ReportsPage() {
                     key={item.status}
                     className="flex justify-between items-center"
                   >
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-400">
                       {statusLabel[item.status] || item.status}
                     </span>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-white">
                       {item.count}
                     </span>
                   </div>
@@ -353,8 +312,8 @@ export function ReportsPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="glass-card p-5">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 По категориям
               </h3>
               <div className="space-y-2">
@@ -363,10 +322,10 @@ export function ReportsPage() {
                     key={item.category}
                     className="flex justify-between items-center"
                   >
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-400">
                       {categoryLabel[item.category] || item.category}
                     </span>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-white">
                       {item.count}
                     </span>
                   </div>
@@ -377,39 +336,29 @@ export function ReportsPage() {
 
           {/* Топ пользователей */}
           {reportData.top_creators.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="glass-card p-5">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 Топ пользователей по количеству заявок
               </h3>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">
-                        Пользователь
-                      </th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">
-                        Отдел
-                      </th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">
-                        Заявок
-                      </th>
+                  <thead>
+                    <tr className="border-b border-dark-600/50">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Отдел</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Заявок</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.top_creators.map((creator) => (
                       <tr
                         key={creator.user_id}
-                        className="border-t border-gray-100"
+                        className="border-t border-dark-700/50"
                       >
-                        <td className="px-4 py-2">{creator.user_name}</td>
-                        <td className="px-4 py-2 text-gray-600">
-                          {creator.department || "—"}
-                        </td>
-                        <td className="px-4 py-2 text-right font-medium">
-                          {creator.ticket_count}
-                        </td>
+                        <td className="px-4 py-3 text-white">{creator.user_name}</td>
+                        <td className="px-4 py-3 text-gray-400">{creator.department || "—"}</td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-300">{creator.ticket_count}</td>
                       </tr>
                     ))}
                   </tbody>

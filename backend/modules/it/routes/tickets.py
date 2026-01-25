@@ -1,5 +1,6 @@
 """Роуты /it/tickets — заявки (тикеты)."""
 
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -8,9 +9,16 @@ from sqlalchemy.orm import Session
 
 from backend.modules.hr.models.user import User
 from backend.modules.it.dependencies import get_current_user, get_db, require_it_roles
-from backend.modules.it.models import Ticket, TicketHistory
+from backend.modules.it.models import (
+    Consumable,
+    ConsumableIssue,
+    Ticket,
+    TicketConsumable,
+    TicketHistory,
+)
 from backend.modules.it.schemas.ticket import (
     TicketAssignUser,
+    TicketConsumableOut,
     TicketCreate,
     TicketHistoryOut,
     TicketOut,
@@ -183,10 +191,20 @@ def update_ticket(
             raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
         update_data = payload.model_dump(exclude_unset=True)
         # Сотрудники не могут менять критические поля
-        for k in ("status", "assignee_id", "priority", "resolved_at", "closed_at"):
+        for k in (
+            "status",
+            "assignee_id",
+            "priority",
+            "resolved_at",
+            "closed_at",
+            "consumables",
+        ):
             update_data.pop(k, None)
     else:
         update_data = payload.model_dump(exclude_unset=True)
+
+    # Извлекаем расходники отдельно
+    consumables_data = update_data.pop("consumables", None)
 
     # Сохраняем старые значения для логирования
     old_data = {
@@ -205,6 +223,24 @@ def update_ticket(
     # Применяем изменения
     for k, v in update_data.items():
         setattr(t, k, v)
+
+    # Сохраняем расходники если переданы
+    if consumables_data is not None:
+        # Удаляем старые несписанные расходники
+        db.query(TicketConsumable).filter(
+            TicketConsumable.ticket_id == ticket_id,
+            TicketConsumable.is_written_off == False,
+        ).delete()
+
+        # Добавляем новые
+        for item in consumables_data:
+            tc = TicketConsumable(
+                ticket_id=ticket_id,
+                consumable_id=item["consumable_id"],
+                quantity=item.get("quantity", 1),
+                is_written_off=False,
+            )
+            db.add(tc)
 
     # Логируем изменения
     log_ticket_changes(
@@ -290,3 +326,139 @@ def delete_ticket(
     db.delete(t)
     db.commit()
     return {"message": "Заявка удалена"}
+
+
+# --- Расходники тикета ---
+
+
+@router.get(
+    "/{ticket_id}/consumables",
+    response_model=List[TicketConsumableOut],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+)
+def get_ticket_consumables(
+    ticket_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> List[dict]:
+    """Получить расходники привязанные к тикету"""
+    t = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    role = _user_it_role(user)
+    if role == "employee" and t.creator_id != user.id:
+        raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
+
+    # Получаем расходники с JOIN на Consumable
+    ticket_consumables = (
+        db.query(TicketConsumable, Consumable.name, Consumable.model)
+        .join(Consumable, TicketConsumable.consumable_id == Consumable.id)
+        .filter(TicketConsumable.ticket_id == ticket_id)
+        .all()
+    )
+
+    result = []
+    for tc, name, model in ticket_consumables:
+        result.append(
+            {
+                "id": tc.id,
+                "ticket_id": tc.ticket_id,
+                "consumable_id": tc.consumable_id,
+                "consumable_name": name,
+                "consumable_model": model,
+                "quantity": tc.quantity,
+                "is_written_off": tc.is_written_off,
+                "written_off_at": tc.written_off_at,
+                "created_at": tc.created_at,
+            }
+        )
+
+    return result
+
+
+@router.post(
+    "/{ticket_id}/write-off-consumables",
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist"]))],
+)
+def write_off_ticket_consumables(
+    ticket_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Списать расходники тикета со склада.
+
+    Создает записи ConsumableIssue и уменьшает quantity_in_stock.
+    Вызывается при закрытии тикета или вручную.
+    """
+    t = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    # Получаем несписанные расходники тикета
+    ticket_consumables = (
+        db.query(TicketConsumable)
+        .filter(
+            TicketConsumable.ticket_id == ticket_id,
+            TicketConsumable.is_written_off == False,
+        )
+        .all()
+    )
+
+    if not ticket_consumables:
+        return {"message": "Нет расходников для списания", "written_off": 0}
+
+    written_off = []
+    errors = []
+
+    for tc in ticket_consumables:
+        consumable = (
+            db.query(Consumable).filter(Consumable.id == tc.consumable_id).first()
+        )
+        if not consumable:
+            errors.append(f"Расходник {tc.consumable_id} не найден")
+            continue
+
+        if consumable.quantity_in_stock < tc.quantity:
+            errors.append(
+                f"Недостаточно расходника '{consumable.name}' на складе "
+                f"(есть: {consumable.quantity_in_stock}, нужно: {tc.quantity})"
+            )
+            continue
+
+        # Создаем запись о выдаче
+        issue = ConsumableIssue(
+            consumable_id=tc.consumable_id,
+            quantity=tc.quantity,
+            issued_to_id=t.creator_id,  # Выдаем создателю тикета
+            issued_by_id=user.id,
+            reason=f"Списание по заявке #{str(ticket_id)[:8]}",
+        )
+        db.add(issue)
+
+        # Уменьшаем количество на складе
+        consumable.quantity_in_stock -= tc.quantity
+
+        # Помечаем как списанное
+        tc.is_written_off = True
+        tc.written_off_at = datetime.utcnow()
+
+        written_off.append(
+            {
+                "consumable_id": str(tc.consumable_id),
+                "consumable_name": consumable.name,
+                "quantity": tc.quantity,
+            }
+        )
+
+    db.commit()
+
+    result = {
+        "message": f"Списано расходников: {len(written_off)}",
+        "written_off": written_off,
+    }
+    if errors:
+        result["errors"] = errors
+
+    return result

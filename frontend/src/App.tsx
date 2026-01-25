@@ -1,12 +1,20 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Sidebar } from "./shared/components/layout/Sidebar";
 import { Header } from "./shared/components/layout/Header";
+import { useUIStore } from "./shared/store/ui.store";
 import { Dashboard } from "./modules/portal/Dashboard";
 import { LoginPage } from "./pages/LoginPage";
 import { useAuthStore } from "./shared/store/auth.store";
 import { HRLayout } from "./modules/hr/HRLayout";
 import { ITLayout } from "./modules/it/ITLayout";
+import { TasksLayout } from "./modules/tasks/TasksLayout";
 import { Phonebook } from "./modules/hr/pages/Phonebook";
 import { Birthdays } from "./modules/hr/pages/Birthdays";
 import { OrgChart } from "./modules/hr/pages/OrgChart";
@@ -20,6 +28,9 @@ import { ReportsPage } from "./modules/it/pages/ReportsPage";
 import { LicensesPage } from "./modules/it/pages/LicensesPage";
 import { DictionariesPage } from "./modules/it/pages/DictionariesPage";
 import { SettingsPage } from "./modules/it/pages/SettingsPage";
+import { ProjectsPage } from "./modules/tasks/pages/ProjectsPage";
+import { TaskBoardPage } from "./modules/tasks/pages/TaskBoardPage";
+import { TaskListPage } from "./modules/tasks/pages/TaskListPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token);
@@ -117,6 +128,7 @@ function ModuleRoute({
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const location = useLocation();
+  const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed);
 
   // На странице логина не показываем Sidebar и Header
   if (location.pathname === "/login" || !isAuthenticated) {
@@ -126,9 +138,11 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Sidebar />
-      <div className="md:ml-64">
+      <div
+        className={`transition-all duration-300 ${sidebarCollapsed ? "md:ml-20" : "md:ml-72"}`}
+      >
         <Header />
-        <main className="p-6">{children}</main>
+        <main className="p-6 bg-dark-900 min-h-[calc(100vh-73px)]">{children}</main>
       </div>
     </>
   );
@@ -156,10 +170,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route
-            index
-            element={<Navigate to="/hr/phonebook" replace />}
-          />
+          <Route index element={<Navigate to="/hr/phonebook" replace />} />
           <Route path="phonebook" element={<Phonebook />} />
           <Route path="birthdays" element={<Birthdays />} />
           <Route path="org" element={<OrgChart />} />
@@ -176,10 +187,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route
-            index
-            element={<Navigate to="/it/equipment" replace />}
-          />
+          <Route index element={<Navigate to="/it/equipment" replace />} />
           <Route path="equipment" element={<EquipmentPage />} />
           <Route path="tickets" element={<TicketsPage />} />
           <Route path="consumables" element={<ConsumablesPage />} />
@@ -191,6 +199,21 @@ function AppRoutes() {
           <Route path="licenses" element={<LicensesPage />} />
           <Route path="dictionaries" element={<DictionariesPage />} />
           <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        <Route
+          path="/tasks"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="tasks">
+                <TasksLayout />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/tasks/projects" replace />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="board" element={<TaskBoardPage />} />
+          <Route path="my" element={<TaskListPage />} />
         </Route>
         <Route
           path="/finance/*"
@@ -212,22 +235,24 @@ function AppRoutes() {
 function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
   const checkTokenExpiry = useAuthStore((state) => state.checkTokenExpiry);
+  const loadUIFromStorage = useUIStore((state) => state.loadFromStorage);
 
   useEffect(() => {
     // Загружаем данные из localStorage при старте
     loadFromStorage();
-    
+    loadUIFromStorage();
+
     // Периодически проверяем срок действия токена (каждые 30 секунд)
     const interval = setInterval(() => {
       checkTokenExpiry();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [loadFromStorage, checkTokenExpiry]);
+  }, [loadFromStorage, checkTokenExpiry, loadUIFromStorage]);
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-dark-900 transition-colors">
         <AppRoutes />
       </div>
     </BrowserRouter>

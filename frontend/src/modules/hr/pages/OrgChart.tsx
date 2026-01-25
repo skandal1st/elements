@@ -201,50 +201,51 @@ export function OrgChart() {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Оргструктура</h2>
-          <p className="text-sm text-gray-500">Дерево отделов, должностей и сотрудников.</p>
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Оргструктура</h2>
+            <p className="text-gray-400">Дерево отделов, должностей и сотрудников</p>
+          </div>
+          <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
+            <Plus className="w-5 h-5" /> Добавить подразделение
+          </button>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-        >
-          <Plus className="w-4 h-4" />
-          Добавить подразделение
-        </button>
       </div>
 
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-
-      {!loading && items.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">Подразделения не найдены</p>
-          <button
-            onClick={openCreate}
-            className="mt-4 text-blue-600 hover:underline text-sm"
-          >
-            Создать первое подразделение
-          </button>
+      {message && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{message}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
 
-      {!loading && items.length > 0 && (
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="glass-card text-center py-12">
+          <Building2 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-400 mb-4">Подразделения не найдены</p>
+          <button onClick={openCreate} className="text-accent-purple hover:text-accent-blue text-sm font-medium transition-colors">
+            Создать первое подразделение
+          </button>
+        </div>
+      ) : (
         <div className="space-y-4">
           {items.map((dept) => {
             const deptData = findDepartment(dept.id)
             return (
-              <div
-                key={dept.id}
-                className="bg-white rounded-xl border border-gray-200 p-4"
-              >
+              <div key={dept.id} className="glass-card p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-white">
                       {dept.name}
                       {dept.parent_department_id && (
                         <span className="ml-2 text-sm font-normal text-gray-500">
@@ -256,88 +257,52 @@ export function OrgChart() {
                       <p className="text-sm text-gray-500 mt-1">{deptData.description}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => deptData && openEdit(deptData)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Редактировать"
-                    >
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => deptData && openEdit(deptData)} className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => deptData && handleDelete(deptData)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Удалить"
-                    >
+                    <button onClick={() => deptData && handleDelete(deptData)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Удалить">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <div className="mt-3 space-y-3">
-                  {/* Отображаем должности из списка positions, отфильтрованные по подразделению */}
+                <div className="mt-4 space-y-3">
                   {positions
                     .filter((pos) => pos.department_id === dept.id)
                     .map((pos) => {
-                      // Находим данные о сотрудниках из orgData
                       const orgPos = dept.positions.find((p) => p.id === pos.id)
                       const employees = orgPos?.employees || []
                       return (
-                        <div
-                          key={pos.id}
-                          className="pl-4 border-l-2 border-gray-200"
-                        >
+                        <div key={pos.id} className="pl-4 border-l-2 border-dark-600/50">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Briefcase className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm font-medium text-gray-800">
-                                {pos.name}
-                              </span>
+                              <Briefcase className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm font-medium text-white">{pos.name}</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => openEditPosition(pos)}
-                                className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                title="Редактировать должность"
-                              >
+                              <button onClick={() => openEditPosition(pos)} className="p-1.5 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать должность">
                                 <Edit className="w-3 h-3" />
                               </button>
-                              <button
-                                onClick={() => handleDeletePosition(pos)}
-                                className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                title="Удалить должность"
-                              >
+                              <button onClick={() => handleDeletePosition(pos)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Удалить должность">
                                 <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
                           </div>
-                          {pos.description && (
-                            <p className="text-xs text-gray-500 mt-1 ml-6">{pos.description}</p>
-                          )}
+                          {pos.description && <p className="text-xs text-gray-500 mt-1 ml-6">{pos.description}</p>}
                           <ul className="mt-2 ml-6 space-y-1">
                             {employees.map((emp) => (
-                              <li
-                                key={emp.id}
-                                className="text-sm text-gray-600"
-                              >
-                                {emp.full_name}
-                              </li>
+                              <li key={emp.id} className="text-sm text-gray-400">{emp.full_name}</li>
                             ))}
-                            {employees.length === 0 && (
-                              <li className="text-xs text-gray-400 italic">Нет сотрудников</li>
-                            )}
+                            {employees.length === 0 && <li className="text-xs text-gray-500 italic">Нет сотрудников</li>}
                           </ul>
                         </div>
                       )
                     })}
                   {positions.filter((pos) => pos.department_id === dept.id).length === 0 && (
-                    <p className="text-sm text-gray-400 italic">Нет должностей</p>
+                    <p className="text-sm text-gray-500 italic">Нет должностей</p>
                   )}
-                  <button
-                    onClick={() => openCreatePosition(dept.id)}
-                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Добавить должность
+                  <button onClick={() => openCreatePosition(dept.id)} className="flex items-center gap-1 text-sm text-accent-purple hover:text-accent-blue mt-2 font-medium transition-colors">
+                    <Plus className="w-4 h-4" /> Добавить должность
                   </button>
                 </div>
               </div>
@@ -346,147 +311,59 @@ export function OrgChart() {
         </div>
       )}
 
-      {/* Модальное окно создания/редактирования */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {editing ? 'Редактирование подразделения' : 'Новое подразделение'}
-            </h3>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">{editing ? 'Редактирование подразделения' : 'Новое подразделение'}</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Название <span className="text-red-500">*</span>
-              </label>
-              <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Например: Отдел разработки"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Название <span className="text-red-400">*</span></label>
+              <input className="glass-input w-full px-4 py-3 text-sm" placeholder="Например: Отдел разработки" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Родительское подразделение
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={form.parent_department_id}
-                onChange={(e) => setForm((p) => ({ ...p, parent_department_id: e.target.value }))}
-              >
-                <option value="">Нет (верхний уровень)</option>
-                {departments
-                  .filter((d) => d.id !== editing?.id) // Нельзя выбрать самого себя
-                  .map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
+              <label className="block text-sm font-medium text-gray-400 mb-1">Родительское подразделение</label>
+              <select className="glass-input w-full px-4 py-3 text-sm" value={form.parent_department_id} onChange={(e) => setForm((p) => ({ ...p, parent_department_id: e.target.value }))}>
+                <option value="" className="bg-dark-800">Нет (верхний уровень)</option>
+                {departments.filter((d) => d.id !== editing?.id).map((d) => (
+                  <option key={d.id} value={d.id} className="bg-dark-800">{d.name}</option>
+                ))}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Описание
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[80px]"
-                placeholder="Краткое описание подразделения"
-                value={form.description}
-                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Описание</label>
+              <textarea className="glass-input w-full px-4 py-3 text-sm min-h-[80px] resize-none" placeholder="Краткое описание подразделения" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
             </div>
-
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-
+            {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-              >
-                {editing ? 'Сохранить' : 'Создать'}
-              </button>
+              <button onClick={() => setModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleSubmit} className="glass-button px-4 py-2 text-sm font-medium">{editing ? 'Сохранить' : 'Создать'}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Модальное окно создания/редактирования должности */}
       {positionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {editingPosition ? 'Редактирование должности' : 'Новая должность'}
-            </h3>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">{editingPosition ? 'Редактирование должности' : 'Новая должность'}</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Название <span className="text-red-500">*</span>
-              </label>
-              <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Например: Ведущий разработчик"
-                value={positionForm.name}
-                onChange={(e) => setPositionForm((p) => ({ ...p, name: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Название <span className="text-red-400">*</span></label>
+              <input className="glass-input w-full px-4 py-3 text-sm" placeholder="Например: Ведущий разработчик" value={positionForm.name} onChange={(e) => setPositionForm((p) => ({ ...p, name: e.target.value }))} />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Подразделение
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={positionForm.department_id}
-                onChange={(e) => setPositionForm((p) => ({ ...p, department_id: e.target.value }))}
-              >
-                <option value="">Не указано</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
+              <label className="block text-sm font-medium text-gray-400 mb-1">Подразделение</label>
+              <select className="glass-input w-full px-4 py-3 text-sm" value={positionForm.department_id} onChange={(e) => setPositionForm((p) => ({ ...p, department_id: e.target.value }))}>
+                <option value="" className="bg-dark-800">Не указано</option>
+                {departments.map((d) => <option key={d.id} value={d.id} className="bg-dark-800">{d.name}</option>)}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Описание
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[80px]"
-                placeholder="Краткое описание должности и обязанностей"
-                value={positionForm.description}
-                onChange={(e) => setPositionForm((p) => ({ ...p, description: e.target.value }))}
-              />
+              <label className="block text-sm font-medium text-gray-400 mb-1">Описание</label>
+              <textarea className="glass-input w-full px-4 py-3 text-sm min-h-[80px] resize-none" placeholder="Краткое описание должности и обязанностей" value={positionForm.description} onChange={(e) => setPositionForm((p) => ({ ...p, description: e.target.value }))} />
             </div>
-
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-
+            {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setPositionModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handlePositionSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
-              >
-                {editingPosition ? 'Сохранить' : 'Создать'}
-              </button>
+              <button onClick={() => setPositionModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handlePositionSubmit} className="glass-button px-4 py-2 text-sm font-medium">{editingPosition ? 'Сохранить' : 'Создать'}</button>
             </div>
           </div>
         </div>

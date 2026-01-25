@@ -11,6 +11,7 @@ from .routes import (
     buildings,
     consumables,
     dictionaries,
+    email,
     equipment,
     equipment_catalog,
     equipment_history,
@@ -19,9 +20,11 @@ from .routes import (
     notifications,
     reports,
     rooms,
+    telegram,
     ticket_comments,
     tickets,
     users,
+    zabbix,
 )
 from .routes import (
     settings as settings_routes,
@@ -44,6 +47,9 @@ router.include_router(rooms.router)
 router.include_router(buildings.router)
 router.include_router(users.router)
 router.include_router(settings_routes.router)
+router.include_router(zabbix.router)
+router.include_router(telegram.router)
+router.include_router(email.router)
 
 
 @router.get("/")

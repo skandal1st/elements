@@ -1,11 +1,15 @@
 from dataclasses import dataclass
 from typing import List
+from uuid import UUID
 
 import httpx
 from ldap3 import ALL, Connection, Server
+from sqlalchemy.orm import Session
 
 from backend.core.config import settings
 from backend.modules.hr.utils.naming import generate_corporate_email
+from backend.modules.it.services.equipment_service import get_equipment_by_owner
+from backend.modules.it.services.ticket_service import create_ticket_from_hr
 
 
 @dataclass
@@ -41,119 +45,57 @@ def block_it_accounts(account_ids: List[str]) -> None:
     return None
 
 
-def _fetch_supporit_user_id(
-    client: httpx.Client, base_url: str, email: str
-) -> str | None:
-    response = client.get(f"{base_url}/users")
-    response.raise_for_status()
-    payload = response.json()
-    for user in payload.get("data", []):
-        if user.get("email") == email:
-            return user.get("id")
-    return None
+def create_it_ticket(
+    db: Session,
+    title: str,
+    description: str,
+    category: str = "hr",
+    priority: str = "medium",
+    creator_id: UUID | None = None,
+) -> bool:
+    """Создать тикет в IT-модуле (внутренний вызов через SQLAlchemy).
 
+    Args:
+        db: SQLAlchemy сессия
+        title: Заголовок тикета
+        description: Описание тикета
+        category: Категория тикета
+        priority: Приоритет тикета
+        creator_id: UUID создателя (опционально)
 
-def fetch_supporit_users() -> list[dict]:
-    if not settings.supporit_api_url or not settings.supporit_token:
-        return []
-    base_url = settings.supporit_api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
+    Returns:
+        True если тикет создан успешно
+    """
     try:
-        with httpx.Client(
-            timeout=settings.supporit_timeout_seconds, headers=headers
-        ) as client:
-            response = client.get(f"{base_url}/users")
-            response.raise_for_status()
-            payload = response.json()
-            return payload.get("data", [])
-    except httpx.HTTPError:
-        return []
-
-
-def update_supporit_user(user_id: str, payload: dict) -> bool:
-    if not settings.supporit_api_url or not settings.supporit_token:
-        return False
-    base_url = settings.supporit_api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
-    try:
-        with httpx.Client(
-            timeout=settings.supporit_timeout_seconds, headers=headers
-        ) as client:
-            response = client.put(f"{base_url}/users/{user_id}", json=payload)
-            response.raise_for_status()
-            return True
-    except httpx.HTTPError:
+        create_ticket_from_hr(
+            db=db,
+            title=title,
+            description=description,
+            category=category,
+            priority=priority,
+            creator_id=creator_id,
+        )
+        return True
+    except Exception:
         return False
 
 
-def create_supporit_user(
-    email: str,
-    full_name: str,
-    department: str | None = None,
-    position: str | None = None,
-    phone: str | None = None,
-) -> dict | None:
-    """Создать пользователя в SupportIT"""
-    if not settings.supporit_api_url or not settings.supporit_token:
-        return None
-    base_url = settings.supporit_api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
-    payload = {
-        "email": email,
-        "full_name": full_name,
-        "department": department,
-        "position": position,
-        "phone": phone,
-    }
-    try:
-        with httpx.Client(
-            timeout=settings.supporit_timeout_seconds, headers=headers
-        ) as client:
-            response = client.post(f"{base_url}/users", json=payload)
-            response.raise_for_status()
-            return response.json().get("data")
-    except httpx.HTTPError:
-        return None
+def fetch_equipment_for_employee(
+    db: Session,
+    employee_id: int,
+    email: str | None = None,
+) -> list[dict]:
+    """Получить оборудование сотрудника (внутренний вызов через SQLAlchemy).
 
+    Args:
+        db: SQLAlchemy сессия
+        employee_id: ID сотрудника
+        email: Email сотрудника (для альтернативного поиска)
 
-def sync_users_to_supporit(users: list[dict]) -> dict:
-    """Массовая синхронизация пользователей в SupportIT"""
-    if not settings.supporit_api_url or not settings.supporit_token:
-        return {"success": False, "error": "SupportIT not configured"}
-    base_url = settings.supporit_api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
-    payload = {"users": users}
-    try:
-        with httpx.Client(
-            timeout=settings.supporit_timeout_seconds * 3, headers=headers
-        ) as client:
-            response = client.post(f"{base_url}/sync/users", json=payload)
-            response.raise_for_status()
-            return response.json()
-    except httpx.HTTPError as e:
-        return {"success": False, "error": str(e)}
-
-
-def create_supporit_ticket(title: str, description: str, category: str = "hr") -> bool:
-    if not settings.supporit_api_url or not settings.supporit_token:
-        return False
-    base_url = settings.supporit_api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
-    payload = {
-        "title": title,
-        "description": description,
-        "category": category,
-        "priority": "medium",
-    }
-    try:
-        with httpx.Client(
-            timeout=settings.supporit_timeout_seconds, headers=headers
-        ) as client:
-            response = client.post(f"{base_url}/tickets", json=payload)
-            response.raise_for_status()
-            return True
-    except httpx.HTTPError:
-        return False
+    Returns:
+        Список оборудования в виде словарей
+    """
+    return get_equipment_by_owner(db=db, employee_id=employee_id, email=email)
 
 
 def ad_sync_users() -> list[dict]:
@@ -305,33 +247,5 @@ def fetch_zup_employees() -> list[dict]:
             response.raise_for_status()
             payload = response.json()
             return payload.get("value", payload.get("data", []))
-    except httpx.HTTPError:
-        return []
-
-
-def fetch_equipment_for_employee(
-    employee_id: int, email: str | None = None
-) -> list[dict]:
-    if not settings.supporit_api_url or not settings.supporit_token:
-        return []
-
-    base_url = settings.supporit_api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
-
-    try:
-        with httpx.Client(
-            timeout=settings.supporit_timeout_seconds, headers=headers
-        ) as client:
-            owner_id = str(employee_id)
-            if email:
-                resolved_id = _fetch_supporit_user_id(client, base_url, email)
-                if resolved_id:
-                    owner_id = resolved_id
-            response = client.get(
-                f"{base_url}/equipment", params={"owner_id": owner_id}
-            )
-            response.raise_for_status()
-            payload = response.json()
-            return payload.get("data", [])
     except httpx.HTTPError:
         return []

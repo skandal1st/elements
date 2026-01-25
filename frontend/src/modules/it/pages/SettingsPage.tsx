@@ -393,18 +393,16 @@ export function SettingsPage() {
             type="checkbox"
             checked={value || false}
             onChange={(e) => updateSetting(group, key, e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300"
+            className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
           />
-          <span className="text-sm text-gray-700">{label}</span>
+          <span className="text-sm text-gray-400">{label}</span>
         </label>
       );
     }
 
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-        </label>
+        <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
         <input
           type={type}
           value={value ?? ""}
@@ -412,13 +410,11 @@ export function SettingsPage() {
             updateSetting(
               group,
               key,
-              type === "number"
-                ? parseInt(e.target.value) || 0
-                : e.target.value,
+              type === "number" ? parseInt(e.target.value) || 0 : e.target.value,
             )
           }
           placeholder={placeholder}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="glass-input w-full px-4 py-3 text-sm"
         />
       </div>
     );
@@ -431,19 +427,16 @@ export function SettingsPage() {
     options: { value: string; label: string }[],
   ) => {
     const value = (settings[group] as any)?.[key];
-
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-        </label>
+        <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
         <select
           value={value ?? ""}
           onChange={(e) => updateSetting(group, key, e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="glass-input w-full px-4 py-3 text-sm"
         >
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option key={opt.value} value={opt.value} className="bg-dark-800">
               {opt.label}
             </option>
           ))}
@@ -453,30 +446,31 @@ export function SettingsPage() {
   };
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Настройки</h2>
-        <p className="text-sm text-gray-500">Системные настройки IT модуля.</p>
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <h2 className="text-2xl font-bold text-white mb-1">Настройки</h2>
+        <p className="text-gray-400">Системные настройки IT модуля</p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-          {success}
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400">{success}</p>
         </div>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Загрузка...</p>
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {/* Табы */}
-          <div className="border-b border-gray-200 bg-gray-50">
+        <div className="glass-card overflow-hidden">
+          <div className="border-b border-dark-600/50">
             <div className="flex flex-wrap">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
@@ -484,10 +478,10 @@ export function SettingsPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
                       activeTab === tab.id
-                        ? "border-blue-500 text-blue-600 bg-white"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
+                        ? "border-accent-purple text-accent-purple"
+                        : "border-transparent text-gray-500 hover:text-gray-300"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -498,12 +492,10 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {/* Контент табов */}
           <div className="p-6">
-            {/* Общие настройки */}
             {activeTab === "general" && (
               <div className="space-y-4 max-w-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <h3 className="text-lg font-semibold text-white mb-4">
                   Общие настройки
                 </h3>
                 {renderInput(
@@ -557,12 +549,12 @@ export function SettingsPage() {
             {activeTab === "buildings" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-white">
                     Управление зданиями
                   </h3>
                   <button
                     onClick={() => openBuildingModal()}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
                   >
                     <Plus className="w-4 h-4" />
                     Добавить здание
@@ -576,36 +568,28 @@ export function SettingsPage() {
                     Нет зданий. Добавьте первое здание.
                   </p>
                 ) : (
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Название
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Адрес
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Статус
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                            Действия
-                          </th>
+                  <div className="rounded-xl overflow-hidden border border-dark-600/50">
+                    <table className="min-w-full">
+                      <thead>
+                        <tr className="border-b border-dark-600/50">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Адрес</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="divide-y divide-dark-700/50">
                         {buildings.map((b) => (
-                          <tr key={b.id}>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          <tr key={b.id} className="hover:bg-dark-700/30 transition-colors">
+                            <td className="px-4 py-3 text-sm font-medium text-white">
                               {b.name}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {b.address || "—"}
                             </td>
                             <td className="px-4 py-3 text-sm">
                               <span
-                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${b.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${b.is_active ? "bg-green-500/20 text-green-400" : "bg-dark-600/50 text-gray-400"}`}
                               >
                                 {b.is_active ? "Активно" : "Неактивно"}
                               </span>
@@ -613,13 +597,13 @@ export function SettingsPage() {
                             <td className="px-4 py-3 text-sm text-right">
                               <button
                                 onClick={() => openBuildingModal(b)}
-                                className="text-blue-600 hover:text-blue-800 mr-3"
+                                className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg mr-1 transition-all"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteBuilding(b.id)}
-                                className="text-red-600 hover:text-red-800"
+                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -637,12 +621,12 @@ export function SettingsPage() {
             {activeTab === "rooms" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-white">
                     Управление кабинетами
                   </h3>
                   <button
                     onClick={() => openRoomModal()}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={buildings.length === 0}
                   >
                     <Plus className="w-4 h-4" />
@@ -650,19 +634,16 @@ export function SettingsPage() {
                   </button>
                 </div>
 
-                {/* Фильтр по зданию */}
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Здание:
-                  </label>
+                  <label className="text-sm font-medium text-gray-400">Здание:</label>
                   <select
                     value={selectedBuildingId}
                     onChange={(e) => handleBuildingFilterChange(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="glass-input px-4 py-2.5 text-sm"
                   >
-                    <option value="">Все здания</option>
+                    <option value="" className="bg-dark-800">Все здания</option>
                     {buildings.map((b) => (
-                      <option key={b.id} value={b.id}>
+                      <option key={b.id} value={b.id} className="bg-dark-800">
                         {b.name}
                       </option>
                     ))}
@@ -678,56 +659,38 @@ export function SettingsPage() {
                       : "Нет кабинетов. Добавьте первый кабинет."}
                   </p>
                 ) : (
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Кабинет
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Здание
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Этаж
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Статус
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                            Действия
-                          </th>
+                  <div className="rounded-xl overflow-hidden border border-dark-600/50">
+                    <table className="min-w-full">
+                      <thead>
+                        <tr className="border-b border-dark-600/50">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Кабинет</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Здание</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Этаж</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="divide-y divide-dark-700/50">
                         {rooms.map((r) => (
-                          <tr key={r.id}>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                              {r.name}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
-                              {r.building_name || "—"}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
-                              {r.floor ?? "—"}
-                            </td>
+                          <tr key={r.id} className="hover:bg-dark-700/30 transition-colors">
+                            <td className="px-4 py-3 text-sm font-medium text-white">{r.name}</td>
+                            <td className="px-4 py-3 text-sm text-gray-400">{r.building_name || "—"}</td>
+                            <td className="px-4 py-3 text-sm text-gray-400">{r.floor ?? "—"}</td>
                             <td className="px-4 py-3 text-sm">
-                              <span
-                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${r.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                              >
+                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${r.is_active ? "bg-green-500/20 text-green-400" : "bg-dark-600/50 text-gray-400"}`}>
                                 {r.is_active ? "Активен" : "Неактивен"}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-right">
                               <button
                                 onClick={() => openRoomModal(r)}
-                                className="text-blue-600 hover:text-blue-800 mr-3"
+                                className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg mr-1 transition-all"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteRoom(r.id)}
-                                className="text-red-600 hover:text-red-800"
+                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -745,12 +708,12 @@ export function SettingsPage() {
             {activeTab === "email" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-white">
                     Настройки SMTP (отправка)
                   </h3>
                   <button
                     onClick={() => testConnection("smtp")}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50"
+                    className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
                   >
                     <TestTube className="w-4 h-4" />
                     Тест
@@ -799,12 +762,12 @@ export function SettingsPage() {
             {activeTab === "imap" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-white">
                     Настройки IMAP (получение)
                   </h3>
                   <button
                     onClick={() => testConnection("imap")}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50"
+                    className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
                   >
                     <TestTube className="w-4 h-4" />
                     Тест
@@ -846,7 +809,7 @@ export function SettingsPage() {
             {/* Telegram настройки */}
             {activeTab === "telegram" && (
               <div className="space-y-4 max-w-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <h3 className="text-lg font-semibold text-white mb-4">
                   Настройки Telegram бота
                 </h3>
                 {renderInput(
@@ -878,7 +841,7 @@ export function SettingsPage() {
             {/* Zabbix настройки */}
             {activeTab === "zabbix" && (
               <div className="space-y-4 max-w-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <h3 className="text-lg font-semibold text-white mb-4">
                   Настройки Zabbix
                 </h3>
                 {renderInput(
@@ -909,12 +872,12 @@ export function SettingsPage() {
             {activeTab === "ldap" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-white">
                     Настройки Active Directory / LDAP
                   </h3>
                   <button
                     onClick={() => testConnection("ldap")}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50"
+                    className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
                   >
                     <TestTube className="w-4 h-4" />
                     Тест
@@ -972,7 +935,7 @@ export function SettingsPage() {
 
             {/* Кнопка сохранения - только для вкладок настроек */}
             {!["buildings", "rooms"].includes(activeTab) && (
-              <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="mt-6 pt-4 border-t border-dark-600/50">
                 <button
                   onClick={saveSettings}
                   disabled={saving}
@@ -989,13 +952,13 @@ export function SettingsPage() {
 
       {/* Модальное окно для здания */}
       {buildingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">
               {editingBuilding ? "Редактирование здания" : "Новое здание"}
             </h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Название *
               </label>
               <input
@@ -1004,12 +967,12 @@ export function SettingsPage() {
                 onChange={(e) =>
                   setBuildingForm((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="Главный корпус"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Адрес
               </label>
               <input
@@ -1021,12 +984,12 @@ export function SettingsPage() {
                     address: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="ул. Примерная, д. 1"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Описание
               </label>
               <textarea
@@ -1037,7 +1000,7 @@ export function SettingsPage() {
                     description: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="glass-input w-full px-4 py-3 text-sm"
                 rows={2}
               />
             </div>
@@ -1051,21 +1014,21 @@ export function SettingsPage() {
                     is_active: e.target.checked,
                   }))
                 }
-                className="w-4 h-4 rounded border-gray-300"
+                className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
               />
-              <span className="text-sm text-gray-700">Активно</span>
+              <span className="text-sm text-gray-400">Активно</span>
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setBuildingModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSaveBuilding}
                 disabled={!buildingForm.name.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="glass-button px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingBuilding ? "Сохранить" : "Создать"}
               </button>
@@ -1076,13 +1039,13 @@ export function SettingsPage() {
 
       {/* Модальное окно для кабинета */}
       {roomModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">
               {editingRoom ? "Редактирование кабинета" : "Новый кабинет"}
             </h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Здание *
               </label>
               <select
@@ -1093,19 +1056,19 @@ export function SettingsPage() {
                     building_id: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="glass-input w-full px-4 py-3 text-sm"
                 disabled={!!editingRoom}
               >
-                <option value="">Выберите здание</option>
+                <option value="" className="bg-dark-800">Выберите здание</option>
                 {buildings.map((b) => (
-                  <option key={b.id} value={b.id}>
+                  <option key={b.id} value={b.id} className="bg-dark-800">
                     {b.name}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Номер/название кабинета *
               </label>
               <input
@@ -1114,12 +1077,12 @@ export function SettingsPage() {
                 onChange={(e) =>
                   setRoomForm((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="101, Серверная, и т.д."
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Этаж
               </label>
               <input
@@ -1128,12 +1091,12 @@ export function SettingsPage() {
                 onChange={(e) =>
                   setRoomForm((prev) => ({ ...prev, floor: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="glass-input w-full px-4 py-3 text-sm"
                 placeholder="1"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Описание
               </label>
               <textarea
@@ -1144,7 +1107,7 @@ export function SettingsPage() {
                     description: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="glass-input w-full px-4 py-3 text-sm"
                 rows={2}
               />
             </div>
@@ -1158,21 +1121,21 @@ export function SettingsPage() {
                     is_active: e.target.checked,
                   }))
                 }
-                className="w-4 h-4 rounded border-gray-300"
+                className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
               />
-              <span className="text-sm text-gray-700">Активен</span>
+              <span className="text-sm text-gray-400">Активен</span>
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setRoomModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSaveRoom}
                 disabled={!roomForm.building_id || !roomForm.name.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="glass-button px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingRoom ? "Сохранить" : "Создать"}
               </button>

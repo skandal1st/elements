@@ -14,7 +14,7 @@ from backend.modules.hr.models.user import User
 from backend.modules.hr.schemas.hr_request import HRRequestCreate, HRRequestOut
 from backend.modules.hr.services.audit import log_action
 from backend.modules.hr.services.hr_requests import process_hr_request
-from backend.modules.hr.services.integrations import create_supporit_ticket, fetch_equipment_for_employee
+from backend.modules.hr.services.integrations import create_it_ticket, fetch_equipment_for_employee
 from backend.modules.hr.utils.naming import generate_corporate_email
 
 router = APIRouter(prefix="/hr-requests", tags=["hr-requests"])
@@ -69,7 +69,8 @@ def create_request(
             f"Должность: {position_name or 'Не указана'}\n"
             f"Дата выхода: {request.effective_date}\n"
         )
-        create_supporit_ticket(
+        create_it_ticket(
+            db=db,
             title=f"Онбординг: {employee.full_name}",
             description=description,
             category="hr",
@@ -78,7 +79,7 @@ def create_request(
     if request.type == "fire":
         department_name = _dept_name(db, employee.department_id)
         position_name = _pos_name(db, employee.position_id)
-        equipment = fetch_equipment_for_employee(employee.id, employee.email)
+        equipment = fetch_equipment_for_employee(db, employee.id, employee.email)
         equipment_lines = "\n".join(
             f"- {item.get('name') or item.get('type')} ({item.get('inventory_number') or item.get('serial_number')})"
             for item in equipment
@@ -92,7 +93,8 @@ def create_request(
             f"Дата увольнения: {request.effective_date}\n"
             f"Оборудование:\n{equipment_lines or 'Нет данных'}"
         )
-        create_supporit_ticket(
+        create_it_ticket(
+            db=db,
             title=f"Увольнение: {employee.full_name}",
             description=description,
             category="hr",

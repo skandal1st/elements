@@ -53,34 +53,44 @@ export function Birthdays() {
   }, [month])
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Дни рождения</h2>
-        <p className="text-sm text-gray-500">Календарь сотрудников по месяцам.</p>
+    <section className="space-y-6">
+      <div className="glass-card-purple p-6">
+        <h2 className="text-2xl font-bold text-white mb-1">Дни рождения</h2>
+        <p className="text-gray-400">Календарь сотрудников по месяцам</p>
       </div>
-      <div className="flex items-center gap-2">
-        <label className="text-sm text-gray-600">Месяц:</label>
+
+      <div className="flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-400">Месяц:</label>
         <select
-          className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+          className="glass-input px-4 py-2.5 text-sm"
           value={month}
           onChange={(e) => setMonth(Number(e.target.value))}
         >
           {MONTHS.map((label, i) => (
-            <option key={label} value={i + 1}>
+            <option key={label} value={i + 1} className="bg-dark-800">
               {label}
             </option>
           ))}
         </select>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {loading && <p className="text-sm text-gray-500">Загрузка…</p>}
-      {!loading && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <ul className="space-y-2">
+
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="glass-card p-6">
+          <ul className="space-y-3">
             {items.map((item) => (
-              <li key={item.id} className="text-sm">
-                <span className="font-medium text-gray-900">{item.full_name}</span>{' '}
-                — {formatBirthday(item.birthday)}
+              <li key={item.id} className="text-sm flex items-baseline gap-2">
+                <span className="font-medium text-white">{item.full_name}</span>
+                <span className="text-gray-400">— {formatBirthday(item.birthday)}</span>
               </li>
             ))}
           </ul>

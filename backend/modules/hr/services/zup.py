@@ -19,7 +19,7 @@ from backend.modules.hr.models.department import Department
 from backend.modules.hr.models.employee import Employee
 from backend.modules.hr.models.hr_request import HRRequest
 from backend.modules.hr.models.position import Position
-from backend.modules.hr.services.integrations import create_supporit_ticket
+from backend.modules.hr.services.integrations import create_it_ticket
 from backend.modules.hr.utils.naming import generate_corporate_email
 
 
@@ -395,16 +395,17 @@ def process_zup_hire_event(
         f"Дата выхода: {effective_date or 'Не указана'}\n"
     )
     
-    ticket_created = create_supporit_ticket(
+    ticket_created = create_it_ticket(
+        db=db,
         title=f"Онбординг: {employee.full_name}",
         description=description,
-        category="other",
+        category="hr",
     )
-    
+
     return {
         "employee_id": employee.id,
         "hr_request_id": hr_request.id,
-        "supporit_ticket_created": ticket_created,
+        "it_ticket_created": ticket_created,
     }
 
 
@@ -453,14 +454,15 @@ def process_zup_fire_event(
         f"- Принять оборудование\n"
     )
     
-    ticket_created = create_supporit_ticket(
+    ticket_created = create_it_ticket(
+        db=db,
         title=f"Увольнение: {employee.full_name}",
         description=description,
-        category="other",
+        category="hr",
     )
-    
+
     return {
         "employee_id": employee.id,
         "hr_request_id": hr_request.id,
-        "supporit_ticket_created": ticket_created,
+        "it_ticket_created": ticket_created,
     }
