@@ -1,19 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
   Server,
   Menu,
   X,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   CheckSquare,
-  Settings,
   Search,
 } from "lucide-react";
-import { useAuthStore } from "../../store/auth.store";
 import { useUIStore } from "../../store/ui.store";
 
 interface Module {
@@ -29,80 +26,25 @@ const modules: Module[] = [
   { code: "tasks", name: "Задачи", icon: CheckSquare, path: "/tasks" },
 ];
 
-function formatNameWithInitials(fullName: string): string {
-  if (!fullName) return "Пользователь";
-
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length === 0) return "Пользователь";
-
-  if (parts.length === 1) return parts[0];
-
-  const surname = parts[0];
-  const initials = parts
-    .slice(1)
-    .map((part) => part.charAt(0).toUpperCase() + ".")
-    .join("");
-
-  return `${surname} ${initials}`;
-}
-
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [availableModules, setAvailableModules] = useState<string[]>([]);
-  const [userFullName, setUserFullName] = useState<string>("");
   const location = useLocation();
-  const navigate = useNavigate();
-  const logout = useAuthStore((s) => s.logout);
-  const user = useAuthStore((s) => s.user);
-
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
-
-  const [isSuperuser, setIsSuperuser] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        const modules = payload.modules || [];
+        const mods = payload.modules || [];
         const su = !!payload.is_superuser;
-        setIsSuperuser(su);
-
-        if (payload.full_name) {
-          setUserFullName(payload.full_name);
-        }
-
-        if (su) {
-          setAvailableModules(["hr", "it", "tasks"]);
-        } else {
-          setAvailableModules([...modules]);
-        }
+        setAvailableModules(su ? ["hr", "it", "tasks"] : [...mods]);
       } catch (e) {
         console.error("Ошибка декодирования токена:", e);
       }
     }
   }, []);
-
-  const displayName = useMemo(() => {
-    if (user?.full_name) {
-      return formatNameWithInitials(user.full_name);
-    }
-    if (userFullName) {
-      return formatNameWithInitials(userFullName);
-    }
-    return "Пользователь";
-  }, [user, userFullName]);
-
-  const avatarInitials = useMemo(() => {
-    const fullName = user?.full_name || userFullName || "";
-    if (!fullName) return "U";
-
-    const parts = fullName.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
-    }
-    return parts[0].charAt(0).toUpperCase();
-  }, [user, userFullName]);
 
   const filteredModules = modules.filter(
     (m) => availableModules.includes(m.code) || availableModules.length === 0,
@@ -228,59 +170,6 @@ export function Sidebar() {
               );
             })}
           </nav>
-
-          {/* Footer */}
-          <div className="pt-4 border-t border-dark-700/50 space-y-2 px-2">
-            {/* Settings — только для администратора портала */}
-            {isSuperuser && (
-              <Link
-                to="/settings"
-                className={`
-                  flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"} w-full px-3 py-3 rounded-xl transition-all duration-200
-                  ${location.pathname.startsWith("/settings") ? "bg-accent-purple/20 text-accent-purple border border-accent-purple/30" : "text-gray-400 hover:text-white hover:bg-dark-700/50"}
-                `}
-                onClick={() => setIsOpen(false)}
-                title={sidebarCollapsed ? "Настройки" : undefined}
-              >
-                <Settings className="w-5 h-5 flex-shrink-0" />
-                {!sidebarCollapsed && <span className="font-medium">Настройки</span>}
-              </Link>
-            )}
-
-            {/* User profile */}
-            <div className="pt-2 border-t border-dark-700/50">
-              <div
-                className={`flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"} px-3 py-3`}
-                title={sidebarCollapsed ? displayName : undefined}
-              >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-semibold text-white">{avatarInitials}</span>
-                </div>
-                {!sidebarCollapsed && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{displayName}</p>
-                    <p className="text-xs text-gray-500 truncate">Администратор</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Logout */}
-            <button
-              className={`
-                flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"} w-full px-3 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200
-              `}
-              onClick={() => {
-                logout();
-                navigate("/login");
-                setIsOpen(false);
-              }}
-              title={sidebarCollapsed ? "Выход" : undefined}
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span className="font-medium">Выход</span>}
-            </button>
-          </div>
         </div>
       </aside>
 

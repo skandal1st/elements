@@ -30,6 +30,7 @@ import { DictionariesPage } from "./modules/it/pages/DictionariesPage";
 import { SettingsPage } from "./modules/it/pages/SettingsPage";
 import { TelegramPage } from "./modules/it/pages/TelegramPage";
 import { SettingsLayout } from "./modules/settings/SettingsLayout";
+import { ProfilePage } from "./pages/ProfilePage";
 import { ProjectsPage } from "./modules/tasks/pages/ProjectsPage";
 import { TaskBoardPage } from "./modules/tasks/pages/TaskBoardPage";
 import { TaskListPage } from "./modules/tasks/pages/TaskListPage";
@@ -274,6 +275,14 @@ function AppRoutes() {
           <Route path="board" element={<TaskBoardPage />} />
           <Route path="my" element={<TaskListPage />} />
         </Route>
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/hr/users" element={<Navigate to="/settings/users" replace />} />
         <Route path="/it/settings" element={<Navigate to="/settings/it" replace />} />

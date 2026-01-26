@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from backend.core.auth import (
     create_access_token,
     verify_password,
+    get_password_hash,
     get_user_id_from_token,
 )
 from backend.core.config import settings
@@ -44,6 +45,17 @@ class UserResponse(BaseModel):
     is_superuser: bool = False
     is_active: bool = True
     modules: list[str] = []
+
+
+class ProfileUpdate(BaseModel):
+    """Обновление профиля текущего пользователя"""
+    full_name: str | None = None
+
+
+class ChangePassword(BaseModel):
+    """Смена пароля"""
+    current_password: str
+    new_password: str
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -188,3 +200,55 @@ async def get_current_user_info(
         is_active=user.is_active,
         modules=modules,
     )
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_profile(
+    payload: ProfileUpdate,
+    user_id: UUID = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    """Обновить профиль текущего пользователя (имя)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if payload.full_name is not None and payload.full_name.strip():
+        user.full_name = payload.full_name.strip()
+    db.commit()
+    db.refresh(user)
+    main_role = "employee"
+    if user.roles:
+        main_role = list(user.roles.values())[0] if user.roles else "employee"
+    platform_modules = settings.get_enabled_modules()
+    modules = list(platform_modules) if user.is_superuser else [m for m in (user.roles or {}).keys() if m in platform_modules]
+    return UserResponse(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        role=main_role,
+        roles=user.roles or {},
+        is_superuser=user.is_superuser,
+        is_active=user.is_active,
+        modules=modules,
+    )
+
+
+@router.post("/change-password")
+async def change_password(
+    payload: ChangePassword,
+    user_id: UUID = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Сменить пароль текущего пользователя."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if not user.password_hash:
+        raise HTTPException(status_code=400, detail="Пароль не установлен. Обратитесь к администратору.")
+    if not verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Неверный текущий пароль.")
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Новый пароль должен быть не короче 6 символов.")
+    user.password_hash = get_password_hash(payload.new_password)
+    db.commit()
+    return {"detail": "Пароль успешно изменён"}
