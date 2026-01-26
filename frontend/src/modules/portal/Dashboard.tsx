@@ -380,21 +380,6 @@ export function Dashboard() {
             </Link>
           )}
 
-          {data.available_modules?.includes("finance") && (
-            <Link
-              to="/finance"
-              className="group p-5 rounded-xl bg-dark-700/30 border border-dark-600/50 hover:border-accent-cyan/30 hover:bg-dark-700/50 transition-all"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 rounded-xl bg-accent-cyan/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <BarChart3 className="w-6 h-6 text-accent-cyan" />
-                </div>
-                <ArrowRight className="w-5 h-5 text-gray-600 group-hover:text-accent-cyan group-hover:translate-x-1 transition-all" />
-              </div>
-              <h3 className="font-semibold text-white mb-1">Финансы</h3>
-              <p className="text-sm text-gray-500">Финансовый учет</p>
-            </Link>
-          )}
         </div>
       </div>
     </div>

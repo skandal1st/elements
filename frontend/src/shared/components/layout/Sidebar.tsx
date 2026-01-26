@@ -4,14 +4,11 @@ import {
   LayoutDashboard,
   Users,
   Server,
-  Wallet,
   Menu,
   X,
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Sun,
-  Moon,
   CheckSquare,
   Settings,
   Search,
@@ -30,7 +27,6 @@ const modules: Module[] = [
   { code: "hr", name: "HR", icon: Users, path: "/hr" },
   { code: "it", name: "IT", icon: Server, path: "/it" },
   { code: "tasks", name: "Задачи", icon: CheckSquare, path: "/tasks" },
-  { code: "finance", name: "Финансы", icon: Wallet, path: "/finance" },
 ];
 
 function formatNameWithInitials(fullName: string): string {
@@ -59,7 +55,7 @@ export function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
 
-  const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUIStore();
+  const { sidebarCollapsed, toggleSidebar } = useUIStore();
 
   const [isSuperuser, setIsSuperuser] = useState(false);
 
@@ -77,7 +73,7 @@ export function Sidebar() {
         }
 
         if (su) {
-          setAvailableModules(["hr", "it", "tasks", "finance"]);
+          setAvailableModules(["hr", "it", "tasks"]);
         } else {
           setAvailableModules([...modules]);
         }
@@ -235,32 +231,6 @@ export function Sidebar() {
 
           {/* Footer */}
           <div className="pt-4 border-t border-dark-700/50 space-y-2 px-2">
-            {/* Theme toggle */}
-            <button
-              className={`
-                flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"} w-full px-3 py-3 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all duration-200
-              `}
-              onClick={toggleTheme}
-              title={
-                sidebarCollapsed
-                  ? theme === "light"
-                    ? "Темная тема"
-                    : "Светлая тема"
-                  : undefined
-              }
-            >
-              {theme === "light" ? (
-                <Moon className="w-5 h-5 flex-shrink-0" />
-              ) : (
-                <Sun className="w-5 h-5 flex-shrink-0" />
-              )}
-              {!sidebarCollapsed && (
-                <span className="font-medium">
-                  {theme === "light" ? "Темная тема" : "Светлая тема"}
-                </span>
-              )}
-            </button>
-
             {/* Settings — только для администратора портала */}
             {isSuperuser && (
               <Link

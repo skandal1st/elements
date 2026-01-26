@@ -274,16 +274,6 @@ function AppRoutes() {
           <Route path="board" element={<TaskBoardPage />} />
           <Route path="my" element={<TaskListPage />} />
         </Route>
-        <Route
-          path="/finance/*"
-          element={
-            <ProtectedRoute>
-              <ModuleRoute module="finance">
-                <div>Finance Module (в разработке)</div>
-              </ModuleRoute>
-            </ProtectedRoute>
-          }
-        />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/hr/users" element={<Navigate to="/settings/users" replace />} />
         <Route path="/it/settings" element={<Navigate to="/settings/it" replace />} />

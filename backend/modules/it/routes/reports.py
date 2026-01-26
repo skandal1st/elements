@@ -119,9 +119,10 @@ def get_tickets_report(
     ]
     
     # 5. Детализация по срокам выполнения (первые 100)
+    assignee_alias = aliased(User)
     resolution_details_query = base_query.join(
         User, Ticket.creator_id == User.id, isouter=True
-    ).with_entities(
+    ).outerjoin(assignee_alias, Ticket.assignee_id == assignee_alias.id).with_entities(
         Ticket.id,
         Ticket.title,
         Ticket.category,
@@ -137,6 +138,7 @@ def get_tickets_report(
              extract("epoch", Ticket.closed_at - Ticket.created_at) / 3600),
         ).label("resolution_time_hours"),
         User.full_name.label("creator_name"),
+        assignee_alias.full_name.label("assignee_name"),
     ).order_by(Ticket.created_at.desc()).limit(100)
     
     resolution_details = []
@@ -152,6 +154,7 @@ def get_tickets_report(
             "closed_at": row.closed_at.isoformat() if row.closed_at else None,
             "resolution_time_hours": float(row.resolution_time_hours) if row.resolution_time_hours else None,
             "creator_name": row.creator_name,
+            "assignee_name": row.assignee_name,
         })
     
     # 6. Топ пользователей по количеству заявок

@@ -42,7 +42,6 @@ const pageNames: Record<string, string> = {
   "/tasks/projects": "Проекты",
   "/tasks/board": "Канбан доска",
   "/tasks/my": "Мои задачи",
-  "/finance": "Финансы",
 };
 
 export function Header() {
