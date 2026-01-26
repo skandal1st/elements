@@ -1,18 +1,19 @@
 """Роуты /it/reports — отчеты."""
-from datetime import datetime
-from typing import List, Optional
-from decimal import Decimal
+from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, case, extract, and_, or_
+from sqlalchemy import func, case, extract, and_
 from sqlalchemy.orm import Session, aliased
 
-from backend.modules.it.dependencies import get_db, get_current_user, require_it_roles
+from backend.modules.it.dependencies import get_db, get_current_user
 from backend.modules.it.models import Ticket
 from backend.modules.hr.models.user import User
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+UTC = timezone.utc
 
 
 @router.get("/tickets")
@@ -25,15 +26,15 @@ def get_tickets_report(
     priority: Optional[str] = Query(None),
 ) -> dict:
     """Отчет по заявкам (только для admin/it_specialist)"""
-    # Проверка прав доступа
     role = user.get_role("it") if not user.is_superuser else "admin"
     if role not in ("admin", "it_specialist"):
         raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
-    
-    # Преобразуем даты
+
     try:
-        date_from_start = datetime.strptime(date_from, "%Y-%m-%d").replace(hour=0, minute=0, second=0)
-        date_to_end = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        start_naive = datetime.strptime(date_from, "%Y-%m-%d").replace(hour=0, minute=0, second=0, microsecond=0)
+        end_naive = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, microsecond=999999)
+        date_from_start = start_naive.replace(tzinfo=UTC)
+        date_to_end = end_naive.replace(tzinfo=UTC)
     except ValueError:
         raise HTTPException(status_code=400, detail="Неверный формат даты. Используйте YYYY-MM-DD")
     

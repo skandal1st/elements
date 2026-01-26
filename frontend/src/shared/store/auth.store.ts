@@ -30,10 +30,9 @@ function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     if (!payload.exp) return false;
-    // exp в секундах, Date.now() в миллисекундах
     const expiryTime = payload.exp * 1000;
-    // Добавляем буфер в 60 секунд для безопасности
-    return Date.now() >= expiryTime - 60000;
+    // Буфер 10 сек — избегаем ложного «истёк» при небольшом рассинхроне часов
+    return Date.now() >= expiryTime - 10000;
   } catch {
     return true;
   }

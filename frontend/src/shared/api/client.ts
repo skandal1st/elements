@@ -53,12 +53,10 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const token = getToken()
   
-  // Проверяем наличие токена перед запросом
   if (!token && !path.includes('/auth/')) {
-    handleUnauthorized()
     throw new Error('Требуется авторизация')
   }
-  
+
   const headers = new Headers(options.headers)
   headers.set('Content-Type', 'application/json')
   if (token) headers.set('Authorization', `Bearer ${token}`)
