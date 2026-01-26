@@ -158,15 +158,13 @@ def get_tickets_report(
             "assignee_name": row.assignee_name,
         })
     
-    # 6. Топ пользователей по количеству заявок
+    # 6. Топ пользователей по количеству заявок (User не имеет department — возвращаем null)
     creator_alias = aliased(User)
-    
     top_creators_query = db.query(
         creator_alias.id.label("user_id"),
         creator_alias.full_name.label("user_name"),
         creator_alias.email.label("user_email"),
-        creator_alias.department,
-        func.count(Ticket.id).label("ticket_count")
+        func.count(Ticket.id).label("ticket_count"),
     ).join(
         Ticket, Ticket.creator_id == creator_alias.id
     ).filter(
@@ -175,23 +173,21 @@ def get_tickets_report(
             Ticket.created_at <= date_to_end,
         )
     )
-    
     if category:
         top_creators_query = top_creators_query.filter(Ticket.category == category)
     if priority:
         top_creators_query = top_creators_query.filter(Ticket.priority == priority)
-    
     top_creators_query = top_creators_query.group_by(
-        creator_alias.id, creator_alias.full_name, creator_alias.email, creator_alias.department
+        creator_alias.id, creator_alias.full_name, creator_alias.email
     ).order_by(func.count(Ticket.id).desc()).limit(10)
-    
+
     top_creators = []
     for row in top_creators_query.all():
         top_creators.append({
             "user_id": str(row.user_id),
             "user_name": row.user_name,
             "user_email": row.user_email,
-            "department": row.department,
+            "department": None,
             "ticket_count": row.ticket_count,
         })
     
