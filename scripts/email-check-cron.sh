@@ -53,4 +53,13 @@ if [ -z "$TOKEN" ]; then
     exit 1
 fi
 
-curl -s -X POST "${API_BASE}/it/email/check-inbox" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" > /dev/null || true
+OUT=$(mktemp)
+HTTP=$(curl -s -o "$OUT" -w "%{http_code}" -X POST "${API_BASE}/it/email/check-inbox" \
+    -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json")
+if [ "$HTTP" -lt 200 ] || [ "$HTTP" -ge 300 ]; then
+    echo "elements email-check-cron: check-inbox failed HTTP $HTTP" >&2
+    [ -s "$OUT" ] && cat "$OUT" >&2
+    rm -f "$OUT"
+    exit 1
+fi
+rm -f "$OUT"

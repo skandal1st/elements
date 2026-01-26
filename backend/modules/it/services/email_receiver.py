@@ -55,6 +55,7 @@ class EmailReceiverService:
             "user": self._get_setting(db, "imap_user") or "",
             "password": self._get_setting(db, "imap_password") or "",
             "use_ssl": (self._get_setting(db, "imap_use_ssl") or "true").lower() == "true",
+            "folder": (self._get_setting(db, "imap_folder") or "INBOX").strip() or "INBOX",
         }
 
     def _decode_header_value(self, value: str) -> str:
@@ -310,7 +311,7 @@ class EmailReceiverService:
                 imap = imaplib.IMAP4(config["host"], config["port"])
 
             imap.login(config["user"], config["password"])
-            imap.select("INBOX")
+            imap.select(config["folder"])
 
             # Ищем непрочитанные письма
             status, messages = imap.search(None, "UNSEEN")
@@ -349,28 +350,37 @@ class EmailReceiverService:
                         db, message_id, in_reply_to, references, subject
                     )
 
+                    did_process = False
                     if existing_ticket:
                         if existing_ticket.status == "closed":
-                            # Тикет закрыт - создаём новый
                             self._create_ticket_from_email(
                                 db, from_email_addr, subject, body, attachments, message_id
                             )
                             stats["tickets_created"] += 1
+                            did_process = True
                         else:
-                            # Добавляем комментарий
                             comment = self._create_comment_from_email(
                                 db, existing_ticket, from_email_addr, body, attachments, message_id
                             )
                             if comment:
                                 stats["comments_created"] += 1
+                                did_process = True
                     else:
-                        # Новый тикет
                         self._create_ticket_from_email(
                             db, from_email_addr, subject, body, attachments, message_id
                         )
                         stats["tickets_created"] += 1
+                        did_process = True
 
                     stats["emails_processed"] += 1
+
+                    # Пометить прочитанным только если тикет/комментарий созданы
+                    # (иначе при ответе от неизвестного пользователя не теряем письмо)
+                    if did_process:
+                        try:
+                            imap.store(email_id, "+FLAGS", "\\Seen")
+                        except Exception as mark_err:
+                            stats["errors"].append(f"Пометить прочитанным: {mark_err}")
 
                 except Exception as e:
                     stats["errors"].append(str(e))

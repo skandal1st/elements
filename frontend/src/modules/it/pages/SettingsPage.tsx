@@ -144,6 +144,14 @@ export function SettingsPage() {
     is_active: true,
   });
 
+  const [checkInboxLoading, setCheckInboxLoading] = useState(false);
+  const [checkInboxResult, setCheckInboxResult] = useState<{
+    emails_processed: number;
+    tickets_created: number;
+    comments_created: number;
+    errors: string[];
+  } | null>(null);
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -374,6 +382,44 @@ export function SettingsPage() {
       }, 3000);
     } catch (err) {
       setError((err as Error).message);
+    }
+  };
+
+  const checkInbox = async () => {
+    setError(null);
+    setCheckInboxResult(null);
+    setCheckInboxLoading(true);
+    try {
+      const result = await apiPost<{
+        success: boolean;
+        emails_processed: number;
+        tickets_created: number;
+        comments_created: number;
+        errors: string[];
+      }>("/it/email/check-inbox");
+      setCheckInboxResult({
+        emails_processed: result.emails_processed ?? 0,
+        tickets_created: result.tickets_created ?? 0,
+        comments_created: result.comments_created ?? 0,
+        errors: result.errors ?? [],
+      });
+      if (result.errors?.length) {
+        setError(result.errors.join("; "));
+      } else if ((result.emails_processed ?? 0) > 0) {
+        setSuccess(
+          `Обработано писем: ${result.emails_processed}, создано тикетов: ${result.tickets_created}, комментариев: ${result.comments_created}`,
+        );
+      } else {
+        setSuccess("Новых непрочитанных писем нет.");
+      }
+      setTimeout(() => {
+        setSuccess(null);
+        setError(null);
+      }, 5000);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setCheckInboxLoading(false);
     }
   };
 
@@ -761,18 +807,49 @@ export function SettingsPage() {
             {/* IMAP настройки */}
             {activeTab === "imap" && (
               <div className="space-y-4 max-w-xl">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-white">
                     Настройки IMAP (получение)
                   </h3>
-                  <button
-                    onClick={() => testConnection("imap")}
-                    className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
-                  >
-                    <TestTube className="w-4 h-4" />
-                    Тест
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => testConnection("imap")}
+                      className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
+                    >
+                      <TestTube className="w-4 h-4" />
+                      Тест
+                    </button>
+                    <button
+                      onClick={checkInbox}
+                      disabled={checkInboxLoading}
+                      className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+                    >
+                      {checkInboxLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Проверка…
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4" />
+                          Проверить почту
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
+                {checkInboxResult && (
+                  <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-sm text-gray-300">
+                    <div>Обработано писем: {checkInboxResult.emails_processed}</div>
+                    <div>Создано тикетов: {checkInboxResult.tickets_created}</div>
+                    <div>Комментариев: {checkInboxResult.comments_created}</div>
+                    {checkInboxResult.errors.length > 0 && (
+                      <div className="mt-2 text-amber-400">
+                        Ошибки: {checkInboxResult.errors.join("; ")}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {renderInput(
                   "IMAP сервер",
                   "imap",

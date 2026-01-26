@@ -175,3 +175,5 @@ docker-compose -f docker-compose.prod.yml exec -T backend python backend/scripts
 ## Поддержка
 
 Подробная документация: [DEPLOYMENT.md](DEPLOYMENT.md)
+
+**Заявки из почты не приходят:** [TROUBLESHOOTING_EMAIL.md](TROUBLESHOOTING_EMAIL.md) — чеклист по IMAP, cron и проверке почты.
