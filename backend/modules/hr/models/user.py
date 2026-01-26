@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.sql import func
 
@@ -38,6 +38,13 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     last_login_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Telegram интеграция
+    telegram_id = Column(BigInteger, nullable=True, unique=True)
+    telegram_username = Column(String(255), nullable=True)
+    telegram_notifications = Column(Boolean, default=False)
+    telegram_link_code = Column(String(6), nullable=True)
+    telegram_link_code_expires = Column(DateTime(timezone=True), nullable=True)
 
     def get_role(self, module: str) -> str | None:
         """Получить роль пользователя в конкретном модуле"""

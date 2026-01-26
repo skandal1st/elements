@@ -55,7 +55,7 @@ SETTING_TYPE_MAP = {
         "imap_folder",
         "email_check_interval",
     ],
-    "telegram": ["telegram_bot_token", "telegram_bot_enabled", "telegram_webhook_url"],
+    "telegram": ["telegram_bot_token", "telegram_bot_enabled", "telegram_webhook_url", "telegram_bot_username"],
     "zabbix": ["zabbix_url", "zabbix_user", "zabbix_password", "zabbix_enabled"],
     "ldap": [
         "ldap_server",
@@ -623,3 +623,41 @@ def test_ldap_connection(db: Session = Depends(get_db)) -> dict:
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Ошибка LDAP: {str(e)}")
+
+
+@router.post("/test/telegram", dependencies=[Depends(require_superuser)])
+async def test_telegram_connection(db: Session = Depends(get_db)) -> dict:
+    """Тестировать подключение к Telegram Bot API."""
+    from backend.modules.it.services.telegram_service import telegram_service
+
+    bot_info = await telegram_service.get_bot_info(db)
+    if not bot_info:
+        return {
+            "status": "error",
+            "message": "Не удалось подключиться к Telegram Bot API. Проверьте токен бота.",
+        }
+
+    # Сохраняем username бота в настройках
+    bot_username = bot_info.get("username", "")
+    if bot_username:
+        setting = (
+            db.query(SystemSettings)
+            .filter(SystemSettings.setting_key == "telegram_bot_username")
+            .first()
+        )
+        if setting:
+            setting.setting_value = bot_username
+        else:
+            setting = SystemSettings(
+                setting_key="telegram_bot_username",
+                setting_value=bot_username,
+                setting_type="telegram",
+                description="Username Telegram бота (заполняется автоматически)",
+            )
+            db.add(setting)
+        db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Telegram бот @{bot_username} подключен успешно",
+    }

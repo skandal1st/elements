@@ -401,6 +401,45 @@ def migrate_ticket_consumables():
             conn.rollback()
 
 
+def migrate_telegram_fields():
+    """Добавляет поля Telegram интеграции в таблицу users"""
+    print("Проверка миграций для Telegram интеграции...")
+
+    with engine.connect() as conn:
+        try:
+            columns_to_add = [
+                ("telegram_id", "BIGINT UNIQUE"),
+                ("telegram_username", "VARCHAR(255)"),
+                ("telegram_notifications", "BOOLEAN DEFAULT FALSE"),
+                ("telegram_link_code", "VARCHAR(6)"),
+                ("telegram_link_code_expires", "TIMESTAMPTZ"),
+            ]
+
+            for col_name, col_type in columns_to_add:
+                result = conn.execute(
+                    text("""
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'users' AND column_name = :col_name
+                """),
+                    {"col_name": col_name},
+                )
+
+                if not result.fetchone():
+                    print(f"Добавление колонки {col_name} в таблицу users...")
+                    conn.execute(
+                        text(
+                            f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"
+                        )
+                    )
+                    conn.commit()
+
+            print("✅ Миграция Telegram полей выполнена успешно")
+        except Exception as e:
+            print(f"⚠️  Ошибка миграции Telegram полей: {e}")
+            conn.rollback()
+
+
 def _get_db_user_from_url(url: str) -> str:
     """Извлекает имя пользователя БД из DATABASE_URL."""
     if "://" not in url:
@@ -434,6 +473,7 @@ def create_tables():
     migrate_ticket_history_and_source()
     migrate_consumable_supplies()
     migrate_ticket_consumables()
+    migrate_telegram_fields()
 
 
 def seed_admin_user():

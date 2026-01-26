@@ -8,6 +8,7 @@ const links = [
   { to: "/it/reports", label: "Отчеты" },
   { to: "/it/licenses", label: "Лицензии ПО" },
   { to: "/it/dictionaries", label: "Справочники" },
+  { to: "/it/telegram", label: "Telegram" },
 ];
 
 export function ITLayout() {

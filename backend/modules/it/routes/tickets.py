@@ -143,7 +143,7 @@ def get_ticket_history(
     status_code=201,
     dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
 )
-def create_ticket(
+async def create_ticket(
     payload: TicketCreate,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -167,6 +167,14 @@ def create_ticket(
     db.add(t)
     db.commit()
     db.refresh(t)
+
+    # Уведомление IT-специалистов в Telegram
+    try:
+        from backend.modules.it.services.telegram_service import telegram_service
+        await telegram_service.notify_new_ticket(db, t.id, t.title)
+    except Exception:
+        pass  # Не блокируем создание заявки при ошибке уведомления
+
     return t
 
 

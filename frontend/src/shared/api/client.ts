@@ -78,6 +78,10 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return apiFetch<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
 }
 
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return apiFetch<T>(path, { method: 'PUT', body: JSON.stringify(body) })
+}
+
 export async function apiDelete(path: string): Promise<void> {
   return apiFetch<void>(path, { method: 'DELETE' })
 }

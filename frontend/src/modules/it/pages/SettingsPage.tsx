@@ -356,7 +356,7 @@ export function SettingsPage() {
     }
   };
 
-  const testConnection = async (type: "smtp" | "imap" | "ldap") => {
+  const testConnection = async (type: "smtp" | "imap" | "ldap" | "telegram") => {
     setError(null);
     try {
       const result = await apiPost<{ status: string; message: string }>(
@@ -809,9 +809,18 @@ export function SettingsPage() {
             {/* Telegram настройки */}
             {activeTab === "telegram" && (
               <div className="space-y-4 max-w-xl">
-                <h3 className="text-lg font-semibold text-white mb-4">
-                  Настройки Telegram бота
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-white">
+                    Настройки Telegram бота
+                  </h3>
+                  <button
+                    onClick={() => testConnection("telegram")}
+                    className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
+                  >
+                    <TestTube className="w-4 h-4" />
+                    Тест
+                  </button>
+                </div>
                 {renderInput(
                   "Включить Telegram бота",
                   "telegram",
@@ -833,7 +842,7 @@ export function SettingsPage() {
                   "https://your-domain.com/webhook",
                 )}
                 <p className="text-sm text-gray-500 mt-2">
-                  Получите токен у @BotFather в Telegram.
+                  Получите токен у @BotFather в Telegram. После сохранения нажмите «Тест» для проверки подключения.
                 </p>
               </div>
             )}
