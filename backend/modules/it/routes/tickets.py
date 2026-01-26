@@ -1,6 +1,6 @@
 """Роуты /it/tickets — заявки (тикеты)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
@@ -12,12 +12,14 @@ from backend.modules.it.dependencies import get_current_user, get_db, require_it
 from backend.modules.it.models import (
     Consumable,
     ConsumableIssue,
+    Notification,
     Ticket,
     TicketConsumable,
     TicketHistory,
 )
 from backend.modules.it.schemas.ticket import (
     TicketAssignUser,
+    TicketAssignExecutor,
     TicketConsumableOut,
     TicketCreate,
     TicketHistoryOut,
@@ -25,6 +27,8 @@ from backend.modules.it.schemas.ticket import (
     TicketUpdate,
 )
 from backend.modules.it.services.ticket_history import log_ticket_changes
+
+UTC = timezone.utc
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -232,6 +236,13 @@ def update_ticket(
     for k, v in update_data.items():
         setattr(t, k, v)
 
+    # Автовыставление resolved_at / closed_at для замера времени выполнения в отчётах
+    now = datetime.now(UTC)
+    if t.status == "resolved" and t.resolved_at is None:
+        t.resolved_at = now
+    if t.status == "closed" and t.closed_at is None:
+        t.closed_at = now
+
     # Сохраняем расходники если переданы
     if consumables_data is not None:
         # Удаляем старые несписанные расходники
@@ -316,6 +327,82 @@ def assign_user_to_ticket(
 
     db.commit()
     db.refresh(t)
+    return t
+
+
+@router.post(
+    "/{ticket_id}/assign-executor",
+    response_model=TicketOut,
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist"]))],
+)
+async def assign_executor_to_ticket(
+    ticket_id: UUID,
+    payload: TicketAssignExecutor,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Ticket:
+    """
+    Назначить исполнителя заявки или снять его (user_id=null).
+    Исполнителю отправляются: уведомление в Telegram и уведомление в системе.
+    """
+    t = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    old_assignee_id = t.assignee_id
+    new_assignee_id = payload.user_id
+
+    if new_assignee_id is None:
+        t.assignee_id = None
+        log_ticket_changes(
+            db=db,
+            ticket_id=ticket_id,
+            changed_by_id=user.id,
+            old_data={"assignee_id": old_assignee_id},
+            new_data={"assignee_id": None},
+            tracked_fields=["assignee_id"],
+        )
+        db.commit()
+        db.refresh(t)
+        return t
+
+    target = db.query(User).filter(User.id == new_assignee_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    t.assignee_id = new_assignee_id
+    log_ticket_changes(
+        db=db,
+        ticket_id=ticket_id,
+        changed_by_id=user.id,
+        old_data={"assignee_id": old_assignee_id},
+        new_data={"assignee_id": new_assignee_id},
+        tracked_fields=["assignee_id"],
+    )
+
+    notify = old_assignee_id != new_assignee_id
+
+    if notify:
+        notification = Notification(
+            user_id=new_assignee_id,
+            title="Вам назначена заявка",
+            message=f'Вам назначена заявка: "{t.title}"',
+            type="info",
+            related_type="ticket",
+            related_id=ticket_id,
+        )
+        db.add(notification)
+
+    db.commit()
+    db.refresh(t)
+
+    if notify:
+        try:
+            from backend.modules.it.services.telegram_service import telegram_service
+            await telegram_service.notify_ticket_assigned(db, new_assignee_id, t.id, t.title)
+        except Exception:
+            pass
+
     return t
 
 

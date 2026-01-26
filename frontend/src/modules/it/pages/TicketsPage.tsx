@@ -640,6 +640,7 @@ export function TicketsPage() {
 
       if (userRole === "it") {
         await loadBuildings();
+        await loadUsers();
 
         setEditForm({
           title: t.title,
@@ -1381,6 +1382,50 @@ export function TicketsPage() {
                   {sourceLabel[detail.source || "web"]}
                 </span>
               </div>
+
+              {userRole === "it" && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                    Исполнитель
+                  </label>
+                  {canEdit ? (
+                    <select
+                      className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
+                      value={detail.assignee_id ?? ""}
+                      onChange={async (e) => {
+                        const v = e.target.value;
+                        if (!detailId) return;
+                        setError(null);
+                        try {
+                          await apiPost(
+                            `/it/tickets/${detailId}/assign-executor`,
+                            { user_id: v || null }
+                          );
+                          const t = await apiGet<Ticket>(`/it/tickets/${detailId}`);
+                          setDetail(t);
+                        } catch (err) {
+                          setError((err as Error).message);
+                        }
+                      }}
+                    >
+                      <option value="" className="bg-dark-800">
+                        Не назначен
+                      </option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id} className="bg-dark-800">
+                          {u.full_name} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-gray-300">
+                      {detail.assignee_id
+                        ? users.find((u) => u.id === detail.assignee_id)?.full_name ?? "—"
+                        : "Не назначен"}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Location and Equipment (IT only) */}

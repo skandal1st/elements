@@ -74,6 +74,12 @@ class TicketAssignUser(BaseModel):
     user_id: UUID
 
 
+class TicketAssignExecutor(BaseModel):
+    """Схема для назначения исполнителя заявки. user_id=null — снять исполнителя."""
+
+    user_id: Optional[UUID] = None
+
+
 class TicketConsumableOut(BaseModel):
     """Выходная схема для расходника тикета"""
 
