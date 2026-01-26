@@ -16,6 +16,7 @@ from backend.modules.it.schemas.equipment_request import (
     ReviewRequest,
 )
 from backend.modules.hr.models.user import User
+from backend.modules.hr.models.employee import Employee
 
 
 router = APIRouter(prefix="/equipment-requests", tags=["equipment-requests"])
@@ -26,6 +27,14 @@ def _user_it_role(user: User) -> str:
     if user.is_superuser:
         return "admin"
     return user.get_role("it") or "employee"
+
+
+def _requester_department(db: Session, user: User) -> Optional[str]:
+    """Подразделение заявителя: User -> Employee -> Department. У User нет department."""
+    emp = db.query(Employee).filter(Employee.user_id == user.id).first()
+    if emp and emp.department:
+        return emp.department.name
+    return None
 
 
 @router.get("/", response_model=List[EquipmentRequestOut])
@@ -104,7 +113,7 @@ def list_equipment_requests(
         if req.requester:
             req_dict["requester_name"] = req.requester.full_name
             req_dict["requester_email"] = req.requester.email
-            req_dict["requester_department"] = req.requester.department
+            req_dict["requester_department"] = _requester_department(db, req.requester)
         
         if req.reviewer:
             req_dict["reviewer_name"] = req.reviewer.full_name
@@ -166,7 +175,7 @@ def get_equipment_request(
     if req.requester:
         req_dict["requester_name"] = req.requester.full_name
         req_dict["requester_email"] = req.requester.email
-        req_dict["requester_department"] = req.requester.department
+        req_dict["requester_department"] = _requester_department(db, req.requester)
     
     if req.reviewer:
         req_dict["reviewer_name"] = req.reviewer.full_name
@@ -221,7 +230,7 @@ def create_equipment_request(
         "updated_at": req.updated_at,
         "requester_name": user.full_name,
         "requester_email": user.email,
-        "requester_department": user.department,
+        "requester_department": _requester_department(db, user),
     }
     
     return EquipmentRequestOut(**req_dict)
@@ -292,7 +301,7 @@ def update_equipment_request(
     if req.requester:
         req_dict["requester_name"] = req.requester.full_name
         req_dict["requester_email"] = req.requester.email
-        req_dict["requester_department"] = req.requester.department
+        req_dict["requester_department"] = _requester_department(db, req.requester)
     
     if req.reviewer:
         req_dict["reviewer_name"] = req.reviewer.full_name
@@ -365,7 +374,7 @@ def review_equipment_request(
     if req.requester:
         req_dict["requester_name"] = req.requester.full_name
         req_dict["requester_email"] = req.requester.email
-        req_dict["requester_department"] = req.requester.department
+        req_dict["requester_department"] = _requester_department(db, req.requester)
     
     return EquipmentRequestOut(**req_dict)
 
@@ -420,7 +429,7 @@ def cancel_equipment_request(
     if req.requester:
         req_dict["requester_name"] = req.requester.full_name
         req_dict["requester_email"] = req.requester.email
-        req_dict["requester_department"] = req.requester.department
+        req_dict["requester_department"] = _requester_department(db, req.requester)
     
     if req.reviewer:
         req_dict["reviewer_name"] = req.reviewer.full_name

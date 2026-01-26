@@ -120,6 +120,10 @@ export function EquipmentRequestsPage() {
     comment: "",
     estimated_cost: "",
   });
+  const [equipmentOptions, setEquipmentOptions] = useState<
+    { id: string; name: string; inventory_number: string }[]
+  >([]);
+  const [equipmentOptionsLoading, setEquipmentOptionsLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -144,6 +148,28 @@ export function EquipmentRequestsPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  const loadEquipmentForReplacement = async () => {
+    setEquipmentOptionsLoading(true);
+    try {
+      const data = await apiGet<{ id: string; name: string; inventory_number: string }[]>(
+        `/it/equipment/?page=1&page_size=500&status=in_use`,
+      );
+      setEquipmentOptions(Array.isArray(data) ? data : []);
+    } catch {
+      setEquipmentOptions([]);
+    } finally {
+      setEquipmentOptionsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (modalOpen && form.request_type === "replacement") {
+      loadEquipmentForReplacement();
+    } else {
+      setEquipmentOptions([]);
+    }
+  }, [modalOpen, form.request_type]);
 
   const handleSearch = () => {
     setPage(1);
@@ -222,7 +248,10 @@ export function EquipmentRequestsPage() {
         estimated_cost: form.estimated_cost
           ? Number(form.estimated_cost)
           : undefined,
-        replace_equipment_id: form.replace_equipment_id || undefined,
+        replace_equipment_id:
+          form.request_type === "replacement" && form.replace_equipment_id
+            ? form.replace_equipment_id
+            : undefined,
         description: form.description || undefined,
         justification: form.justification || undefined,
       };
@@ -443,9 +472,14 @@ export function EquipmentRequestsPage() {
             <select
               className="glass-input w-full px-4 py-3 text-sm"
               value={form.request_type}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, request_type: e.target.value }))
-              }
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm((p) => ({
+                  ...p,
+                  request_type: v,
+                  replace_equipment_id: v === "replacement" ? p.replace_equipment_id : "",
+                }));
+              }}
             >
               {REQUEST_TYPES.map((t) => (
                 <option key={t} value={t} className="bg-dark-800">
@@ -482,17 +516,33 @@ export function EquipmentRequestsPage() {
               </select>
             </div>
             {form.request_type === "replacement" && (
-              <input
-                className="glass-input w-full px-4 py-3 text-sm"
-                placeholder="ID оборудования для замены (UUID)"
-                value={form.replace_equipment_id}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    replace_equipment_id: e.target.value,
-                  }))
-                }
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                  Оборудование для замены
+                </label>
+                <select
+                  className="glass-input w-full px-4 py-3 text-sm"
+                  value={form.replace_equipment_id}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      replace_equipment_id: e.target.value,
+                    }))
+                  }
+                  disabled={equipmentOptionsLoading}
+                >
+                  <option value="" className="bg-dark-800">
+                    {equipmentOptionsLoading
+                      ? "Загрузка…"
+                      : "— Выберите оборудование —"}
+                  </option>
+                  {equipmentOptions.map((eq) => (
+                    <option key={eq.id} value={eq.id} className="bg-dark-800">
+                      {eq.name} — инв. № {eq.inventory_number}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
             <textarea
               className="glass-input w-full px-4 py-3 text-sm min-h-[60px] resize-none"
