@@ -99,7 +99,7 @@ if [ "$RESTART_ONLY" = true ]; then
 fi
 
 # Полный деплой
-echo -e "${YELLOW}[1/5] Получение изменений из репозитория...${NC}"
+echo -e "${YELLOW}[1/6] Получение изменений из репозитория...${NC}"
 git fetch origin
 git pull origin $(git branch --show-current)
 
@@ -107,23 +107,39 @@ NEW_VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
 echo -e "Новая версия: ${GREEN}${NEW_VERSION}${NC}"
 echo ""
 
-echo -e "${YELLOW}[2/5] Остановка контейнеров...${NC}"
+echo -e "${YELLOW}[2/6] Остановка контейнеров...${NC}"
 docker-compose -f "$COMPOSE_FILE" down
 
 if [ "$NO_BUILD" = true ]; then
-    echo -e "${YELLOW}[3/5] Запуск контейнеров (без пересборки)...${NC}"
+    echo -e "${YELLOW}[3/6] Запуск контейнеров (без пересборки)...${NC}"
     docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
 else
-    echo -e "${YELLOW}[3/5] Пересборка и запуск контейнеров...${NC}"
+    echo -e "${YELLOW}[3/6] Пересборка и запуск контейнеров...${NC}"
     docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build
 fi
 
 echo ""
-echo -e "${YELLOW}[4/5] Ожидание запуска сервисов (15 сек)...${NC}"
+echo -e "${YELLOW}[4/6] Ожидание запуска сервисов (15 сек)...${NC}"
 sleep 15
 
-echo -e "${YELLOW}[5/5] Применение миграций БД...${NC}"
+echo -e "${YELLOW}[5/6] Применение миграций БД...${NC}"
 docker-compose -f "$COMPOSE_FILE" exec -T backend python backend/scripts/init_db.py
+
+# Cron: проверка почтового ящика (только для prod)
+echo ""
+CRON_SCRIPT="$PROJECT_DIR/scripts/email-check-cron.sh"
+if [ "$USE_DEV" = false ] && [ -f "$CRON_SCRIPT" ]; then
+    echo -e "${YELLOW}[6/6] Проверка cron-задачи проверки почты...${NC}"
+    chmod +x "$CRON_SCRIPT"
+    if crontab -l 2>/dev/null | grep -qE 'email-check-cron\.sh|it/email/check-inbox'; then
+        echo -e "${GREEN}Cron-задача проверки почты уже есть.${NC}"
+    else
+        (crontab -l 2>/dev/null; echo "*/5 * * * * $CRON_SCRIPT") | crontab -
+        echo -e "${GREEN}Добавлена cron-задача: каждые 5 мин — проверка почты (check-inbox).${NC}"
+    fi
+else
+    echo -e "${YELLOW}[6/6] Пропуск cron (dev-режим или скрипт не найден).${NC}"
+fi
 
 echo ""
 echo -e "${GREEN}=============================================${NC}"
