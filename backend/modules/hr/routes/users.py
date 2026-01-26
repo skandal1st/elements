@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.core.auth import get_password_hash
-from backend.modules.hr.dependencies import get_db, get_current_user, require_roles
+from backend.modules.hr.dependencies import (
+    get_db,
+    get_current_user,
+    require_can_list_users,
+    require_superuser,
+)
 from backend.modules.hr.models.user import User
 from backend.modules.hr.schemas.user import PasswordReset, UserCreate, UserOut, UserUpdate
 from backend.modules.hr.services.audit import log_action
@@ -18,12 +23,12 @@ def _audit_user(user: User) -> str:
     return user.username or user.email
 
 
-@router.get("/", response_model=List[UserOut], dependencies=[Depends(require_roles(["admin"]))])
+@router.get("/", response_model=List[UserOut], dependencies=[Depends(require_can_list_users)])
 def list_users(db: Session = Depends(get_db)) -> List[User]:
     return db.query(User).all()
 
 
-@router.post("/", response_model=UserOut, dependencies=[Depends(require_roles(["admin"]))])
+@router.post("/", response_model=UserOut, dependencies=[Depends(require_superuser)])
 def create_user(
     payload: UserCreate,
     db: Session = Depends(get_db),
@@ -51,7 +56,7 @@ def create_user(
     return user
 
 
-@router.get("/{user_id}", response_model=UserOut, dependencies=[Depends(require_roles(["admin"]))])
+@router.get("/{user_id}", response_model=UserOut, dependencies=[Depends(require_superuser)])
 def get_user(user_id: UUID, db: Session = Depends(get_db)) -> User:
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -59,7 +64,7 @@ def get_user(user_id: UUID, db: Session = Depends(get_db)) -> User:
     return user
 
 
-@router.patch("/{user_id}", response_model=UserOut, dependencies=[Depends(require_roles(["admin"]))])
+@router.patch("/{user_id}", response_model=UserOut, dependencies=[Depends(require_superuser)])
 def update_user(
     user_id: UUID,
     payload: UserUpdate,
@@ -83,7 +88,7 @@ def update_user(
     return user
 
 
-@router.post("/{user_id}/reset-password", response_model=UserOut, dependencies=[Depends(require_roles(["admin"]))])
+@router.post("/{user_id}/reset-password", response_model=UserOut, dependencies=[Depends(require_superuser)])
 def reset_password(
     user_id: UUID,
     payload: PasswordReset,
@@ -100,7 +105,7 @@ def reset_password(
     return user
 
 
-@router.delete("/{user_id}", dependencies=[Depends(require_roles(["admin"]))])
+@router.delete("/{user_id}", dependencies=[Depends(require_superuser)])
 def delete_user(
     user_id: UUID,
     db: Session = Depends(get_db),

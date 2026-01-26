@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.modules.hr.models.system_settings import SystemSettings
-from backend.modules.it.dependencies import get_db, require_it_roles
+from backend.modules.hr.dependencies import require_superuser
+from backend.modules.it.dependencies import get_db
 from backend.modules.it.schemas.settings import (
     AllSettings,
     EmailSettings,
@@ -96,7 +97,7 @@ def _get_setting_type(key: str) -> str:
 @router.get(
     "/",
     response_model=List[SettingOut],
-    dependencies=[Depends(require_it_roles(["admin"]))],
+    dependencies=[Depends(require_superuser)],
 )
 def list_settings(
     setting_type: Optional[str] = None,
@@ -127,7 +128,7 @@ def list_settings(
 @router.get(
     "/all",
     response_model=AllSettings,
-    dependencies=[Depends(require_it_roles(["admin"]))],
+    dependencies=[Depends(require_superuser)],
 )
 def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
     """Получить все настройки сгруппированные по типам."""
@@ -208,7 +209,7 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
 @router.get(
     "/{setting_key}",
     response_model=SettingOut,
-    dependencies=[Depends(require_it_roles(["admin"]))],
+    dependencies=[Depends(require_superuser)],
 )
 def get_setting(
     setting_key: str,
@@ -237,7 +238,7 @@ def get_setting(
 @router.put(
     "/{setting_key}",
     response_model=SettingOut,
-    dependencies=[Depends(require_it_roles(["admin"]))],
+    dependencies=[Depends(require_superuser)],
 )
 def update_setting(
     setting_key: str,
@@ -302,7 +303,7 @@ def update_setting(
 @router.post(
     "/bulk",
     response_model=List[SettingOut],
-    dependencies=[Depends(require_it_roles(["admin"]))],
+    dependencies=[Depends(require_superuser)],
 )
 def bulk_update_settings(
     payload: SettingsBulkUpdate,
@@ -357,7 +358,7 @@ def bulk_update_settings(
     return result
 
 
-@router.delete("/{setting_key}", dependencies=[Depends(require_it_roles(["admin"]))])
+@router.delete("/{setting_key}", dependencies=[Depends(require_superuser)])
 def delete_setting(
     setting_key: str,
     db: Session = Depends(get_db),
@@ -376,7 +377,7 @@ def delete_setting(
     return {"message": "Настройка удалена"}
 
 
-@router.post("/test/smtp", dependencies=[Depends(require_it_roles(["admin"]))])
+@router.post("/test/smtp", dependencies=[Depends(require_superuser)])
 def test_smtp_connection(db: Session = Depends(get_db)) -> dict:
     """Тестировать SMTP подключение."""
     import smtplib
@@ -462,7 +463,7 @@ def test_smtp_connection(db: Session = Depends(get_db)) -> dict:
                 pass
 
 
-@router.post("/test/imap", dependencies=[Depends(require_it_roles(["admin"]))])
+@router.post("/test/imap", dependencies=[Depends(require_superuser)])
 def test_imap_connection(db: Session = Depends(get_db)) -> dict:
     """Тестировать IMAP подключение."""
     import imaplib
@@ -530,7 +531,7 @@ def test_imap_connection(db: Session = Depends(get_db)) -> dict:
                 pass
 
 
-@router.post("/test/ldap", dependencies=[Depends(require_it_roles(["admin"]))])
+@router.post("/test/ldap", dependencies=[Depends(require_superuser)])
 def test_ldap_connection(db: Session = Depends(get_db)) -> dict:
     """Тестировать LDAP/AD подключение."""
     import socket

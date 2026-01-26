@@ -25,6 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
 const MODULE_LABELS: Record<string, string> = {
   hr: 'HR',
   it: 'IT',
+  tasks: 'Задачи',
   finance: 'Финансы',
   portal: 'Портал',
 }

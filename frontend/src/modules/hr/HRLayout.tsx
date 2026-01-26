@@ -5,7 +5,6 @@ const links = [
   { to: '/hr/birthdays', label: 'Дни рождения' },
   { to: '/hr/org', label: 'Оргструктура' },
   { to: '/hr/requests', label: 'HR-заявки' },
-  { to: '/hr/users', label: 'Пользователи' },
 ]
 
 export function HRLayout() {

@@ -80,3 +80,21 @@ def require_superuser(user: User = Depends(get_current_user)) -> User:
             detail="Требуются права суперпользователя",
         )
     return user
+
+
+def require_can_list_users(user: User = Depends(get_current_user)) -> User:
+    """
+    Доступ к списку пользователей: суперпользователь, HR admin или IT admin/it_specialist.
+    Нужно для dropdown в Заявках, Лицензиях и т.д.
+    """
+    if user.is_superuser:
+        return user
+    if user.get_role("hr") == "admin":
+        return user
+    it_role = user.get_role("it")
+    if it_role in ("admin", "it_specialist"):
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Недостаточно прав для просмотра списка пользователей",
+    )

@@ -28,6 +28,7 @@ import { ReportsPage } from "./modules/it/pages/ReportsPage";
 import { LicensesPage } from "./modules/it/pages/LicensesPage";
 import { DictionariesPage } from "./modules/it/pages/DictionariesPage";
 import { SettingsPage } from "./modules/it/pages/SettingsPage";
+import { SettingsLayout } from "./modules/settings/SettingsLayout";
 import { ProjectsPage } from "./modules/tasks/pages/ProjectsPage";
 import { TaskBoardPage } from "./modules/tasks/pages/TaskBoardPage";
 import { TaskListPage } from "./modules/tasks/pages/TaskListPage";
@@ -48,6 +49,50 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
+  return <>{children}</>;
+}
+
+function PortalAdminRoute({ children }: { children: React.ReactNode }) {
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setHasAccess(false);
+      setLoading(false);
+      return;
+    }
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      setHasAccess(!!payload.is_superuser);
+    } catch {
+      setHasAccess(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg text-gray-400">Проверка доступа...</div>
+      </div>
+    );
+  }
+  if (!hasAccess) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Доступ запрещен</h2>
+          <p className="text-gray-400 mb-4">
+            Раздел «Настройки» доступен только администратору портала.
+          </p>
+          <Navigate to="/" replace />
+        </div>
+      </div>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -175,7 +220,6 @@ function AppRoutes() {
           <Route path="birthdays" element={<Birthdays />} />
           <Route path="org" element={<OrgChart />} />
           <Route path="requests" element={<HRPanel />} />
-          <Route path="users" element={<UsersPage />} />
         </Route>
         <Route
           path="/it"
@@ -198,7 +242,20 @@ function AppRoutes() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="licenses" element={<LicensesPage />} />
           <Route path="dictionaries" element={<DictionariesPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <PortalAdminRoute>
+                <SettingsLayout />
+              </PortalAdminRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/settings/users" replace />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="it" element={<SettingsPage />} />
         </Route>
         <Route
           path="/tasks"
@@ -226,6 +283,8 @@ function AppRoutes() {
           }
         />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/hr/users" element={<Navigate to="/settings/users" replace />} />
+        <Route path="/it/settings" element={<Navigate to="/settings/it" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthenticatedLayout>

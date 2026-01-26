@@ -61,26 +61,25 @@ export function Sidebar() {
 
   const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUIStore();
 
+  const [isSuperuser, setIsSuperuser] = useState(false);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         const modules = payload.modules || [];
-        const isSuperuser = payload.is_superuser || false;
+        const su = !!payload.is_superuser;
+        setIsSuperuser(su);
 
         if (payload.full_name) {
           setUserFullName(payload.full_name);
         }
 
-        if (isSuperuser) {
+        if (su) {
           setAvailableModules(["hr", "it", "tasks", "finance"]);
         } else {
-          const userModules = [...modules];
-          if (!userModules.includes("tasks")) {
-            userModules.push("tasks");
-          }
-          setAvailableModules(userModules);
+          setAvailableModules([...modules]);
         }
       } catch (e) {
         console.error("Ошибка декодирования токена:", e);
@@ -262,16 +261,21 @@ export function Sidebar() {
               )}
             </button>
 
-            {/* Settings */}
-            <button
-              className={`
-                flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"} w-full px-3 py-3 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all duration-200
-              `}
-              title={sidebarCollapsed ? "Настройки" : undefined}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span className="font-medium">Настройки</span>}
-            </button>
+            {/* Settings — только для администратора портала */}
+            {isSuperuser && (
+              <Link
+                to="/settings"
+                className={`
+                  flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"} w-full px-3 py-3 rounded-xl transition-all duration-200
+                  ${location.pathname.startsWith("/settings") ? "bg-accent-purple/20 text-accent-purple border border-accent-purple/30" : "text-gray-400 hover:text-white hover:bg-dark-700/50"}
+                `}
+                onClick={() => setIsOpen(false)}
+                title={sidebarCollapsed ? "Настройки" : undefined}
+              >
+                <Settings className="w-5 h-5 flex-shrink-0" />
+                {!sidebarCollapsed && <span className="font-medium">Настройки</span>}
+              </Link>
+            )}
 
             {/* User profile */}
             <div className="pt-2 border-t border-dark-700/50">

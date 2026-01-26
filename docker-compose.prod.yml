@@ -72,7 +72,7 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       
       # Modules
-      - ENABLED_MODULES=hr,it
+      - ENABLED_MODULES=hr,it,tasks
       
       # Redis
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0

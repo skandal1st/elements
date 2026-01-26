@@ -84,25 +84,27 @@ async def login(
             detail="Пользователь деактивирован",
         )
     
-    # Получаем доступные модули из лицензии или настроек
+    # Модули платформы (из лицензии или настроек)
     if settings.company_id:
         try:
-            modules = await license_client.get_available_modules(settings.company_id)
+            platform_modules = await license_client.get_available_modules(settings.company_id)
         except Exception:
-            # При ошибке используем модули из настроек
-            modules = settings.get_enabled_modules()
+            platform_modules = settings.get_enabled_modules()
     else:
-        # Если company_id не настроен, используем модули из настроек
-        modules = settings.get_enabled_modules()
-    
-    # Определяем основную роль (для обратной совместимости)
-    # Берем первую роль из roles или "employee" по умолчанию
+        platform_modules = settings.get_enabled_modules()
+
+    # Доступ пользователя: суперпользователь — все модули; иначе — по ролям (user.roles)
+    if user.is_superuser:
+        modules = list(platform_modules)
+    else:
+        user_module_keys = list((user.roles or {}).keys())
+        modules = [m for m in user_module_keys if m in platform_modules]
+
+    # Основная роль (для обратной совместимости)
     main_role = "employee"
     if user.roles:
-        # Берем первую роль из словаря
         main_role = list(user.roles.values())[0] if user.roles else "employee"
-    
-    # Создаем JWT токен
+
     token = create_access_token(
         user_id=user.id,
         email=user.email,
@@ -158,21 +160,24 @@ async def get_current_user_info(
             detail="Пользователь не найден",
         )
     
-    # Получаем доступные модули
-    modules = []
     if settings.company_id:
         try:
-            modules = await license_client.get_available_modules(settings.company_id)
+            platform_modules = await license_client.get_available_modules(settings.company_id)
         except Exception:
-            modules = settings.get_enabled_modules()
+            platform_modules = settings.get_enabled_modules()
     else:
-        modules = settings.get_enabled_modules()
-    
-    # Определяем основную роль
+        platform_modules = settings.get_enabled_modules()
+
+    if user.is_superuser:
+        modules = list(platform_modules)
+    else:
+        user_module_keys = list((user.roles or {}).keys())
+        modules = [m for m in user_module_keys if m in platform_modules]
+
     main_role = "employee"
     if user.roles:
         main_role = list(user.roles.values())[0] if user.roles else "employee"
-    
+
     return UserResponse(
         id=str(user.id),
         email=user.email,
