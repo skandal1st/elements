@@ -657,6 +657,12 @@ async def test_telegram_connection(db: Session = Depends(get_db)) -> dict:
             db.add(setting)
         db.commit()
 
+    # Перезапускаем polling чтобы подхватить новые настройки
+    try:
+        await telegram_service.restart_polling()
+    except Exception:
+        pass
+
     return {
         "status": "success",
         "message": f"Telegram бот @{bot_username} подключен успешно",

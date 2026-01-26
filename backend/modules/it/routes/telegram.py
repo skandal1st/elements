@@ -200,73 +200,10 @@ async def telegram_webhook(
 ):
     """
     Webhook для обработки сообщений от Telegram бота.
-    Этот endpoint должен быть зарегистрирован в Telegram Bot API.
+    Используется если сервер доступен по публичному URL.
+    При работе через polling этот endpoint не используется.
     """
-    # Обработка входящих сообщений
-    message = update.get("message")
-    if not message:
-        return {"ok": True}
-
-    chat_id = message.get("chat", {}).get("id")
-    text = message.get("text", "")
-    from_user = message.get("from", {})
-    telegram_username = from_user.get("username")
-
-    # Обработка команды /start с кодом привязки
-    if text.startswith("/start"):
-        parts = text.split()
-        if len(parts) > 1:
-            link_code = parts[1]
-
-            # Ищем пользователя с таким кодом
-            user = (
-                db.query(User)
-                .filter(
-                    User.telegram_link_code == link_code,
-                    User.telegram_link_code_expires > datetime.utcnow(),
-                )
-                .first()
-            )
-
-            if user:
-                # Привязываем аккаунт
-                user.telegram_id = chat_id
-                user.telegram_username = telegram_username
-                user.telegram_notifications = True
-                user.telegram_link_code = None
-                user.telegram_link_code_expires = None
-                db.commit()
-
-                await telegram_service.send_message(
-                    db,
-                    chat_id,
-                    f"Аккаунт успешно привязан к пользователю {user.full_name}!\n\n"
-                    "Теперь вы будете получать уведомления о заявках.",
-                )
-            else:
-                await telegram_service.send_message(
-                    db,
-                    chat_id,
-                    "Код привязки недействителен или истёк.\n"
-                    "Получите новый код в настройках системы.",
-                )
-        else:
-            await telegram_service.send_message(
-                db,
-                chat_id,
-                "Добро пожаловать!\n\n"
-                "Для привязки аккаунта получите код в настройках системы IT и отправьте его сюда.",
-            )
-
-    # Обработка callback-кнопок
-    callback_query = update.get("callback_query")
-    if callback_query:
-        callback_data = callback_query.get("data", "")
-
-        if callback_data.startswith("ticket_view_"):
-            # Просто подтверждаем callback
-            pass
-
+    await telegram_service.process_update(db, update)
     return {"ok": True}
 
 

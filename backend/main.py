@@ -83,7 +83,25 @@ async def on_startup():
     """Инициализация при старте приложения"""
     logger.info("Запуск Elements Platform...")
     logger.info(f"Доступные модули: {', '.join(settings.get_enabled_modules())}")
+
+    # Запускаем Telegram polling
+    try:
+        from backend.modules.it.services.telegram_service import telegram_service
+        await telegram_service.start_polling()
+    except Exception as e:
+        logger.warning(f"Не удалось запустить Telegram polling: {e}")
+
     logger.info("Elements Platform запущен успешно")
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    """Очистка при остановке приложения"""
+    try:
+        from backend.modules.it.services.telegram_service import telegram_service
+        await telegram_service.stop_polling()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
 """
 Telegram Bot Service
-Интеграция с Telegram для уведомлений
+Интеграция с Telegram для уведомлений + long-polling
 """
 
+import asyncio
+import logging
 import random
 import string
 from datetime import datetime, timedelta
@@ -15,9 +17,17 @@ from sqlalchemy.orm import Session
 from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.hr.models.user import User
 
+logger = logging.getLogger(__name__)
+
 
 class TelegramService:
     """Сервис для работы с Telegram Bot API"""
+
+    def __init__(self):
+        self._polling_task: Optional[asyncio.Task] = None
+        self._polling_active = False
+
+    # ── helpers ──────────────────────────────────────────────
 
     def _get_bot_token(self, db: Session) -> Optional[str]:
         """Получить токен бота из БД"""
@@ -45,6 +55,8 @@ class TelegramService:
             .first()
         )
         return setting.setting_value if setting else None
+
+    # ── Telegram API ─────────────────────────────────────────
 
     async def send_message(
         self,
@@ -74,7 +86,7 @@ class TelegramService:
                 response = await client.post(url, json=payload, timeout=10.0)
                 return response.status_code == 200
         except Exception as e:
-            print(f"[Telegram] Ошибка отправки сообщения: {e}")
+            logger.error(f"[Telegram] Ошибка отправки сообщения: {e}")
             return False
 
     async def get_bot_info(self, db: Session) -> Optional[dict]:
@@ -93,7 +105,7 @@ class TelegramService:
                     if data.get("ok"):
                         return data.get("result")
         except Exception as e:
-            print(f"[Telegram] Ошибка получения информации о боте: {e}")
+            logger.error(f"[Telegram] Ошибка получения информации о боте: {e}")
 
         return None
 
@@ -105,6 +117,225 @@ class TelegramService:
     def generate_link_code(self) -> str:
         """Генерация 6-значного кода привязки"""
         return "".join(random.choices(string.digits, k=6))
+
+    # ── Обработка входящих обновлений ────────────────────────
+
+    async def process_update(self, db: Session, update: dict) -> None:
+        """
+        Обработать одно обновление от Telegram.
+        Используется и из webhook-эндпоинта, и из polling-цикла.
+        """
+        # Обработка входящих сообщений
+        message = update.get("message")
+        if message:
+            chat_id = message.get("chat", {}).get("id")
+            text = message.get("text", "")
+            from_user = message.get("from", {})
+            telegram_username = from_user.get("username")
+
+            if text.startswith("/start"):
+                parts = text.split()
+                if len(parts) > 1:
+                    link_code = parts[1]
+
+                    user = (
+                        db.query(User)
+                        .filter(
+                            User.telegram_link_code == link_code,
+                            User.telegram_link_code_expires > datetime.utcnow(),
+                        )
+                        .first()
+                    )
+
+                    if user:
+                        user.telegram_id = chat_id
+                        user.telegram_username = telegram_username
+                        user.telegram_notifications = True
+                        user.telegram_link_code = None
+                        user.telegram_link_code_expires = None
+                        db.commit()
+
+                        await self.send_message(
+                            db,
+                            chat_id,
+                            f"Аккаунт успешно привязан к пользователю {user.full_name}!\n\n"
+                            "Теперь вы будете получать уведомления о заявках.",
+                        )
+                    else:
+                        await self.send_message(
+                            db,
+                            chat_id,
+                            "Код привязки недействителен или истёк.\n"
+                            "Получите новый код в настройках системы.",
+                        )
+                else:
+                    await self.send_message(
+                        db,
+                        chat_id,
+                        "Добро пожаловать!\n\n"
+                        "Для привязки аккаунта получите код в разделе IT → Telegram и перейдите по ссылке с кодом.",
+                    )
+
+        # Обработка callback-кнопок
+        callback_query = update.get("callback_query")
+        if callback_query:
+            # Подтверждаем callback, чтобы убрать «часики» в Telegram
+            callback_id = callback_query.get("id")
+            if callback_id:
+                token = self._get_bot_token(db)
+                if token:
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            await client.post(
+                                f"https://api.telegram.org/bot{token}/answerCallbackQuery",
+                                json={"callback_query_id": callback_id},
+                                timeout=5.0,
+                            )
+                    except Exception:
+                        pass
+
+    # ── Long-polling ─────────────────────────────────────────
+
+    async def _delete_webhook(self, token: str) -> None:
+        """Удалить webhook, чтобы можно было использовать getUpdates"""
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{token}/deleteWebhook",
+                    json={"drop_pending_updates": False},
+                    timeout=10.0,
+                )
+        except Exception as e:
+            logger.warning(f"[Telegram] Ошибка удаления webhook: {e}")
+
+    async def _poll_loop(self) -> None:
+        """Основной цикл long-polling"""
+        from backend.core.database import SessionLocal
+
+        offset = 0
+        logger.info("[Telegram] Polling запущен")
+
+        while self._polling_active:
+            db = SessionLocal()
+            try:
+                # Проверяем включена ли интеграция
+                if not self._is_enabled(db):
+                    db.close()
+                    await asyncio.sleep(15)
+                    continue
+
+                token = self._get_bot_token(db)
+                if not token:
+                    db.close()
+                    await asyncio.sleep(15)
+                    continue
+
+                # getUpdates с long-polling (timeout=30 сек)
+                url = f"https://api.telegram.org/bot{token}/getUpdates"
+                params = {
+                    "offset": offset,
+                    "timeout": 30,
+                    "allowed_updates": ["message", "callback_query"],
+                }
+
+                try:
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get(
+                            url, params=params, timeout=40.0
+                        )
+
+                    if response.status_code != 200:
+                        logger.warning(
+                            f"[Telegram] getUpdates вернул {response.status_code}"
+                        )
+                        db.close()
+                        await asyncio.sleep(5)
+                        continue
+
+                    data = response.json()
+                    if not data.get("ok"):
+                        logger.warning(
+                            f"[Telegram] getUpdates error: {data.get('description')}"
+                        )
+                        db.close()
+                        await asyncio.sleep(5)
+                        continue
+
+                    updates = data.get("result", [])
+                    for upd in updates:
+                        update_id = upd.get("update_id", 0)
+                        try:
+                            await self.process_update(db, upd)
+                        except Exception as e:
+                            logger.error(
+                                f"[Telegram] Ошибка обработки update {update_id}: {e}"
+                            )
+                        offset = update_id + 1
+
+                except httpx.TimeoutException:
+                    # Нормальная ситуация для long-polling
+                    pass
+                except httpx.ConnectError as e:
+                    logger.warning(f"[Telegram] Нет связи с api.telegram.org: {e}")
+                    await asyncio.sleep(10)
+                except Exception as e:
+                    logger.error(f"[Telegram] Ошибка polling: {e}")
+                    await asyncio.sleep(5)
+
+            except Exception as e:
+                logger.error(f"[Telegram] Критическая ошибка в poll_loop: {e}")
+                await asyncio.sleep(10)
+            finally:
+                db.close()
+
+        logger.info("[Telegram] Polling остановлен")
+
+    async def start_polling(self) -> None:
+        """Запустить фоновый polling"""
+        if self._polling_task and not self._polling_task.done():
+            return  # Уже запущен
+
+        from backend.core.database import SessionLocal
+
+        # Проверяем, есть ли токен и включена ли интеграция
+        db = SessionLocal()
+        try:
+            token = self._get_bot_token(db)
+            enabled = self._is_enabled(db)
+        finally:
+            db.close()
+
+        if not token or not enabled:
+            logger.info(
+                "[Telegram] Polling не запущен: бот отключен или токен не задан"
+            )
+            return
+
+        # Удаляем webhook перед началом polling
+        await self._delete_webhook(token)
+
+        self._polling_active = True
+        self._polling_task = asyncio.create_task(self._poll_loop())
+        logger.info("[Telegram] Фоновый polling запущен")
+
+    async def stop_polling(self) -> None:
+        """Остановить фоновый polling"""
+        self._polling_active = False
+        if self._polling_task and not self._polling_task.done():
+            self._polling_task.cancel()
+            try:
+                await self._polling_task
+            except asyncio.CancelledError:
+                pass
+        self._polling_task = None
+        logger.info("[Telegram] Polling остановлен")
+
+    async def restart_polling(self) -> None:
+        """Перезапустить polling (после изменения настроек)"""
+        await self.stop_polling()
+        await self.start_polling()
+
+    # ── Уведомления ──────────────────────────────────────────
 
     async def send_notification(
         self,
