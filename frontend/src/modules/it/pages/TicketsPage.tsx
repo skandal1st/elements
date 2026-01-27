@@ -1401,12 +1401,19 @@ export function TicketsPage() {
                 Описание
               </label>
               {canEdit ? (
-                <textarea
-                  className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[120px] resize-none"
-                  value={editForm.description}
-                  onChange={(e) => updateEditField("description", e.target.value)}
-                  placeholder="Описание проблемы"
-                />
+                <div className="bg-dark-700/30 p-4 rounded-xl">
+                  <textarea
+                    className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[120px] resize-none"
+                    value={editForm.description}
+                    onChange={(e) => updateEditField("description", e.target.value)}
+                    placeholder="Описание проблемы"
+                  />
+                  {renderAttachments(detail.attachments, {
+                    showEmpty: true,
+                    emptyText:
+                      "Вложений нет (если они были в письме — проверьте, что Nginx проксирует /uploads/ на backend).",
+                  })}
+                </div>
               ) : (
                 <div className="bg-dark-700/30 p-4 rounded-xl">
                   <p className="text-gray-300 whitespace-pre-wrap">
