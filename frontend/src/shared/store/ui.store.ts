@@ -16,7 +16,9 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-  theme: 'light',
+  // UI в приложении сейчас в основном тёмный (bg-dark-*),
+  // поэтому держим dark как дефолт, чтобы Tailwind `dark:` работал стабильно
+  theme: 'dark',
   sidebarCollapsed: false,
 
   toggleTheme: () => {
@@ -57,8 +59,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   loadFromStorage: () => {
     // Загружаем тему
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const theme = savedTheme || (prefersDark ? 'dark' : 'light')
+    // Если тема не сохранена, используем dark по умолчанию.
+    // (prefers-color-scheme не используем, иначе можно получить "тёмный UI + светлые карточки")
+    const theme = savedTheme || 'dark'
 
     set({ theme })
 
