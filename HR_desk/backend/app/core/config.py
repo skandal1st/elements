@@ -9,7 +9,8 @@ class Settings(BaseSettings):
 
     # Authentication (общий секрет для всех модулей Elements)
     secret_key: str = "change-me"
-    access_token_expire_minutes: int = 60 * 12
+    # 7 дней
+    access_token_expire_minutes: int = 60 * 24 * 7
 
     # Database (PostgreSQL)
     database_url: str = "postgresql://elements:elements@localhost:5432/elements"

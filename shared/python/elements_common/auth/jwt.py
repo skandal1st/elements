@@ -22,8 +22,8 @@ from pydantic import BaseModel
 # JWT algorithm - must match across all modules
 ALGORITHM = "HS256"
 
-# Default token expiration (12 hours)
-DEFAULT_EXPIRE_MINUTES = 720
+# Default token expiration (7 days)
+DEFAULT_EXPIRE_MINUTES = 60 * 24 * 7
 
 
 class TokenPayload(BaseModel):

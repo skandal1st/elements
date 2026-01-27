@@ -33,7 +33,8 @@ class Settings(BaseSettings):
 
     # JWT аутентификация
     secret_key: str = "elements-super-secret-key-change-in-production-min-32-chars"
-    access_token_expire_minutes: int = 30
+    # 7 дней
+    access_token_expire_minutes: int = 60 * 24 * 7
     refresh_token_expire_days: int = 7
     algorithm: str = "HS256"
 
