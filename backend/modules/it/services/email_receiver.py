@@ -22,7 +22,8 @@ from backend.modules.it.models import Ticket, TicketComment
 
 # Разрешённые расширения файлов
 ALLOWED_EXTENSIONS = {
-    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg",  # Изображения
+    ".jpg", ".jpeg", ".jpe", ".png", ".gif", ".bmp", ".webp", ".svg",  # Изображения
+    ".jfif", ".tif", ".tiff", ".heic", ".heif",  # частые форматы из почтовых клиентов/телефонов
     ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",  # Документы
     ".txt", ".log", ".csv",  # Текст
     ".zip", ".rar", ".7z", ".tar", ".gz",  # Архивы
@@ -41,9 +42,14 @@ def _ext_from_content_type(content_type: str) -> Optional[str]:
         "image/jpg": ".jpg",
         "image/png": ".png",
         "image/gif": ".gif",
+        "image/jfif": ".jfif",
         "image/webp": ".webp",
         "image/bmp": ".bmp",
         "image/svg+xml": ".svg",
+        "image/tiff": ".tiff",
+        "image/x-tiff": ".tiff",
+        "image/heic": ".heic",
+        "image/heif": ".heif",
         "application/pdf": ".pdf",
         "application/msword": ".doc",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
@@ -251,6 +257,10 @@ class EmailReceiverService:
                 ext = _ext_from_content_type(content_type)
                 if ext:
                     filename = f"{Path(filename).stem}{ext}"
+                else:
+                    # Часто приходит application/octet-stream с "кривым" filename/без распознаваемого MIME.
+                    # Чтобы не терять вложение — сохраняем как .bin
+                    filename = f"{Path(filename).stem}.bin"
 
             saved_path = self._save_attachment(filename, content)
             if saved_path:
@@ -374,6 +384,7 @@ class EmailReceiverService:
             "emails_processed": 0,
             "tickets_created": 0,
             "comments_created": 0,
+            "attachments_saved": 0,
             "errors": [],
         }
 
@@ -416,6 +427,7 @@ class EmailReceiverService:
 
                     body = self._get_email_body(msg)
                     attachments = self._get_attachments(msg)
+                    stats["attachments_saved"] += len(attachments)
 
                     print(f"[Email Receiver] Обработка письма от: {from_email_addr}")
 
