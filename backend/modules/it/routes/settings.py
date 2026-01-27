@@ -159,6 +159,7 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
             ticket_notifications_enabled=get_val("ticket_notifications_enabled", True),
         ),
         email=EmailSettings(
+            email_enabled=get_val("email_enabled", False),
             smtp_host=get_val("smtp_host"),
             smtp_port=get_val("smtp_port", 587),
             smtp_user=get_val("smtp_user"),

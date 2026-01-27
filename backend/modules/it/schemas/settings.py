@@ -48,6 +48,8 @@ class SettingsBulkUpdate(BaseModel):
 class EmailSettings(BaseModel):
     """Настройки SMTP для отправки email."""
 
+    # Флаг включения email-синхронизации (входящие письма + уведомления)
+    email_enabled: Optional[bool] = False
     smtp_host: Optional[str] = None
     smtp_port: Optional[int] = 587
     smtp_user: Optional[str] = None

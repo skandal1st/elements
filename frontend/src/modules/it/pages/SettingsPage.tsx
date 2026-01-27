@@ -3,6 +3,7 @@ import {
   Save,
   TestTube,
   Settings,
+  RefreshCw,
   Mail,
   MessageCircle,
   Server,
@@ -40,6 +41,7 @@ type GeneralSettings = {
 };
 
 type EmailSettings = {
+  email_enabled?: boolean;
   smtp_host?: string;
   smtp_port?: number;
   smtp_user?: string;
@@ -85,6 +87,7 @@ type LdapSettings = {
 
 const TABS = [
   { id: "general", label: "Общие", icon: Settings },
+  { id: "sync", label: "Синхронизации", icon: RefreshCw },
   { id: "buildings", label: "Здания", icon: Building2 },
   { id: "rooms", label: "Кабинеты", icon: DoorOpen },
   { id: "email", label: "Email (SMTP)", icon: Mail },
@@ -648,6 +651,56 @@ export function SettingsPage() {
               </div>
             )}
 
+            {/* Синхронизации */}
+            {activeTab === "sync" && (
+              <div className="space-y-6 max-w-xl">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1">
+                    Синхронизации
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Включение/выключение интеграций, которые работают в фоне.
+                  </p>
+                </div>
+
+                <div className="glass-card p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-accent-blue" />
+                    <h4 className="text-sm font-semibold text-white">
+                      Email (входящие письма и уведомления)
+                    </h4>
+                  </div>
+                  {renderInput(
+                    "Включить синхронизацию Email",
+                    "email",
+                    "email_enabled",
+                    "checkbox",
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Если выключено — проверка почты (IMAP) и email‑уведомления не работают.
+                  </p>
+                </div>
+
+                <div className="glass-card p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-accent-purple" />
+                    <h4 className="text-sm font-semibold text-white">
+                      Active Directory (LDAP)
+                    </h4>
+                  </div>
+                  {renderInput(
+                    "Включить синхронизацию сотрудников из AD",
+                    "ldap",
+                    "ldap_enabled",
+                    "checkbox",
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Если выключено — синхронизация сотрудников из AD будет недоступна.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Здания */}
             {activeTab === "buildings" && (
               <div className="space-y-4">
@@ -1028,7 +1081,7 @@ export function SettingsPage() {
                     </button>
                     <button
                       onClick={syncEmployeesFromAD}
-                      disabled={ldapSyncLoading}
+                      disabled={ldapSyncLoading || !settings.ldap.ldap_enabled}
                       className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50"
                       title="Синхронизировать сотрудников HR из AD"
                     >
@@ -1046,6 +1099,11 @@ export function SettingsPage() {
                     </button>
                   </div>
                 </div>
+                {!settings.ldap.ldap_enabled && (
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-300">
+                    LDAP интеграция отключена. Включите её во вкладке «Синхронизации» или ниже («Включить LDAP»), затем сохраните настройки.
+                  </div>
+                )}
                 {ldapSyncResult && (
                   <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-sm text-gray-300">
                     <div>Всего в AD: {ldapSyncResult.total}</div>
