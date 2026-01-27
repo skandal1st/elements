@@ -5,6 +5,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.modules.hr.models.user import User
@@ -31,6 +32,9 @@ from backend.modules.it.services.ticket_history import log_ticket_changes
 UTC = timezone.utc
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
+
+class TicketReplyEmailRequest(BaseModel):
+    message: str
 
 
 def _user_it_role(user: User) -> str:
@@ -187,7 +191,7 @@ async def create_ticket(
     response_model=TicketOut,
     dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
 )
-def update_ticket(
+async def update_ticket(
     ticket_id: UUID,
     payload: TicketUpdate,
     db: Session = Depends(get_db),
@@ -270,9 +274,118 @@ def update_ticket(
         new_data=update_data,
     )
 
+    status_changed = "status" in update_data and update_data.get("status") != old_data.get("status")
+
     db.commit()
     db.refresh(t)
+
+    # Уведомления о смене статуса (для создателя/отправителя)
+    if status_changed:
+        try:
+            # Имя исполнителя для шаблонов (если назначен)
+            assignee_name = None
+            if t.assignee_id:
+                assignee = db.query(User).filter(User.id == t.assignee_id).first()
+                assignee_name = assignee.full_name if assignee else None
+
+            # Email отправителю (если тикет создан из письма)
+            from backend.modules.it.services.email_service import email_service
+            if t.email_sender:
+                msg_id = await email_service.send_ticket_status_notification_to_email(
+                    db,
+                    to_email=t.email_sender,
+                    ticket_id=str(t.id),
+                    ticket_title=t.title,
+                    new_status=t.status,
+                    assignee_name=assignee_name,
+                    in_reply_to=t.email_message_id,
+                    references=[t.email_message_id] if t.email_message_id else None,
+                )
+                if msg_id:
+                    # Обновляем message_id, чтобы ответы на последующие письма корректно цеплялись
+                    t.email_message_id = msg_id
+                    db.commit()
+
+            # Email зарегистрированному создателю
+            if t.creator_id:
+                await email_service.send_ticket_status_notification(
+                    db,
+                    user_id=t.creator_id,
+                    ticket_id=str(t.id),
+                    ticket_title=t.title,
+                    new_status=t.status,
+                    assignee_name=assignee_name,
+                )
+
+            # Telegram (если привязан)
+            try:
+                from backend.modules.it.services.telegram_service import telegram_service
+                if t.creator_id:
+                    await telegram_service.notify_ticket_status_changed(
+                        db,
+                        t.creator_id,
+                        t.id,
+                        t.title,
+                        t.status,
+                    )
+            except Exception:
+                pass
+        except Exception:
+            # Не блокируем обновление тикета из-за уведомлений
+            pass
+
     return t
+
+
+@router.post(
+    "/{ticket_id}/reply-email",
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist"]))],
+)
+async def reply_ticket_via_email(
+    ticket_id: UUID,
+    payload: TicketReplyEmailRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    Ответить отправителю по email (для email-тикетов).
+    Ответ уходит в виде письма, на которое можно ответить — ответ попадёт в комментарии.
+    """
+    t = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    message = (payload.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Текст ответа пуст")
+
+    # Куда отвечаем: либо email_sender, либо email зарегистрированного создателя
+    to_email = t.email_sender
+    if not to_email and t.creator_id:
+        creator = db.query(User).filter(User.id == t.creator_id).first()
+        to_email = creator.email if creator else None
+    if not to_email:
+        raise HTTPException(status_code=400, detail="У тикета нет email отправителя")
+
+    from backend.modules.it.services.email_service import email_service
+    msg_id = await email_service.send_ticket_reply(
+        db,
+        to_email=to_email,
+        ticket_id=str(t.id),
+        ticket_subject=t.title,
+        reply_content=message,
+        sender_name=user.full_name,
+        in_reply_to=t.email_message_id,
+        references=[t.email_message_id] if t.email_message_id else None,
+    )
+    if not msg_id:
+        raise HTTPException(status_code=500, detail="Не удалось отправить email")
+
+    # Обновляем email_message_id, чтобы ответы цеплялись по In-Reply-To
+    t.email_message_id = msg_id
+    db.commit()
+
+    return {"success": True, "message_id": msg_id}
 
 
 @router.post(

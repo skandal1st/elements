@@ -402,7 +402,55 @@ class EmailService:
             new_status, ticket_id, ticket_title, assignee_name
         )
 
-        return await self.send_email(db, user.email, subject, html)
+        # Пытаемся отправить с threading заголовками, чтобы ответы цеплялись в тикет
+        message_id = self._generate_message_id(ticket_id, f"status-{new_status}")
+        return await self.send_email(
+            db,
+            user.email,
+            subject,
+            html,
+            message_id=message_id,
+        )
+
+    async def send_ticket_status_notification_to_email(
+        self,
+        db: Session,
+        to_email: str,
+        ticket_id: str,
+        ticket_title: str,
+        new_status: str,
+        assignee_name: Optional[str] = None,
+        in_reply_to: Optional[str] = None,
+        references: Optional[List[str]] = None,
+    ) -> Optional[str]:
+        """
+        Отправить уведомление об изменении статуса на произвольный email
+        (для email-тикетов без зарегистрированного пользователя).
+
+        Возвращает Message-ID отправленного письма (или None при ошибке).
+        """
+        if not to_email:
+            return None
+
+        subject, html = self._get_status_email_template(
+            new_status, ticket_id, ticket_title, assignee_name
+        )
+        message_id = self._generate_message_id(ticket_id, f"status-{new_status}")
+
+        refs = None
+        if references or in_reply_to:
+            refs = (references or []) + ([in_reply_to] if in_reply_to else [])
+
+        ok = await self.send_email(
+            db,
+            to_email,
+            subject,
+            html,
+            message_id=message_id,
+            in_reply_to=in_reply_to,
+            references=refs,
+        )
+        return message_id if ok else None
 
     async def send_ticket_reply(
         self,

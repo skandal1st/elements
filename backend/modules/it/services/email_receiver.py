@@ -32,6 +32,23 @@ ALLOWED_EXTENSIONS = {
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads/tickets")
 
 
+def _ext_from_content_type(content_type: str) -> Optional[str]:
+    """Преобразовать MIME type в расширение файла (минимальный набор)."""
+    ct = (content_type or "").lower()
+    mapping = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+        "image/bmp": ".bmp",
+        "image/svg+xml": ".svg",
+        "application/pdf": ".pdf",
+        "text/plain": ".txt",
+    }
+    return mapping.get(ct)
+
+
 class EmailReceiverService:
     """Сервис для получения email и создания тикетов"""
 
@@ -170,17 +187,56 @@ class EmailReceiverService:
             return attachments
 
         for part in msg.walk():
-            content_disposition = str(part.get("Content-Disposition", ""))
+            content_disposition = str(part.get("Content-Disposition", "") or "").lower()
+            content_type = (part.get_content_type() or "").lower()
 
-            if "attachment" in content_disposition or "inline" in content_disposition:
-                filename = part.get_filename()
-                if filename:
-                    filename = self._decode_header_value(filename)
-                    content = part.get_payload(decode=True)
-                    if content:
-                        saved_path = self._save_attachment(filename, content)
-                        if saved_path:
-                            attachments.append(saved_path)
+            # Пропускаем контейнеры и текстовые части тела письма
+            if part.is_multipart():
+                continue
+            if content_type in ("text/plain", "text/html") and "attachment" not in content_disposition:
+                continue
+
+            # Определяем, считать ли часть вложением
+            is_attachment = "attachment" in content_disposition
+            is_inline = "inline" in content_disposition
+            content_id = (part.get("Content-ID") or "").strip()
+            # Inline изображения часто приходят без Content-Disposition, но с Content-ID
+            is_inline_image = content_type.startswith("image/") and (is_inline or bool(content_id))
+
+            if not (is_attachment or is_inline_image):
+                continue
+
+            # Имя файла может отсутствовать (особенно у inline изображений)
+            filename = part.get_filename()
+            if filename:
+                filename = self._decode_header_value(filename)
+            else:
+                # Пробуем name= из Content-Type
+                name_param = part.get_param("name")
+                if name_param:
+                    filename = self._decode_header_value(name_param)
+                else:
+                    # Фоллбэк: по Content-ID + mime
+                    ext = _ext_from_content_type(content_type) or ".bin"
+                    cid_clean = content_id.strip("<>").replace("/", "_").replace("\\", "_")
+                    if cid_clean:
+                        filename = f"inline-{cid_clean}{ext}"
+                    else:
+                        filename = f"inline-{uuid.uuid4().hex}{ext}"
+
+            content = part.get_payload(decode=True)
+            if not content:
+                continue
+
+            # Если расширение не разрешено — попробуем подставить по mime (часто у inline нет расширения)
+            if not self._is_allowed_file(filename):
+                ext = _ext_from_content_type(content_type)
+                if ext:
+                    filename = f"{Path(filename).stem}{ext}"
+
+            saved_path = self._save_attachment(filename, content)
+            if saved_path:
+                attachments.append(saved_path)
 
         return attachments
 

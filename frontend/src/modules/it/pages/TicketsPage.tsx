@@ -41,8 +41,10 @@ type Ticket = {
   assignee_id?: string;
   equipment_id?: string;
   room_id?: string;
+  attachments?: string[] | null;
   source?: "web" | "email" | "api" | "telegram";
   email_sender?: string;
+  email_message_id?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -291,12 +293,71 @@ export function TicketsPage() {
   const [writeOffLoading, setWriteOffLoading] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [replyEmailOpen, setReplyEmailOpen] = useState(false);
+  const [replyEmailText, setReplyEmailText] = useState("");
+  const [replyEmailSending, setReplyEmailSending] = useState(false);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const user = useAuthStore((state) => state.user);
 
   const canEdit = userRole === "it";
+
+  const isImageAttachment = (path: string) =>
+    /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path);
+
+  const renderAttachments = (attachments?: string[] | null) => {
+    if (!attachments || attachments.length === 0) return null;
+    return (
+      <div className="mt-3 space-y-2">
+        <div className="text-xs font-medium text-gray-500">Вложения</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {attachments.map((p) => (
+            <a
+              key={p}
+              href={p}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-3 rounded-xl bg-dark-800/40 border border-dark-600/50 hover:border-dark-500/70 transition-all"
+              title="Открыть вложение"
+            >
+              <div className="w-10 h-10 rounded-lg bg-dark-700/60 flex items-center justify-center flex-shrink-0">
+                <PaperclipIcon isImage={isImageAttachment(p)} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm text-white truncate">
+                  {p.split("/").pop()}
+                </div>
+                <div className="text-xs text-gray-500 truncate">{p}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+        {/* Превью изображений */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {attachments
+            .filter((p) => isImageAttachment(p))
+            .map((p) => (
+              <a
+                key={`img-${p}`}
+                href={p}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-xl border border-dark-600/50 hover:border-dark-500/70 transition-all"
+                title="Открыть изображение"
+              >
+                <img
+                  src={p}
+                  alt={p.split("/").pop() || "attachment"}
+                  className="w-full h-auto max-h-64 object-contain bg-black/20"
+                  loading="lazy"
+                />
+              </a>
+            ))}
+        </div>
+      </div>
+    );
+  };
 
   const [sortByPriority, setSortByPriority] = useState<boolean>(() => {
     const saved = localStorage.getItem("tickets_sort_priority");
@@ -1295,9 +1356,12 @@ export function TicketsPage() {
                   placeholder="Описание проблемы"
                 />
               ) : (
-                <p className="text-gray-300 whitespace-pre-wrap bg-dark-700/30 p-4 rounded-xl">
-                  {detail.description}
-                </p>
+                <div className="bg-dark-700/30 p-4 rounded-xl">
+                  <p className="text-gray-300 whitespace-pre-wrap">
+                    {detail.description}
+                  </p>
+                  {renderAttachments(detail.attachments)}
+                </div>
               )}
             </div>
 
@@ -1608,6 +1672,19 @@ export function TicketsPage() {
             {/* IT Actions */}
             {canEdit && (
               <div className="flex flex-wrap gap-2 border-t border-dark-600/50 pt-4">
+                {(detail.source === "email" || !!detail.email_sender) && (
+                  <button
+                    onClick={() => {
+                      setReplyEmailText("");
+                      setReplyEmailOpen(true);
+                    }}
+                    className="px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-dark-700/50 text-gray-300 border border-dark-600/50 hover:text-white"
+                    title="Ответить отправителю по email"
+                  >
+                    <Mail className="w-4 h-4" />
+                    Ответить по email
+                  </button>
+                )}
                 <button
                   onClick={handleToggleHistory}
                   className={`px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all ${
@@ -1757,9 +1834,12 @@ export function TicketsPage() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap">
-                          {comment.content}
-                        </p>
+                        <div>
+                          <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                            {comment.content}
+                          </p>
+                          {renderAttachments(comment.attachments)}
+                        </div>
                       )}
                     </div>
                   ))}
@@ -1916,6 +1996,89 @@ export function TicketsPage() {
           </div>
         </div>
       )}
+
+      {/* Reply Email Modal */}
+      {replyEmailOpen && detailId && detail && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 mx-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  Ответить по email
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Ответ уйдёт отправителю и будет прикреплён к цепочке письма.
+                </p>
+              </div>
+              <button
+                onClick={() => setReplyEmailOpen(false)}
+                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <textarea
+              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all resize-none"
+              rows={6}
+              placeholder="Текст ответа..."
+              value={replyEmailText}
+              onChange={(e) => setReplyEmailText(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setReplyEmailOpen(false)}
+                disabled={replyEmailSending}
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={async () => {
+                  if (!detailId || !replyEmailText.trim()) return;
+                  setReplyEmailSending(true);
+                  setError(null);
+                  try {
+                    await apiPost(`/it/tickets/${detailId}/reply-email`, {
+                      message: replyEmailText.trim(),
+                    });
+                    setReplyEmailOpen(false);
+                  } catch (err) {
+                    setError((err as Error).message);
+                  } finally {
+                    setReplyEmailSending(false);
+                  }
+                }}
+                disabled={replyEmailSending || !replyEmailText.trim()}
+                className="glass-button px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {replyEmailSending ? "Отправка..." : "Отправить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function PaperclipIcon({ isImage }: { isImage: boolean }) {
+  // локальная иконка, чтобы не тянуть новые зависимости
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={isImage ? "text-accent-blue" : "text-gray-400"}
+    >
+      <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
   );
 }

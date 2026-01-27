@@ -3,11 +3,14 @@
 """
 import json
 import logging
+import os
 import time
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.core.config import settings
 from backend.core import auth_routes
@@ -27,6 +30,18 @@ app = FastAPI(
     description="Единая платформа Elements",
     version="1.0.0"
 )
+
+# Static: раздача вложений тикетов (/uploads/...)
+# По умолчанию email_receiver сохраняет в uploads/tickets, а в БД кладёт URL вида /uploads/tickets/<file>
+_upload_dir = os.getenv("UPLOAD_DIR", "uploads/tickets")
+_upload_path = Path(_upload_dir)
+_uploads_root = _upload_path.parent if _upload_path.name == "tickets" else _upload_path
+try:
+    _uploads_root.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(_uploads_root)), name="uploads")
+except Exception:
+    # Не блокируем запуск приложения, если директория недоступна в окружении
+    pass
 
 # CORS
 app.add_middleware(
