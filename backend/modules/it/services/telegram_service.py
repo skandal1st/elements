@@ -12,6 +12,7 @@ from typing import List, Optional
 from uuid import UUID
 
 import httpx
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.modules.hr.models.system_settings import SystemSettings
@@ -118,6 +119,30 @@ class TelegramService:
         """Генерация 6-значного кода привязки"""
         return "".join(random.choices(string.digits, k=6))
 
+    def generate_unique_link_code(self, db: Session, attempts: int = 30) -> str:
+        """
+        Сгенерировать код привязки, минимизируя коллизии.
+
+        Причина: код короткий (6 цифр) и при одновременной привязке несколькими
+        сотрудниками возможны совпадения. Мы гарантируем, что код не занят
+        (по крайней мере среди неистёкших кодов) на момент выдачи.
+        """
+        now = datetime.utcnow()
+        for _ in range(attempts):
+            code = self.generate_link_code()
+            exists = (
+                db.query(User.id)
+                .filter(
+                    User.telegram_link_code == code,
+                    User.telegram_link_code_expires > now,
+                )
+                .first()
+            )
+            if not exists:
+                return code
+        # Маловероятно, но чтобы не отдавать потенциально конфликтный код
+        raise RuntimeError("Не удалось сгенерировать уникальный код привязки")
+
     # ── Обработка входящих обновлений ────────────────────────
 
     async def process_update(self, db: Session, update: dict) -> None:
@@ -153,7 +178,18 @@ class TelegramService:
                         user.telegram_notifications = True
                         user.telegram_link_code = None
                         user.telegram_link_code_expires = None
-                        db.commit()
+                        try:
+                            db.commit()
+                        except IntegrityError:
+                            # Обычно это означает, что telegram_id уже привязан к другому пользователю
+                            db.rollback()
+                            await self.send_message(
+                                db,
+                                chat_id,
+                                "Не удалось привязать аккаунт: этот Telegram уже привязан к другой учётной записи.\n"
+                                "Если это ваш аккаунт — сначала отвяжите его в профиле и попробуйте снова.",
+                            )
+                            return
 
                         await self.send_message(
                             db,

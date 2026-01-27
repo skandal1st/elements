@@ -39,6 +39,7 @@ export function ProfilePage() {
   const setUser = useAuthStore((s) => s.setUser);
   const [me, setMe] = useState<Me | null>(null);
   const [tg, setTg] = useState<TelegramStatus | null>(null);
+  const [tgError, setTgError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,10 +63,16 @@ export function ProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const [meRes, tgRes] = await Promise.all([
-        apiGet<Me>("/auth/me"),
-        apiGet<TelegramStatus>("/it/telegram/status").catch(() => null),
-      ]);
+      const meRes = await apiGet<Me>("/auth/me");
+      let tgRes: TelegramStatus | null = null;
+      try {
+        tgRes = await apiGet<TelegramStatus>("/it/telegram/status");
+        setTgError(null);
+      } catch (e) {
+        // Важно не маскировать ошибку под "интеграция отключена"
+        setTgError((e as Error).message);
+        tgRes = null;
+      }
       setMe(meRes);
       setName(meRes.full_name || "");
       setTg(tgRes);
@@ -320,7 +327,12 @@ export function ProfilePage() {
           <MessageCircle className="w-5 h-5 text-accent-purple" />
           <h3 className="text-lg font-semibold text-white">Уведомления в Telegram</h3>
         </div>
-        {!tg?.enabled && (
+        {tgError && (
+          <p className="text-red-400 text-sm">
+            Не удалось получить статус Telegram: {tgError}
+          </p>
+        )}
+        {tg && !tg.enabled && (
           <p className="text-gray-400 text-sm">
             Интеграция с Telegram отключена администратором.
           </p>

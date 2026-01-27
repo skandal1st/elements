@@ -132,7 +132,7 @@ async def generate_link_code(
         raise HTTPException(status_code=503, detail="Telegram бот недоступен")
 
     # Генерируем код
-    code = telegram_service.generate_link_code()
+    code = telegram_service.generate_unique_link_code(db)
     expires_at = datetime.utcnow() + timedelta(minutes=10)
 
     # Сохраняем код в пользователе
