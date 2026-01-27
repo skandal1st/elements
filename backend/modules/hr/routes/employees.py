@@ -2,6 +2,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from backend.modules.hr.dependencies import get_db, get_current_user, require_roles
@@ -23,12 +24,27 @@ def list_employees(
     db: Session = Depends(get_db),
     q: Optional[str] = Query(default=None),
     department_id: Optional[int] = Query(default=None),
+    include_dismissed: bool = Query(default=False),
 ) -> List[Employee]:
     query = db.query(Employee)
     if q:
-        query = query.filter(Employee.full_name.ilike(f"%{q}%"))
+        qq = q.strip()
+        if qq:
+            like = f"%{qq}%"
+            query = query.filter(
+                or_(
+                    Employee.full_name.ilike(like),
+                    Employee.email.ilike(like),
+                    Employee.internal_phone.ilike(like),
+                    Employee.external_phone.ilike(like),
+                    Employee.external_id.ilike(like),
+                    Employee.pass_number.ilike(like),
+                )
+            )
     if department_id:
         query = query.filter(Employee.department_id == department_id)
+    if not include_dismissed:
+        query = query.filter(Employee.status != "dismissed")
     return query.all()
 
 

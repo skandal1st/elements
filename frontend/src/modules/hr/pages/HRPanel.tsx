@@ -23,6 +23,7 @@ export function HRPanel() {
   const [hireDate, setHireDate] = useState('')
   const [fireEmployeeId, setFireEmployeeId] = useState('')
   const [fireDate, setFireDate] = useState('')
+  const [fireEmployeeSearch, setFireEmployeeSearch] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,6 +64,15 @@ export function HRPanel() {
   useEffect(() => {
     loadData()
   }, [])
+
+  const filteredEmployees = employees.filter((e) => {
+    const q = fireEmployeeSearch.trim().toLowerCase()
+    if (!q) return true
+    return (
+      (e.full_name || '').toLowerCase().includes(q) ||
+      (e.email || '').toLowerCase().includes(q)
+    )
+  })
 
   const handleDepartmentChange = (departmentId: string) => {
     const dept = departments.find((d) => d.id === Number(departmentId))
@@ -172,13 +182,19 @@ export function HRPanel() {
       <div className="glass-card p-6 space-y-4">
         <h3 className="text-lg font-semibold text-white">Увольнение сотрудника</h3>
         <div className="flex flex-wrap gap-3 items-center">
+          <input
+            className="glass-input px-4 py-2.5 text-sm"
+            placeholder="Поиск сотрудника (ФИО / email)…"
+            value={fireEmployeeSearch}
+            onChange={(e) => setFireEmployeeSearch(e.target.value)}
+          />
           <select
             className="glass-input px-4 py-2.5 text-sm"
             value={fireEmployeeId}
             onChange={(e) => setFireEmployeeId(e.target.value)}
           >
             <option value="" className="bg-dark-800">Выберите сотрудника</option>
-            {employees.map((e) => (
+            {filteredEmployees.map((e) => (
               <option key={e.id} value={e.id} className="bg-dark-800">{e.full_name}</option>
             ))}
           </select>

@@ -219,6 +219,8 @@ export function EquipmentPage() {
   const [employees, setEmployees] = useState<Array<{ id: string; full_name: string }>>(
     [],
   );
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState("");
 
   // Модальные окна для добавления в справочник
   const [addBrandModal, setAddBrandModal] = useState(false);
@@ -657,6 +659,7 @@ export function EquipmentPage() {
     setSelectedRoomId("");
     setRoomsForEquipment([]);
     loadBuildingsForRooms();
+    setEmployeeSearch("");
     loadEmployees();
     setFormTab("main");
     setModalOpen(true);
@@ -704,6 +707,7 @@ export function EquipmentPage() {
 
     try {
       // Загружаем базовые данные
+      setEmployeeSearch("");
       await Promise.all([loadBrands(), loadBuildingsForRooms(), loadEmployees()]);
 
       // Загружаем марку и модель если есть model_id
@@ -796,13 +800,29 @@ export function EquipmentPage() {
 
   const loadEmployees = async () => {
     try {
-      const data =
-        await apiGet<Array<{ id: string; full_name: string }>>("/hr/employees/");
+      setEmployeesLoading(true);
+      const params = new URLSearchParams();
+      if (employeeSearch.trim()) params.set("q", employeeSearch.trim());
+      const url = params.toString()
+        ? `/hr/employees/?${params.toString()}`
+        : "/hr/employees/";
+      const data = await apiGet<Array<{ id: string; full_name: string }>>(url);
       setEmployees(data);
     } catch (err) {
       console.error("Ошибка загрузки сотрудников:", err);
+    } finally {
+      setEmployeesLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const t = window.setTimeout(() => {
+      loadEmployees();
+    }, 250);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeSearch, modalOpen]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -1358,6 +1378,20 @@ export function EquipmentPage() {
                         <label className="block text-sm font-medium text-gray-400 mb-1">
                           Ответственный сотрудник
                         </label>
+                        <div className="mb-2">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                            <input
+                              className="glass-input w-full pl-9 pr-4 py-2.5 text-sm"
+                              placeholder="Поиск сотрудника (ФИО / email / телефон)..."
+                              value={employeeSearch}
+                              onChange={(e) => setEmployeeSearch(e.target.value)}
+                            />
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {employeesLoading ? "Поиск…" : `Найдено: ${employees.length}`}
+                          </div>
+                        </div>
                         <select
                           className="glass-input w-full px-4 py-3 text-sm"
                           value={form.current_owner_id}
@@ -1367,8 +1401,11 @@ export function EquipmentPage() {
                               current_owner_id: e.target.value,
                             }))
                           }
+                          disabled={employeesLoading}
                         >
-                          <option value="" className="bg-dark-800">Выберите сотрудника</option>
+                          <option value="" className="bg-dark-800">
+                            {employeesLoading ? "Загрузка…" : "Выберите сотрудника"}
+                          </option>
                           {employees.map((emp) => (
                             <option key={emp.id} value={emp.id} className="bg-dark-800">
                               {emp.full_name}
