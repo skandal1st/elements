@@ -237,7 +237,7 @@ def create_equipment_request(
 
 
 @router.patch("/{request_id}", response_model=EquipmentRequestOut)
-def update_equipment_request(
+async def update_equipment_request(
     request_id: UUID,
     payload: EquipmentRequestUpdate,
     db: Session = Depends(get_db),
@@ -335,7 +335,7 @@ def update_equipment_request(
 
 
 @router.post("/{request_id}/review", response_model=EquipmentRequestOut, dependencies=[Depends(require_it_roles(["admin", "it_specialist"]))])
-def review_equipment_request(
+async def review_equipment_request(
     request_id: UUID,
     payload: ReviewRequest,
     db: Session = Depends(get_db),
@@ -413,7 +413,7 @@ def review_equipment_request(
 
 
 @router.post("/{request_id}/cancel", response_model=EquipmentRequestOut)
-def cancel_equipment_request(
+async def cancel_equipment_request(
     request_id: UUID,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
