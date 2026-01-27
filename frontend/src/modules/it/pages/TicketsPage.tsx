@@ -306,8 +306,21 @@ export function TicketsPage() {
   const isImageAttachment = (path: string) =>
     /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path);
 
-  const renderAttachments = (attachments?: string[] | null) => {
-    if (!attachments || attachments.length === 0) return null;
+  const renderAttachments = (
+    attachments?: string[] | null,
+    options?: { showEmpty?: boolean; emptyText?: string },
+  ) => {
+    const showEmpty = options?.showEmpty ?? false;
+    const emptyText = options?.emptyText ?? "Вложений нет";
+    if (!attachments || attachments.length === 0) {
+      if (!showEmpty) return null;
+      return (
+        <div className="mt-3 space-y-2">
+          <div className="text-xs font-medium text-gray-500">Вложения</div>
+          <div className="text-sm text-gray-500">{emptyText}</div>
+        </div>
+      );
+    }
     return (
       <div className="mt-3 space-y-2">
         <div className="text-xs font-medium text-gray-500">Вложения</div>
@@ -1360,7 +1373,10 @@ export function TicketsPage() {
                   <p className="text-gray-300 whitespace-pre-wrap">
                     {detail.description}
                   </p>
-                  {renderAttachments(detail.attachments)}
+                  {renderAttachments(detail.attachments, {
+                    showEmpty: true,
+                    emptyText: "Вложений нет (если они были в письме — проверьте, что Nginx проксирует /uploads/ на backend).",
+                  })}
                 </div>
               )}
             </div>

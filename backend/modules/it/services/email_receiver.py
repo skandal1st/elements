@@ -26,6 +26,7 @@ ALLOWED_EXTENSIONS = {
     ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",  # Документы
     ".txt", ".log", ".csv",  # Текст
     ".zip", ".rar", ".7z", ".tar", ".gz",  # Архивы
+    ".bin",  # fallback для вложений без расширения/неизвестных MIME
 }
 
 # Директория для загрузок
@@ -44,6 +45,16 @@ def _ext_from_content_type(content_type: str) -> Optional[str]:
         "image/bmp": ".bmp",
         "image/svg+xml": ".svg",
         "application/pdf": ".pdf",
+        "application/msword": ".doc",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+        "application/vnd.ms-excel": ".xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+        "application/vnd.ms-powerpoint": ".ppt",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+        "application/zip": ".zip",
+        "application/x-7z-compressed": ".7z",
+        "application/x-rar-compressed": ".rar",
+        "application/gzip": ".gz",
         "text/plain": ".txt",
     }
     return mapping.get(ct)
