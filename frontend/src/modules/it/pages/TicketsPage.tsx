@@ -319,6 +319,19 @@ export function TicketsPage() {
   const isImageAttachment = (path: string) =>
     /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path);
 
+  const normalizeAttachmentUrl = (p: string) => {
+    const raw = (p || "").trim();
+    if (!raw) return raw;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    // already absolute
+    if (raw.startsWith("/")) return raw;
+    // common stored variants
+    if (raw.startsWith("uploads/")) return `/${raw}`;
+    if (raw.startsWith("uploads\\")) return `/${raw.replaceAll("\\", "/")}`;
+    // fallback: old records sometimes store only filename
+    return `/uploads/tickets/${raw.replaceAll("\\", "/")}`;
+  };
+
   const renderAttachments = (
     attachments?: string[] | null,
     options?: { showEmpty?: boolean; emptyText?: string },
@@ -338,10 +351,12 @@ export function TicketsPage() {
       <div className="mt-3 space-y-2">
         <div className="text-xs font-medium text-gray-500">Вложения</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {attachments.map((p) => (
+          {attachments.map((p) => {
+            const url = normalizeAttachmentUrl(p);
+            return (
             <a
-              key={p}
-              href={p}
+              key={`${p}`}
+              href={url}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-3 rounded-xl bg-dark-800/40 border border-dark-600/50 hover:border-dark-500/70 transition-all"
@@ -354,32 +369,34 @@ export function TicketsPage() {
                 <div className="text-sm text-white truncate">
                   {p.split("/").pop()}
                 </div>
-                <div className="text-xs text-gray-500 truncate">{p}</div>
+                <div className="text-xs text-gray-500 truncate">{url}</div>
               </div>
             </a>
-          ))}
+          )})}
         </div>
         {/* Превью изображений */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {attachments
             .filter((p) => isImageAttachment(p))
-            .map((p) => (
+            .map((p) => {
+              const url = normalizeAttachmentUrl(p);
+              return (
               <a
                 key={`img-${p}`}
-                href={p}
+                href={url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block overflow-hidden rounded-xl border border-dark-600/50 hover:border-dark-500/70 transition-all"
                 title="Открыть изображение"
               >
                 <img
-                  src={p}
+                  src={url}
                   alt={p.split("/").pop() || "attachment"}
                   className="w-full h-auto max-h-64 object-contain bg-black/20"
                   loading="lazy"
                 />
               </a>
-            ))}
+            )})}
         </div>
       </div>
     );

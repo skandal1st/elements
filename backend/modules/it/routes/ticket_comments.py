@@ -17,6 +17,18 @@ from backend.modules.hr.models.user import User
 
 router = APIRouter(prefix="/tickets/{ticket_id}/comments", tags=["ticket-comments"])
 
+def _normalize_attachment_path(p: str) -> str:
+    s = (p or "").strip()
+    if not s:
+        return s
+    if s.startswith("http://") or s.startswith("https://"):
+        return s
+    if s.startswith("/"):
+        return s
+    if s.startswith("uploads/") or s.startswith("uploads\\"):
+        return "/" + s.replace("\\", "/")
+    return "/uploads/tickets/" + s.replace("\\", "/")
+
 
 def _user_it_role(user: User) -> str:
     """Определяет роль пользователя в IT модуле"""
@@ -58,7 +70,7 @@ def list_comments(
             "ticket_id": comment.ticket_id,
             "user_id": comment.user_id,
             "content": comment.content,
-            "attachments": comment.attachments,
+            "attachments": [_normalize_attachment_path(x) for x in (comment.attachments or [])] or None,
             "created_at": comment.created_at,
         }
         
@@ -107,7 +119,7 @@ def create_comment(
         ticket_id=comment.ticket_id,
         user_id=comment.user_id,
         content=comment.content,
-        attachments=comment.attachments,
+        attachments=[_normalize_attachment_path(x) for x in (comment.attachments or [])] or None,
         created_at=comment.created_at,
         user_name=user.full_name,
         user_role=role,
@@ -145,7 +157,7 @@ def update_comment(
         ticket_id=comment.ticket_id,
         user_id=comment.user_id,
         content=comment.content,
-        attachments=comment.attachments,
+        attachments=[_normalize_attachment_path(x) for x in (comment.attachments or [])] or None,
         created_at=comment.created_at,
         user_name=user.full_name,
         user_role=role,
