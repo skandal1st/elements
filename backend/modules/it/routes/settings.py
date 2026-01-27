@@ -667,3 +667,28 @@ async def test_telegram_connection(db: Session = Depends(get_db)) -> dict:
         "status": "success",
         "message": f"Telegram бот @{bot_username} подключен успешно",
     }
+
+
+@router.post("/ldap/sync-employees", dependencies=[Depends(require_superuser)])
+def ldap_sync_employees(
+    db: Session = Depends(get_db),
+    dry_run: bool = False,
+    mark_missing_dismissed: bool = False,
+) -> dict:
+    """
+    Синхронизировать сотрудников HR из Active Directory (LDAP).
+
+    - dry_run=true: только посчитать изменения (без записи в БД)
+    - mark_missing_dismissed=true: помечать отсутствующих в AD как dismissed (ОСТОРОЖНО)
+    """
+    from backend.modules.hr.services.ad_employee_sync import sync_employees_from_ldap
+
+    try:
+        result = sync_employees_from_ldap(
+            db=db,
+            dry_run=dry_run,
+            mark_missing_dismissed=mark_missing_dismissed,
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

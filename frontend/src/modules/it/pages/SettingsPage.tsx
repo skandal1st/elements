@@ -152,6 +152,18 @@ export function SettingsPage() {
     errors: string[];
   } | null>(null);
 
+  const [ldapSyncLoading, setLdapSyncLoading] = useState(false);
+  const [ldapSyncResult, setLdapSyncResult] = useState<{
+    total: number;
+    created: number;
+    updated: number;
+    linked_users: number;
+    departments_created: number;
+    positions_created: number;
+    dismissed: number;
+    errors: string[];
+  } | null>(null);
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -382,6 +394,51 @@ export function SettingsPage() {
       }, 3000);
     } catch (err) {
       setError((err as Error).message);
+    }
+  };
+
+  const syncEmployeesFromAD = async () => {
+    setError(null);
+    setSuccess(null);
+    setLdapSyncResult(null);
+    setLdapSyncLoading(true);
+    try {
+      const result = await apiPost<{
+        success: boolean;
+        total: number;
+        created: number;
+        updated: number;
+        linked_users: number;
+        departments_created: number;
+        positions_created: number;
+        dismissed: number;
+        errors: string[];
+      }>("/it/settings/ldap/sync-employees");
+      setLdapSyncResult({
+        total: result.total ?? 0,
+        created: result.created ?? 0,
+        updated: result.updated ?? 0,
+        linked_users: result.linked_users ?? 0,
+        departments_created: result.departments_created ?? 0,
+        positions_created: result.positions_created ?? 0,
+        dismissed: result.dismissed ?? 0,
+        errors: result.errors ?? [],
+      });
+      if (result.success === false || (result.errors && result.errors.length > 0)) {
+        setError((result.errors || []).join("; ") || "Ошибка синхронизации");
+      } else {
+        setSuccess(
+          `AD синхронизация выполнена: всего ${result.total}, создано ${result.created}, обновлено ${result.updated}`,
+        );
+      }
+      setTimeout(() => {
+        setSuccess(null);
+        setError(null);
+      }, 6000);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLdapSyncLoading(false);
     }
   };
 
@@ -961,14 +1018,50 @@ export function SettingsPage() {
                   <h3 className="text-lg font-semibold text-white">
                     Настройки Active Directory / LDAP
                   </h3>
-                  <button
-                    onClick={() => testConnection("ldap")}
-                    className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
-                  >
-                    <TestTube className="w-4 h-4" />
-                    Тест
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => testConnection("ldap")}
+                      className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
+                    >
+                      <TestTube className="w-4 h-4" />
+                      Тест
+                    </button>
+                    <button
+                      onClick={syncEmployeesFromAD}
+                      disabled={ldapSyncLoading}
+                      className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+                      title="Синхронизировать сотрудников HR из AD"
+                    >
+                      {ldapSyncLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Синхронизация…
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="w-4 h-4" />
+                          Синхронизировать
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
+                {ldapSyncResult && (
+                  <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-sm text-gray-300">
+                    <div>Всего в AD: {ldapSyncResult.total}</div>
+                    <div>Создано сотрудников: {ldapSyncResult.created}</div>
+                    <div>Обновлено сотрудников: {ldapSyncResult.updated}</div>
+                    <div>Связано с пользователями: {ldapSyncResult.linked_users}</div>
+                    <div>Создано отделов: {ldapSyncResult.departments_created}</div>
+                    <div>Создано должностей: {ldapSyncResult.positions_created}</div>
+                    <div>Помечено dismissed: {ldapSyncResult.dismissed}</div>
+                    {ldapSyncResult.errors.length > 0 && (
+                      <div className="mt-2 text-amber-400">
+                        Ошибки: {ldapSyncResult.errors.join("; ")}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {renderInput(
                   "Включить LDAP",
                   "ldap",
