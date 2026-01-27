@@ -15,6 +15,7 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const {
     projects,
+    currentProject,
     projectsLoading,
     projectsError,
     loadProjects,
@@ -91,7 +92,9 @@ export function ProjectsPage() {
       setShowEditModal(false);
       setEditingProject(null);
       // Обновим текущий проект, если он открыт
-      setCurrentProject((prev) => (prev?.id === updated.id ? updated : prev));
+      if (currentProject?.id === updated.id) {
+        setCurrentProject(updated);
+      }
     } catch (error) {
       const msg = (error as Error).message;
       setEditError(msg);
