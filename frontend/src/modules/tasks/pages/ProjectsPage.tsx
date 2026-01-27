@@ -19,6 +19,7 @@ export function ProjectsPage() {
     projectsError,
     loadProjects,
     createProject,
+    updateProject,
     deleteProject,
     archiveProject,
     setCurrentProject,
@@ -26,8 +27,17 @@ export function ProjectsPage() {
 
   const [showArchived, setShowArchived] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({
+    title: "",
+    description: "",
+    color: "#3B82F6",
+    is_personal: true,
+  });
+  const [editProject, setEditProject] = useState({
     title: "",
     description: "",
     color: "#3B82F6",
@@ -52,6 +62,40 @@ export function ProjectsPage() {
       const msg = (error as Error).message;
       setCreateError(msg);
       console.error("Failed to create project:", error);
+    }
+  };
+
+  const openEditProject = (project: Project) => {
+    setEditError(null);
+    setEditingProject(project);
+    setEditProject({
+      title: project.title || "",
+      description: project.description || "",
+      color: project.color || "#3B82F6",
+      is_personal: !!project.is_personal,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateProject = async () => {
+    if (!editingProject) return;
+    if (!editProject.title.trim()) return;
+    setEditError(null);
+    try {
+      const updated = await updateProject(editingProject.id, {
+        title: editProject.title,
+        description: editProject.description || undefined,
+        color: editProject.color,
+        is_personal: editProject.is_personal,
+      });
+      setShowEditModal(false);
+      setEditingProject(null);
+      // Обновим текущий проект, если он открыт
+      setCurrentProject((prev) => (prev?.id === updated.id ? updated : prev));
+    } catch (error) {
+      const msg = (error as Error).message;
+      setEditError(msg);
+      console.error("Failed to update project:", error);
     }
   };
 
@@ -180,6 +224,19 @@ export function ProjectsPage() {
                   </button>
                   {menuOpenId === project.id && (
                     <div className="absolute right-0 top-8 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                      {(project.user_permission === "owner" ||
+                        project.user_permission === "admin") && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditProject(project);
+                            setMenuOpenId(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                        >
+                          Редактировать
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -388,6 +445,122 @@ export function ProjectsPage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Создать
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {showEditModal && editingProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Редактирование проекта
+              </h2>
+
+              {editError && (
+                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+                  {editError}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Название
+                  </label>
+                  <input
+                    type="text"
+                    value={editProject.title}
+                    onChange={(e) =>
+                      setEditProject({ ...editProject, title: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Название проекта"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Описание
+                  </label>
+                  <textarea
+                    value={editProject.description}
+                    onChange={(e) =>
+                      setEditProject({
+                        ...editProject,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="Описание проекта..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Цвет
+                  </label>
+                  <div className="flex gap-2">
+                    {colorOptions.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => setEditProject({ ...editProject, color })}
+                        className={`w-8 h-8 rounded-full transition-transform ${
+                          editProject.color === color
+                            ? "ring-2 ring-offset-2 ring-blue-500 scale-110"
+                            : ""
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="edit_is_personal"
+                    checked={editProject.is_personal}
+                    onChange={(e) =>
+                      setEditProject({
+                        ...editProject,
+                        is_personal: e.target.checked,
+                      })
+                    }
+                    className="rounded border-gray-300 dark:border-gray-600"
+                  />
+                  <label
+                    htmlFor="edit_is_personal"
+                    className="text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    Личный проект
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingProject(null);
+                  setEditError(null);
+                }}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleUpdateProject}
+                disabled={!editProject.title.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Сохранить
               </button>
             </div>
           </div>

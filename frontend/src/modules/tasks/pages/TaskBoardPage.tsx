@@ -64,10 +64,12 @@ export function TaskBoardPage() {
     title: string;
     description: string;
     priority: Task["priority"];
+    due_date: string;
   }>({
     title: "",
     description: "",
     priority: "medium",
+    due_date: "",
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -130,9 +132,10 @@ export function TaskBoardPage() {
         description: newTask.description,
         priority: newTask.priority,
         status: createInColumn as Task["status"],
+        due_date: newTask.due_date ? new Date(newTask.due_date).toISOString() : undefined,
       });
       setShowCreateModal(false);
-      setNewTask({ title: "", description: "", priority: "medium" });
+      setNewTask({ title: "", description: "", priority: "medium", due_date: "" });
       // Reload kanban to get updated order
       loadKanban(selectedProjectId);
     } catch (error) {
@@ -447,6 +450,23 @@ export function TaskBoardPage() {
                   <option value="high">Высокий</option>
                   <option value="urgent">Срочный</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Дата выполнения
+                </label>
+                <input
+                  type="date"
+                  value={newTask.due_date}
+                  onChange={(e) =>
+                    setNewTask({
+                      ...newTask,
+                      due_date: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
 
