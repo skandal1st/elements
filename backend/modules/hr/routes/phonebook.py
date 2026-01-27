@@ -16,8 +16,11 @@ def phonebook(
     db: Session = Depends(get_db),
     q: Optional[str] = Query(default=None),
     department_id: Optional[int] = Query(default=None),
+    include_dismissed: bool = Query(default=False),
 ) -> List[Employee]:
     query = db.query(Employee)
+    if not include_dismissed:
+        query = query.filter(Employee.status != "dismissed")
     if q:
         query = query.filter(Employee.full_name.ilike(f"%{q}%"))
     if department_id:

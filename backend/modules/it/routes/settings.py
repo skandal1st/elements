@@ -3,6 +3,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.modules.hr.models.system_settings import SystemSettings
@@ -691,5 +692,71 @@ def ldap_sync_employees(
             mark_missing_dismissed=mark_missing_dismissed,
         )
         return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class ADUserOut(BaseModel):
+    dn: Optional[str] = None
+    sAMAccountName: str
+    displayName: Optional[str] = None
+    mail: Optional[str] = None
+    userPrincipalName: Optional[str] = None
+    department: Optional[str] = None
+    title: Optional[str] = None
+    enabled: bool = True
+    imported: bool = False
+
+
+class ADSyncSelectedRequest(BaseModel):
+    usernames: List[str] = Field(default_factory=list)
+    clear_before: bool = False
+    dry_run: bool = False
+
+
+@router.get("/ldap/ad-users", response_model=List[ADUserOut], dependencies=[Depends(require_superuser)])
+def ldap_list_ad_users(
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+) -> List[ADUserOut]:
+    """
+    Получить список пользователей из AD для выбора в UI (с поиском).
+    """
+    from backend.modules.hr.services.ad_employee_sync import fetch_ad_users
+
+    try:
+        users = fetch_ad_users(db=db, q=q)
+        return [ADUserOut(**u) for u in users]
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/ldap/clear-employees", dependencies=[Depends(require_superuser)])
+def ldap_clear_employees(db: Session = Depends(get_db), dry_run: bool = False) -> dict:
+    """
+    "Очистить" список сотрудников из AD: пометить всех сотрудников с external_id как dismissed.
+    """
+    from backend.modules.hr.services.ad_employee_sync import dismiss_all_ad_employees
+
+    try:
+        return dismiss_all_ad_employees(db=db, dry_run=dry_run)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/ldap/sync-selected", dependencies=[Depends(require_superuser)])
+def ldap_sync_selected(payload: ADSyncSelectedRequest, db: Session = Depends(get_db)) -> dict:
+    """
+    Синхронизировать сотрудников HR из AD только для выбранных логинов.
+    """
+    from backend.modules.hr.services.ad_employee_sync import sync_selected_employees_from_ldap
+
+    try:
+        return sync_selected_employees_from_ldap(
+            db=db,
+            usernames=payload.usernames,
+            clear_before=payload.clear_before,
+            dry_run=payload.dry_run,
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

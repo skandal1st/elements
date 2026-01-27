@@ -13,6 +13,12 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Search,
+  Download,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Users,
 } from "lucide-react";
 import { apiGet, apiPost } from "../../../shared/api/client";
 import {
@@ -83,6 +89,18 @@ type LdapSettings = {
   ldap_bind_password?: string;
   ldap_user_filter?: string;
   ldap_enabled?: boolean;
+};
+
+type ADUser = {
+  dn?: string | null;
+  sAMAccountName: string;
+  displayName?: string | null;
+  mail?: string | null;
+  userPrincipalName?: string | null;
+  department?: string | null;
+  title?: string | null;
+  enabled: boolean;
+  imported: boolean;
 };
 
 const TABS = [
@@ -167,6 +185,15 @@ export function SettingsPage() {
     errors: string[];
   } | null>(null);
 
+  const [adPickerOpen, setAdPickerOpen] = useState(false);
+  const [adUsers, setAdUsers] = useState<ADUser[]>([]);
+  const [adSearch, setAdSearch] = useState("");
+  const [adLoading, setAdLoading] = useState(false);
+  const [adSelected, setAdSelected] = useState<Set<string>>(new Set());
+  const [adClearBeforeSync, setAdClearBeforeSync] = useState(true);
+  const [adClearing, setAdClearing] = useState(false);
+  const [adSyncing, setAdSyncing] = useState(false);
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -183,6 +210,19 @@ export function SettingsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (!adPickerOpen) {
+      setAdUsers([]);
+      setAdSelected(new Set());
+      setAdSearch("");
+      setAdClearBeforeSync(true);
+      return;
+    }
+    // при открытии модалки — подтянуть список пользователей AD
+    loadAdUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adPickerOpen]);
 
   // Загрузка зданий при переключении на вкладку
   useEffect(() => {
@@ -397,6 +437,126 @@ export function SettingsPage() {
       }, 3000);
     } catch (err) {
       setError((err as Error).message);
+    }
+  };
+
+  const loadAdUsers = async (search?: string) => {
+    setError(null);
+    setAdLoading(true);
+    try {
+      const q = (search ?? adSearch).trim();
+      const url = q
+        ? `/it/settings/ldap/ad-users?q=${encodeURIComponent(q)}`
+        : "/it/settings/ldap/ad-users";
+      const data = await apiGet<ADUser[]>(url);
+      setAdUsers(data);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setAdLoading(false);
+    }
+  };
+
+  const toggleAdUser = (username: string) => {
+    setAdSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(username)) next.delete(username);
+      else next.add(username);
+      return next;
+    });
+  };
+
+  const toggleAdSelectAll = () => {
+    const available = adUsers.filter((u) => u.enabled).map((u) => u.sAMAccountName);
+    setAdSelected((prev) => {
+      if (prev.size === available.length) return new Set();
+      return new Set(available);
+    });
+  };
+
+  const clearAdEmployees = async () => {
+    if (
+      !window.confirm(
+        "Очистить список сотрудников из AD?\n\nЭто действие пометит всех сотрудников, созданных/связанных с AD, как dismissed (они исчезнут из справочника).",
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    setAdClearing(true);
+    try {
+      const res = await apiPost<{
+        success: boolean;
+        dismissed: number;
+      }>("/it/settings/ldap/clear-employees", {});
+      if (res?.success === false) {
+        setError("Не удалось очистить список сотрудников");
+      } else {
+        setSuccess(`Очищено сотрудников (dismissed): ${res.dismissed ?? 0}`);
+      }
+      setTimeout(() => {
+        setSuccess(null);
+        setError(null);
+      }, 6000);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setAdClearing(false);
+    }
+  };
+
+  const syncSelectedAdEmployees = async () => {
+    if (adSelected.size === 0) return;
+    setError(null);
+    setSuccess(null);
+    setAdSyncing(true);
+    setLdapSyncResult(null);
+    try {
+      const result = await apiPost<{
+        success: boolean;
+        total: number;
+        created: number;
+        updated: number;
+        linked_users: number;
+        departments_created: number;
+        positions_created: number;
+        dismissed: number;
+        errors: string[];
+      }>("/it/settings/ldap/sync-selected", {
+        usernames: Array.from(adSelected),
+        clear_before: adClearBeforeSync,
+      });
+
+      setLdapSyncResult({
+        total: result.total ?? 0,
+        created: result.created ?? 0,
+        updated: result.updated ?? 0,
+        linked_users: result.linked_users ?? 0,
+        departments_created: result.departments_created ?? 0,
+        positions_created: result.positions_created ?? 0,
+        dismissed: result.dismissed ?? 0,
+        errors: result.errors ?? [],
+      });
+
+      if (result.success === false || (result.errors && result.errors.length > 0)) {
+        setError((result.errors || []).join("; ") || "Ошибка синхронизации");
+      } else {
+        setSuccess(
+          `Синхронизация выбранных выполнена: всего ${result.total}, создано ${result.created}, обновлено ${result.updated}`,
+        );
+      }
+
+      await loadAdUsers();
+      setAdSelected(new Set());
+      setTimeout(() => {
+        setSuccess(null);
+        setError(null);
+      }, 6000);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setAdSyncing(false);
     }
   };
 
@@ -1080,6 +1240,15 @@ export function SettingsPage() {
                       Тест
                     </button>
                     <button
+                      onClick={() => setAdPickerOpen(true)}
+                      disabled={!settings.ldap.ldap_enabled}
+                      className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+                      title="Выбрать сотрудников из AD и синхронизировать только их"
+                    >
+                      <Users className="w-4 h-4" />
+                      Выбрать сотрудников
+                    </button>
+                    <button
                       onClick={syncEmployeesFromAD}
                       disabled={ldapSyncLoading || !settings.ldap.ldap_enabled}
                       className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50"
@@ -1376,6 +1545,211 @@ export function SettingsPage() {
               >
                 {editingRoom ? "Сохранить" : "Создать"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка выбора сотрудников из AD */}
+      {adPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-5xl p-6 space-y-4 mx-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Синхронизация сотрудников из AD</h3>
+                <p className="text-sm text-gray-500">
+                  Выберите пользователей из Active Directory и синхронизируйте только их.
+                </p>
+              </div>
+              <button
+                onClick={() => setAdPickerOpen(false)}
+                className="glass-button-secondary px-3 py-2 text-sm font-medium"
+              >
+                Закрыть
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex-1 min-w-[240px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    value={adSearch}
+                    onChange={(e) => setAdSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") loadAdUsers(e.currentTarget.value);
+                    }}
+                    placeholder="Поиск (ФИО / логин / email)..."
+                    className="glass-input w-full pl-9 pr-4 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => loadAdUsers()}
+                disabled={adLoading}
+                className="glass-button-secondary flex items-center gap-2 px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                {adLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Поиск…
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    Найти
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={adUsers.filter((u) => u.enabled).length > 0 && adSelected.size === adUsers.filter((u) => u.enabled).length}
+                  onChange={toggleAdSelectAll}
+                  className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
+                />
+                Выбрать всех (активных): {adUsers.filter((u) => u.enabled).length}
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={adClearBeforeSync}
+                  onChange={(e) => setAdClearBeforeSync(e.target.checked)}
+                  className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
+                />
+                Очистить список сотрудников перед синхронизацией (dismiss всех AD)
+              </label>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={clearAdEmployees}
+                  disabled={adClearing}
+                  className="glass-button-secondary flex items-center gap-2 px-4 py-2 text-sm font-medium disabled:opacity-50"
+                  title="Пометить всех AD-сотрудников как dismissed"
+                >
+                  {adClearing ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Очистка…
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Очистить список
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={syncSelectedAdEmployees}
+                  disabled={adSelected.size === 0 || adSyncing}
+                  className="glass-button flex items-center gap-2 px-4 py-2 text-sm font-medium disabled:opacity-50"
+                >
+                  {adSyncing ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Синхронизация…
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Синхронизировать выбранных ({adSelected.size})
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl overflow-hidden border border-dark-600/50 max-h-[55vh] overflow-y-auto">
+              {adLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+                </div>
+              ) : adUsers.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-60" />
+                  Пользователи не найдены
+                </div>
+              ) : (
+                <table className="min-w-full">
+                  <thead className="sticky top-0 bg-dark-800/80 backdrop-blur border-b border-dark-600/50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Выбор
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Пользователь
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Отдел
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Статус
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-dark-700/50">
+                    {adUsers.map((u) => {
+                      const disabled = !u.enabled;
+                      const selected = adSelected.has(u.sAMAccountName);
+                      return (
+                        <tr
+                          key={u.dn || u.sAMAccountName}
+                          className={`hover:bg-dark-700/30 ${
+                            disabled ? "opacity-60" : selected ? "bg-accent-purple/10" : ""
+                          }`}
+                        >
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              disabled={disabled}
+                              onChange={() => toggleAdUser(u.sAMAccountName)}
+                              className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30 disabled:opacity-50"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-medium text-white">{u.displayName || u.sAMAccountName}</div>
+                            <div className="text-xs text-gray-500">{u.sAMAccountName}</div>
+                            {u.title && <div className="text-xs text-gray-500">{u.title}</div>}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-400">
+                            {u.mail || u.userPrincipalName || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-400">{u.department || "—"}</td>
+                          <td className="px-4 py-3">
+                            {u.imported ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Уже в HR
+                              </span>
+                            ) : u.enabled ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                Доступен
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                                <XCircle className="w-3.5 h-3.5" />
+                                Отключён
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="text-xs text-gray-500">
+              Найдено: {adUsers.length}. Выбрано: {adSelected.size}.
             </div>
           </div>
         </div>
