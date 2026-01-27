@@ -207,14 +207,21 @@ class EmailReceiverService:
             if content_type in ("text/plain", "text/html") and "attachment" not in content_disposition:
                 continue
 
-            # Определяем, считать ли часть вложением
+            # Определяем, считать ли часть вложением.
+            # Многие клиенты присылают inline-картинки без Content-Disposition,
+            # но с Content-ID и/или filename/name.
             is_attachment = "attachment" in content_disposition
             is_inline = "inline" in content_disposition
             content_id = (part.get("Content-ID") or "").strip()
-            # Inline изображения часто приходят без Content-Disposition, но с Content-ID
-            is_inline_image = content_type.startswith("image/") and (is_inline or bool(content_id))
+            has_filename = bool(part.get_filename() or part.get_param("name"))
 
-            if not (is_attachment or is_inline_image):
+            # Inline изображения часто приходят без Content-Disposition, но с Content-ID
+            is_inline_image = content_type.startswith("image/") and (is_inline or bool(content_id) or has_filename)
+
+            # Общий фоллбэк: если есть filename/name — считаем вложением, даже если disposition пустой
+            is_file_like = has_filename and content_type not in ("text/plain", "text/html")
+
+            if not (is_attachment or is_inline_image or is_file_like):
                 continue
 
             # Имя файла может отсутствовать (особенно у inline изображений)

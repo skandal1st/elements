@@ -200,6 +200,70 @@ def migrate_ticket_history_and_source():
             conn.rollback()
 
 
+def migrate_ticket_employee_link():
+    """Добавляет поле employee_id в tickets для привязки к сотруднику (Employee)."""
+    print("Проверка миграций для привязки тикетов к сотрудникам...")
+
+    with engine.connect() as conn:
+        try:
+            # Проверяем существование колонки employee_id в tickets
+            result = conn.execute(
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'tickets' AND column_name = 'employee_id'
+            """
+                )
+            )
+
+            if not result.fetchone():
+                print("Добавление колонки employee_id в таблицу tickets...")
+                conn.execute(
+                    text(
+                        """
+                    ALTER TABLE tickets
+                    ADD COLUMN employee_id INTEGER
+                """
+                    )
+                )
+                conn.commit()
+
+            # Пытаемся добавить FK (если его нет). Не падаем, если таблица/constraint уже есть.
+            fk_exists = conn.execute(
+                text(
+                    """
+                SELECT conname
+                FROM pg_constraint
+                WHERE conname = 'tickets_employee_id_fkey'
+            """
+                )
+            ).fetchone()
+
+            if not fk_exists:
+                try:
+                    print("Добавление внешнего ключа tickets_employee_id_fkey...")
+                    conn.execute(
+                        text(
+                            """
+                        ALTER TABLE tickets
+                        ADD CONSTRAINT tickets_employee_id_fkey
+                        FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL
+                    """
+                        )
+                    )
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    # FK может не добавиться, если нет таблицы employees в текущей БД/схеме или прав
+                    pass
+
+            print("✅ Миграция привязки тикетов к сотрудникам выполнена успешно")
+        except Exception as e:
+            print(f"⚠️  Ошибка миграции привязки тикетов к сотрудникам: {e}")
+            conn.rollback()
+
+
 def migrate_rooms_and_related():
     """Создает таблицу rooms и добавляет room_id в связанные таблицы"""
     print("Проверка миграций для кабинетов...")
@@ -471,6 +535,7 @@ def create_tables():
     migrate_equipment_table()
     migrate_rooms_and_related()
     migrate_ticket_history_and_source()
+    migrate_ticket_employee_link()
     migrate_consumable_supplies()
     migrate_ticket_consumables()
     migrate_telegram_fields()

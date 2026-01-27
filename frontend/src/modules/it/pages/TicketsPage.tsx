@@ -38,6 +38,8 @@ type Ticket = {
   priority: string;
   status: string;
   creator_id?: string;
+  employee_id?: number | null;
+  employee_name?: string | null;
   assignee_id?: string;
   equipment_id?: string;
   room_id?: string;
@@ -75,6 +77,12 @@ type UserOption = {
   id: string;
   full_name: string;
   email: string;
+};
+
+type EmployeeOption = {
+  id: number;
+  full_name: string;
+  email?: string | null;
 };
 
 type EquipmentConsumable = {
@@ -246,9 +254,13 @@ export function TicketsPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const [assignUserModalOpen, setAssignUserModalOpen] = useState(false);
-  const [users, setUsers] = useState<UserOption[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [assignEmployeeModalOpen, setAssignEmployeeModalOpen] = useState(false);
+  const [employeesForAssign, setEmployeesForAssign] = useState<EmployeeOption[]>(
+    [],
+  );
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | "">("");
 
   const [buildings, setBuildings] = useState<
     Array<{ id: string; name: string }>
@@ -260,6 +272,7 @@ export function TicketsPage() {
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>("");
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("employee");
+  const [users, setUsers] = useState<UserOption[]>([]);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -623,6 +636,23 @@ export function TicketsPage() {
       console.error("Ошибка загрузки истории:", err);
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const loadEmployeesForAssign = async (q?: string) => {
+    setEmployeesLoading(true);
+    try {
+      const qq = (q ?? employeeSearch).trim();
+      const url = qq
+        ? `/hr/employees/?q=${encodeURIComponent(qq)}`
+        : "/hr/employees/";
+      const data = await apiGet<EmployeeOption[]>(url);
+      setEmployeesForAssign(data);
+    } catch (err) {
+      console.error("Ошибка загрузки сотрудников:", err);
+      setEmployeesForAssign([]);
+    } finally {
+      setEmployeesLoading(false);
     }
   };
 
@@ -1004,21 +1034,22 @@ export function TicketsPage() {
     setShowHistory(!showHistory);
   };
 
-  const openAssignUserModal = async () => {
-    await loadUsers();
-    setSelectedUserId("");
-    setAssignUserModalOpen(true);
+  const openAssignEmployeeModal = async () => {
+    setEmployeeSearch("");
+    setSelectedEmployeeId("");
+    await loadEmployeesForAssign("");
+    setAssignEmployeeModalOpen(true);
   };
 
-  const handleAssignUser = async () => {
-    if (!detailId || !selectedUserId) return;
+  const handleAssignEmployee = async () => {
+    if (!detailId || !selectedEmployeeId) return;
     try {
-      await apiPost(`/it/tickets/${detailId}/assign-user`, {
-        user_id: selectedUserId,
+      await apiPost(`/it/tickets/${detailId}/assign-employee`, {
+        employee_id: selectedEmployeeId,
       });
       const t = await apiGet<Ticket>(`/it/tickets/${detailId}`);
       setDetail(t);
-      setAssignUserModalOpen(false);
+      setAssignEmployeeModalOpen(false);
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -1345,12 +1376,20 @@ export function TicketsPage() {
                   <Mail className="w-4 h-4 inline mr-2" />
                   Тикет создан из email: <strong>{detail.email_sender}</strong>
                 </p>
+                {detail.employee_name && (
+                  <p className="text-sm text-gray-400 mt-2">
+                    Привязанный сотрудник:{" "}
+                    <span className="font-medium text-white">
+                      {detail.employee_name}
+                    </span>
+                  </p>
+                )}
                 {canEdit && (
                   <button
-                    onClick={openAssignUserModal}
+                    onClick={openAssignEmployeeModal}
                     className="mt-3 px-4 py-2 text-sm font-medium text-orange-400 border border-orange-500/30 rounded-xl hover:bg-orange-500/10 transition-all"
                   >
-                    Привязать к пользователю
+                    Привязать к сотруднику
                   </button>
                 )}
               </div>
@@ -1885,38 +1924,64 @@ export function TicketsPage() {
         </div>
       )}
 
-      {/* Assign User Modal */}
-      {assignUserModalOpen && (
+      {/* Assign Employee Modal */}
+      {assignEmployeeModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
             <h3 className="text-xl font-semibold text-white">
-              Привязать к пользователю
+              Привязать к сотруднику
             </h3>
             <p className="text-sm text-gray-400">
-              Выберите пользователя, к которому нужно привязать email-тикет.
+              Выберите сотрудника (HR), к которому нужно привязать email-тикет.
             </p>
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+                  placeholder="Поиск (ФИО / email / телефон)…"
+                  value={employeeSearch}
+                  onChange={(e) => setEmployeeSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") loadEmployeesForAssign(e.currentTarget.value);
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => loadEmployeesForAssign()}
+                className="glass-button-secondary px-4 py-2 text-sm font-medium disabled:opacity-50"
+                disabled={employeesLoading}
+              >
+                {employeesLoading ? "Поиск…" : "Найти"}
+              </button>
+            </div>
             <select
               className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
+              value={selectedEmployeeId === "" ? "" : String(selectedEmployeeId)}
+              onChange={(e) =>
+                setSelectedEmployeeId(e.target.value ? Number(e.target.value) : "")
+              }
+              disabled={employeesLoading}
             >
-              <option value="" className="bg-dark-800">Выберите пользователя</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id} className="bg-dark-800">
-                  {u.full_name} ({u.email})
+              <option value="" className="bg-dark-800">
+                {employeesLoading ? "Загрузка…" : "Выберите сотрудника"}
+              </option>
+              {employeesForAssign.map((e) => (
+                <option key={e.id} value={e.id} className="bg-dark-800">
+                  {e.full_name}{e.email ? ` (${e.email})` : ""}
                 </option>
               ))}
             </select>
             <div className="flex justify-end gap-3 pt-4">
               <button
-                onClick={() => setAssignUserModalOpen(false)}
+                onClick={() => setAssignEmployeeModalOpen(false)}
                 className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
               >
                 Отмена
               </button>
               <button
-                onClick={handleAssignUser}
-                disabled={!selectedUserId}
+                onClick={handleAssignEmployee}
+                disabled={!selectedEmployeeId}
                 className="glass-button px-4 py-2.5 disabled:opacity-50"
               >
                 Привязать

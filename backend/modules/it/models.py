@@ -180,6 +180,9 @@ class Ticket(Base):
     creator_id = Column(
         PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )  # nullable для email-тикетов
+    employee_id = Column(
+        Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True
+    )  # привязка к сотруднику (HR), даже без учётной записи
     assignee_id = Column(PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     equipment_id = Column(
         PGUUID(as_uuid=True), ForeignKey("equipment.id"), nullable=True
@@ -213,6 +216,7 @@ class Ticket(Base):
     # Relationships
     creator = relationship("User", foreign_keys=[creator_id])
     assignee = relationship("User", foreign_keys=[assignee_id])
+    employee = relationship("Employee", foreign_keys=[employee_id])
     equipment = relationship("Equipment", foreign_keys=[equipment_id])
     room = relationship("Room", foreign_keys=[room_id])
 

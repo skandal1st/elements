@@ -60,7 +60,9 @@ def list_tickets(
     page_size: int = Query(20, ge=1, le=100),
 ) -> List[Ticket]:
     role = _user_it_role(user)
-    q = db.query(Ticket)
+    from backend.modules.hr.models.employee import Employee
+
+    q = db.query(Ticket, Employee.full_name).outerjoin(Employee, Ticket.employee_id == Employee.id)
     if role == "employee":
         q = q.filter(Ticket.creator_id == user.id)
     if status:
@@ -78,7 +80,13 @@ def list_tickets(
         q = q.filter(or_(Ticket.title.ilike(s), Ticket.description.ilike(s)))
     q = q.order_by(Ticket.created_at.desc())
     offset = (page - 1) * page_size
-    return q.offset(offset).limit(page_size).all()
+    rows = q.offset(offset).limit(page_size).all()
+    out: List[dict] = []
+    for t, employee_name in rows:
+        d = TicketOut.model_validate(t).model_dump()
+        d["employee_name"] = employee_name
+        out.append(d)
+    return out
 
 
 @router.get(
@@ -91,13 +99,28 @@ def get_ticket(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> Ticket:
-    t = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    from backend.modules.hr.models.employee import Employee
+
+    row = (
+        db.query(Ticket, Employee.full_name)
+        .outerjoin(Employee, Ticket.employee_id == Employee.id)
+        .filter(Ticket.id == ticket_id)
+        .first()
+    )
+    t = row[0] if row else None
     if not t:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
     role = _user_it_role(user)
     if role == "employee" and t.creator_id != user.id:
         raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
-    return t
+    employee_name = row[1] if row else None
+    d = TicketOut.model_validate(t).model_dump()
+    d["employee_name"] = employee_name
+    return d
+
+
+class TicketAssignEmployee(BaseModel):
+    employee_id: int
 
 
 @router.get(
@@ -441,6 +464,60 @@ def assign_user_to_ticket(
     db.commit()
     db.refresh(t)
     return t
+
+
+@router.post(
+    "/{ticket_id}/assign-employee",
+    response_model=TicketOut,
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist"]))],
+)
+def assign_employee_to_ticket(
+    ticket_id: UUID,
+    payload: TicketAssignEmployee,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Привязать email-тикет к сотруднику (Employee).
+
+    Если у сотрудника есть связанный user_id — дополнительно проставляем creator_id,
+    чтобы тикет был виден этому пользователю, и переводим статус в 'new'.
+    """
+    from backend.modules.hr.models.employee import Employee
+
+    t = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    employee = db.query(Employee).filter(Employee.id == payload.employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+
+    old_status = t.status
+    old_creator_id = t.creator_id
+    old_employee_id = t.employee_id
+
+    t.employee_id = employee.id
+    if employee.user_id:
+        t.creator_id = employee.user_id
+        if t.status == "pending_user":
+            t.status = "new"
+
+    log_ticket_changes(
+        db=db,
+        ticket_id=ticket_id,
+        changed_by_id=user.id,
+        old_data={"status": old_status, "creator_id": old_creator_id, "employee_id": old_employee_id},
+        new_data={"status": t.status, "creator_id": t.creator_id, "employee_id": t.employee_id},
+        tracked_fields=["status", "creator_id", "employee_id"],
+    )
+
+    db.commit()
+    db.refresh(t)
+
+    d = TicketOut.model_validate(t).model_dump()
+    d["employee_name"] = employee.full_name
+    return d
 
 
 @router.post(

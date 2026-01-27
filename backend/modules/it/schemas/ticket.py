@@ -54,6 +54,8 @@ class TicketOut(TicketBase):
     id: UUID
     status: str
     creator_id: Optional[UUID] = None  # Nullable для email-тикетов
+    employee_id: Optional[int] = None
+    employee_name: Optional[str] = None
     assignee_id: Optional[UUID] = None
     attachments: Optional[List[str]] = None
     resolved_at: Optional[datetime] = None
