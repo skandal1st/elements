@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Edit, ArrowRightLeft, Users } from 'lucide-react'
-import { apiGet, apiPatch, apiPost } from '../../../shared/api/client'
+import { Edit, ArrowRightLeft, Trash2, Users } from 'lucide-react'
+import { apiDelete, apiGet, apiPatch, apiPost } from '../../../shared/api/client'
 
 type PhonebookEntry = {
   id: number
@@ -24,6 +24,7 @@ export function Phonebook() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   // Модальное окно редактирования
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -173,6 +174,24 @@ export function Phonebook() {
     }
   }
 
+  const handleDeleteEmployee = async (emp: PhonebookEntry) => {
+    if (!window.confirm(`Удалить сотрудника "${emp.full_name}"?\n\nЭто действие пометит сотрудника как dismissed.`)) {
+      return
+    }
+    setError(null)
+    setMessage(null)
+    setDeletingId(emp.id)
+    try {
+      await apiDelete(`/hr/employees/${emp.id}`)
+      setMessage(`Сотрудник "${emp.full_name}" удалён (dismissed)`)
+      await load()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   // Фильтрация должностей по выбранному отделу
   const getFilteredPositions = (departmentId: string) => {
     if (!departmentId) return positions
@@ -249,6 +268,14 @@ export function Phonebook() {
                       </button>
                       <button onClick={() => openTransfer(item)} className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Перевести на другую должность">
                         <ArrowRightLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEmployee(item)}
+                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Удалить (dismissed)"
+                        disabled={deletingId === item.id}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
