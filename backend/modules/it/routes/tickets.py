@@ -391,7 +391,7 @@ async def reply_ticket_via_email(
         raise HTTPException(status_code=400, detail="У тикета нет email отправителя")
 
     from backend.modules.it.services.email_service import email_service
-    msg_id = await email_service.send_ticket_reply(
+    msg_id, err = await email_service.send_ticket_reply_detailed(
         db,
         to_email=to_email,
         ticket_id=str(t.id),
@@ -402,7 +402,10 @@ async def reply_ticket_via_email(
         references=[t.email_message_id] if t.email_message_id else None,
     )
     if not msg_id:
-        raise HTTPException(status_code=500, detail="Не удалось отправить email")
+        raise HTTPException(
+            status_code=400,
+            detail=err or "Не удалось отправить email",
+        )
 
     # Обновляем email_message_id, чтобы ответы цеплялись по In-Reply-To
     t.email_message_id = msg_id

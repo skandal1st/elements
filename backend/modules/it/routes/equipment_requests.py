@@ -257,6 +257,7 @@ def update_equipment_request(
         if req.status != "pending":
             raise HTTPException(status_code=400, detail="Нельзя редактировать заявку в этом статусе")
     
+    old_status = req.status
     update_data = payload.model_dump(exclude_unset=True)
     
     # Только IT/Admin могут менять статус и связанные поля
@@ -272,6 +273,22 @@ def update_equipment_request(
     
     db.commit()
     db.refresh(req)
+
+    # Email уведомление заявителю о смене статуса
+    if req.requester and req.requester.email and req.status != old_status:
+        try:
+            from backend.modules.it.services.email_service import email_service
+
+            await email_service.send_equipment_request_status_notification(
+                db=db,
+                to_email=req.requester.email,
+                request_id=str(req.id),
+                title=req.title,
+                new_status=req.status,
+            )
+        except Exception:
+            # Не блокируем изменение заявки из-за email
+            pass
     
     # Формируем ответ (аналогично get_equipment_request)
     req_dict = {
@@ -344,6 +361,22 @@ def review_equipment_request(
     
     db.commit()
     db.refresh(req)
+
+    # Email уведомление заявителю
+    if req.requester and req.requester.email:
+        try:
+            from backend.modules.it.services.email_service import email_service
+
+            # статус изменился гарантированно (pending -> approved/rejected)
+            await email_service.send_equipment_request_status_notification(
+                db=db,
+                to_email=req.requester.email,
+                request_id=str(req.id),
+                title=req.title,
+                new_status=req.status,
+            )
+        except Exception:
+            pass
     
     # Формируем ответ
     req_dict = {
@@ -400,6 +433,21 @@ def cancel_equipment_request(
     req.status = "cancelled"
     db.commit()
     db.refresh(req)
+
+    # Email уведомление заявителю
+    if req.requester and req.requester.email:
+        try:
+            from backend.modules.it.services.email_service import email_service
+
+            await email_service.send_equipment_request_status_notification(
+                db=db,
+                to_email=req.requester.email,
+                request_id=str(req.id),
+                title=req.title,
+                new_status=req.status,
+            )
+        except Exception:
+            pass
     
     # Формируем ответ (аналогично update_equipment_request)
     req_dict = {

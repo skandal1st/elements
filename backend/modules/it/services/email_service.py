@@ -111,14 +111,45 @@ class EmailService:
         in_reply_to: Optional[str] = None,
         references: Optional[List[str]] = None,
     ) -> bool:
-        """Отправить email"""
+        """Отправить email (bool без деталей)."""
+        ok, err = await self.send_email_detailed(
+            db=db,
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            message_id=message_id,
+            in_reply_to=in_reply_to,
+            references=references,
+        )
+        if not ok and err:
+            print(f"[Email] Ошибка отправки: {err}")
+        return ok
+
+    async def send_email_detailed(
+        self,
+        db: Session,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        message_id: Optional[str] = None,
+        in_reply_to: Optional[str] = None,
+        references: Optional[List[str]] = None,
+    ) -> Tuple[bool, Optional[str]]:
+        """Отправить email и вернуть (ok, error_message)."""
         if not self._is_enabled(db):
-            return False
+            return False, "Email интеграция отключена (email_enabled=false)"
 
         config = self._get_smtp_config(db)
-        if not config["host"] or not config["from_email"]:
-            print("[Email] SMTP не настроен")
-            return False
+        if not config["host"]:
+            return False, "SMTP не настроен: отсутствует smtp_host"
+        if not config["from_email"]:
+            return False, "SMTP не настроен: отсутствует smtp_from_email"
+        if config["port"] == 587 and not config["use_tls"]:
+            return (
+                False,
+                "Некорректная настройка SMTP: порт 587 обычно требует STARTTLS (smtp_use_tls=true). "
+                "Если используете SSL, укажите порт 465 и smtp_use_tls=false.",
+            )
 
         try:
             msg = MIMEMultipart("alternative")
@@ -140,22 +171,11 @@ class EmailService:
 
             msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-            # Запускаем синхронную отправку в executor
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None,
-                self._send_email_sync,
-                config,
-                msg,
-                to_email,
-            )
-
-            print(f"[Email] Отправлено на {to_email}")
-            return True
-
+            await loop.run_in_executor(None, self._send_email_sync, config, msg, to_email)
+            return True, None
         except Exception as e:
-            print(f"[Email] Ошибка отправки: {e}")
-            return False
+            return False, f"{type(e).__name__}: {e}"
 
     def _send_email_sync(self, config: dict, msg: MIMEMultipart, to_email: str):
         """Синхронная отправка email"""
@@ -484,6 +504,106 @@ class EmailService:
         )
 
         return message_id if success else None
+
+    async def send_ticket_reply_detailed(
+        self,
+        db: Session,
+        to_email: str,
+        ticket_id: str,
+        ticket_subject: str,
+        reply_content: str,
+        sender_name: str,
+        in_reply_to: Optional[str] = None,
+        references: Optional[List[str]] = None,
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Отправить email-ответ на тикет и вернуть (message_id, error_message)."""
+        message_id = self._generate_message_id(ticket_id, "reply")
+        subject, html = self._get_reply_email_template(
+            ticket_id, ticket_subject, reply_content, sender_name
+        )
+
+        refs = None
+        if references or in_reply_to:
+            refs = (references or []) + ([in_reply_to] if in_reply_to else [])
+
+        ok, err = await self.send_email_detailed(
+            db=db,
+            to_email=to_email,
+            subject=subject,
+            html_content=html,
+            message_id=message_id,
+            in_reply_to=in_reply_to,
+            references=refs,
+        )
+        return (message_id if ok else None), err
+
+    def _get_equipment_request_status_template(
+        self,
+        status: str,
+        request_id: str,
+        title: str,
+    ) -> Tuple[str, str]:
+        """Тема и HTML для уведомления по заявке на оборудование."""
+        short_id = request_id[:8]
+        labels = {
+            "pending": ("На рассмотрении", "#6b7280"),
+            "approved": ("Одобрена", "#10b981"),
+            "rejected": ("Отклонена", "#ef4444"),
+            "ordered": ("Заказана", "#f59e0b"),
+            "received": ("Получена", "#8b5cf6"),
+            "issued": ("Выдана", "#3b82f6"),
+            "cancelled": ("Отменена", "#6b7280"),
+        }
+        label, color = labels.get(status, (status, "#3b82f6"))
+        subject = f"Статус заявки на оборудование #{short_id}: {label}"
+
+        html = f"""
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f3f4f6;">
+  <div style="background-color: {color}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+    <h1 style="margin: 0; font-size: 18px; font-weight: 600;">Заявка на оборудование: {label}</h1>
+  </div>
+  <div style="background-color: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+    <p style="margin: 0 0 12px 0; font-size: 14px;">
+      Заявка <strong>#{short_id}</strong>: {self._escape_html(title)}
+    </p>
+    <p style="margin: 0; font-size: 12px; color: #6b7280;">
+      Это автоматическое уведомление.
+    </p>
+  </div>
+</body>
+</html>
+        """
+        return subject, html
+
+    async def send_equipment_request_status_notification(
+        self,
+        db: Session,
+        to_email: str,
+        request_id: str,
+        title: str,
+        new_status: str,
+    ) -> Tuple[bool, Optional[str]]:
+        """Уведомление по заявке на оборудование (ok, error_message)."""
+        if not to_email:
+            return False, "У заявки нет email получателя"
+        subject, html = self._get_equipment_request_status_template(
+            new_status, request_id, title
+        )
+        message_id = self._generate_message_id(request_id, f"equip-{new_status}")
+        return await self.send_email_detailed(
+            db=db,
+            to_email=to_email,
+            subject=subject,
+            html_content=html,
+            message_id=message_id,
+        )
 
     async def notify_new_ticket(
         self,
