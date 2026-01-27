@@ -327,9 +327,9 @@ export function TicketsPage() {
     if (raw.startsWith("/")) return raw;
     // common stored variants
     if (raw.startsWith("uploads/")) return `/${raw}`;
-    if (raw.startsWith("uploads\\")) return `/${raw.replaceAll("\\", "/")}`;
+    if (raw.startsWith("uploads\\")) return `/${raw.replace(/\\/g, "/")}`;
     // fallback: old records sometimes store only filename
-    return `/uploads/tickets/${raw.replaceAll("\\", "/")}`;
+    return `/uploads/tickets/${raw.replace(/\\/g, "/")}`;
   };
 
   const renderAttachments = (
