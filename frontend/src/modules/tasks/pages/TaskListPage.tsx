@@ -40,9 +40,7 @@ export function TaskListPage() {
     loadTasks,
     updateTask,
     createTask,
-    loadKanban,
     kanbanColumnDefs,
-    archiveDoneTasks,
     projects,
     loadProjects,
   } = useTasksStore();
