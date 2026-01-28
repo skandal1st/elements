@@ -77,6 +77,7 @@ export function TaskBoardPage() {
     due_date: "",
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [showAddStage, setShowAddStage] = useState(false);
   const [newStageTitle, setNewStageTitle] = useState("");
@@ -310,6 +311,10 @@ export function TaskBoardPage() {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
+                            onClick={() => {
+                              if (snapshot.isDragging) return;
+                              setViewingTask(task);
+                            }}
                             className={`p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 ${
                               snapshot.isDragging ? "shadow-lg" : ""
                             } ${
@@ -543,6 +548,19 @@ export function TaskBoardPage() {
         />
       )}
 
+      {/* View Task Modal */}
+      {viewingTask && (
+        <TaskViewModal
+          task={viewingTask}
+          onClose={() => setViewingTask(null)}
+          onEdit={() => {
+            setEditingTask(viewingTask);
+            setViewingTask(null);
+          }}
+          columns={columns}
+        />
+      )}
+
       {/* Add Stage Modal */}
       {showAddStage && selectedProjectId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -615,6 +633,76 @@ export function TaskBoardPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TaskViewModal({
+  task,
+  onClose,
+  onEdit,
+  columns,
+}: {
+  task: Task;
+  onClose: () => void;
+  onEdit: () => void;
+  columns: Array<{ id: string; title: string; color?: string }>;
+}) {
+  const statusTitle =
+    columns.find((c) => c.id === task.status)?.title ?? task.status;
+  const due =
+    task.due_date ? new Date(task.due_date).toLocaleDateString("ru-RU") : "—";
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl mx-4">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+              {task.title}
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Статус: <span className="text-gray-700 dark:text-gray-200">{statusTitle}</span>{" "}
+              · Приоритет:{" "}
+              <span className="text-gray-700 dark:text-gray-200">{task.priority}</span>{" "}
+              · Срок: <span className="text-gray-700 dark:text-gray-200">{due}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            title="Закрыть"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+              Описание
+            </h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+              {task.description?.trim() ? task.description : "—"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          >
+            Закрыть
+          </button>
+          <button
+            onClick={onEdit}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Редактировать
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
