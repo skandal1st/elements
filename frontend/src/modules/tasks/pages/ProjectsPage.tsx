@@ -1,15 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Archive,
   MoreVertical,
   Users,
+  UserPlus,
+  X,
   CheckCircle2,
   Clock,
   AlertTriangle,
 } from "lucide-react";
 import { useTasksStore, Project } from "../../../shared/store/tasks.store";
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+} from "../../../shared/api/client";
 
 export function ProjectsPage() {
   const navigate = useNavigate();
@@ -45,6 +53,144 @@ export function ProjectsPage() {
     is_personal: true,
   });
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+
+  // --- Project sharing modal ---
+  type UserOption = { id: string; full_name: string; email?: string | null };
+  type ProjectShare = {
+    id: string;
+    project_id: string;
+    share_type: "user" | "department";
+    target_id: string;
+    permission: "view" | "edit" | "admin";
+    created_at?: string;
+    target_name?: string | null;
+    target_email?: string | null;
+  };
+
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareProject, setShareProject] = useState<Project | null>(null);
+  const [shares, setShares] = useState<ProjectShare[]>([]);
+  const [sharesLoading, setSharesLoading] = useState(false);
+  const [sharesError, setSharesError] = useState<string | null>(null);
+
+  const [usersList, setUsersList] = useState<UserOption[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [selectedPermission, setSelectedPermission] = useState<
+    "view" | "edit" | "admin"
+  >("view");
+
+  const openShareModal = async (project: Project) => {
+    setMenuOpenId(null);
+    setSharesError(null);
+    setShareProject(project);
+    setShareModalOpen(true);
+    await loadShares(project.id);
+    await loadUsers();
+  };
+
+  const closeShareModal = () => {
+    setShareModalOpen(false);
+    setShareProject(null);
+    setShares([]);
+    setSharesError(null);
+    setUserSearch("");
+    setSelectedUserId("");
+    setSelectedPermission("view");
+  };
+
+  const loadShares = async (projectId: string) => {
+    setSharesLoading(true);
+    setSharesError(null);
+    try {
+      const data = await apiGet<ProjectShare[]>(
+        `/tasks/projects/${projectId}/shares/`,
+      );
+      setShares(data);
+    } catch (err) {
+      setSharesError((err as Error).message);
+    } finally {
+      setSharesLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    if (usersLoading) return;
+    setUsersLoading(true);
+    try {
+      const data = await apiGet<UserOption[]>("/hr/users/");
+      setUsersList(data);
+    } catch (err) {
+      // не блокируем модалку, но покажем ошибку рядом
+      setSharesError((prev) => prev ?? (err as Error).message);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    const sharedIds = new Set(shares.map((s) => s.target_id));
+    return usersList
+      .filter((u) => u.id !== shareProject?.owner_id)
+      .filter((u) => !sharedIds.has(u.id))
+      .filter((u) => {
+        if (!q) return true;
+        const hay = `${u.full_name ?? ""} ${u.email ?? ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 50);
+  }, [userSearch, usersList, shares, shareProject?.owner_id]);
+
+  const handleAddShare = async () => {
+    if (!shareProject) return;
+    if (!selectedUserId) return;
+    setSharesError(null);
+    try {
+      await apiPost(`/tasks/projects/${shareProject.id}/shares/`, {
+        share_type: "user",
+        target_id: selectedUserId,
+        permission: selectedPermission,
+      });
+      setSelectedUserId("");
+      setSelectedPermission("view");
+      await loadShares(shareProject.id);
+      // обновим проекты (чтобы shared_with_count подтянулся)
+      await loadProjects(showArchived);
+    } catch (err) {
+      setSharesError((err as Error).message);
+    }
+  };
+
+  const handleUpdateSharePermission = async (
+    shareId: string,
+    permission: "view" | "edit" | "admin",
+  ) => {
+    if (!shareProject) return;
+    setSharesError(null);
+    try {
+      await apiPatch(`/tasks/projects/${shareProject.id}/shares/${shareId}`, {
+        permission,
+      });
+      await loadShares(shareProject.id);
+    } catch (err) {
+      setSharesError((err as Error).message);
+    }
+  };
+
+  const handleRemoveShare = async (shareId: string) => {
+    if (!shareProject) return;
+    if (!confirm("Отозвать доступ?")) return;
+    setSharesError(null);
+    try {
+      await apiDelete(`/tasks/projects/${shareProject.id}/shares/${shareId}`);
+      await loadShares(shareProject.id);
+      await loadProjects(showArchived);
+    } catch (err) {
+      setSharesError((err as Error).message);
+    }
+  };
 
   useEffect(() => {
     loadProjects(showArchived);
@@ -238,6 +384,19 @@ export function ProjectsPage() {
                           className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                         >
                           Редактировать
+                        </button>
+                      )}
+                      {(project.user_permission === "owner" ||
+                        project.user_permission === "admin") && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void openShareModal(project);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                        >
+                          <Users className="w-4 h-4" />
+                          Доступ
                         </button>
                       )}
                       <button
@@ -565,6 +724,165 @@ export function ProjectsPage() {
               >
                 Сохранить
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share / Access Modal */}
+      {shareModalOpen && shareProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl mx-4">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Доступ к проекту
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {shareProject.title}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  Личные проекты видит только владелец, если доступ не выдан явно.
+                </p>
+              </div>
+              <button
+                onClick={closeShareModal}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                title="Закрыть"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {sharesError && (
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+                  {sharesError}
+                </div>
+              )}
+
+              {/* Add user */}
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <UserPlus className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                    Выдать доступ пользователю
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="md:col-span-2">
+                    <input
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="Поиск пользователя (ФИО / email)"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                    <select
+                      value={selectedUserId}
+                      onChange={(e) => setSelectedUserId(e.target.value)}
+                      className="w-full mt-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      disabled={usersLoading}
+                    >
+                      <option value="">
+                        {usersLoading ? "Загрузка пользователей..." : "Выберите пользователя"}
+                      </option>
+                      {filteredUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.full_name} {u.email ? `(${u.email})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      Права
+                    </label>
+                    <select
+                      value={selectedPermission}
+                      onChange={(e) =>
+                        setSelectedPermission(e.target.value as "view" | "edit" | "admin")
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="view">Просмотр</option>
+                      <option value="edit">Редактирование</option>
+                      <option value="admin">Администратор</option>
+                    </select>
+                    <button
+                      onClick={handleAddShare}
+                      disabled={!selectedUserId}
+                      className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Выдать доступ
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Existing shares */}
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                    Пользователи с доступом
+                  </h3>
+                  {sharesLoading && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Загрузка...
+                    </span>
+                  )}
+                </div>
+
+                {shares.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Доступы не выданы.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {shares
+                      .filter((s) => s.share_type === "user")
+                      .map((s) => (
+                        <div
+                          key={s.id}
+                          className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {s.target_name || s.target_id}
+                            </div>
+                            {s.target_email && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {s.target_email}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={s.permission}
+                              onChange={(e) =>
+                                void handleUpdateSharePermission(
+                                  s.id,
+                                  e.target.value as "view" | "edit" | "admin",
+                                )
+                              }
+                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                            >
+                              <option value="view">Просмотр</option>
+                              <option value="edit">Редактирование</option>
+                              <option value="admin">Администратор</option>
+                            </select>
+                            <button
+                              onClick={() => void handleRemoveShare(s.id)}
+                              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                            >
+                              Убрать
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

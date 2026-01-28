@@ -86,13 +86,26 @@ def get_project_permission(
     - 'view' - просмотр (через share)
     - None - нет доступа
     """
-    # Суперпользователь имеет полный доступ
-    if user.is_superuser:
-        return "owner"
-
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return None
+
+    # Личные проекты: доступны только владельцу или если явно расшарены (даже для superuser).
+    if project.is_personal and project.owner_id != user.id:
+        user_share = (
+            db.query(ProjectShare)
+            .filter(
+                ProjectShare.project_id == project_id,
+                ProjectShare.share_type == "user",
+                ProjectShare.target_id == user.id,
+            )
+            .first()
+        )
+        return user_share.permission if user_share else None
+
+    # Суперпользователь имеет полный доступ к НЕ личным проектам и своим личным.
+    if user.is_superuser:
+        return "owner"
 
     # Проверяем, является ли пользователь владельцем
     if project.owner_id == user.id:

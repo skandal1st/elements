@@ -32,15 +32,51 @@ def get_accessible_projects(
     # Базовый фильтр
     archive_filter = True if include_archived else Project.is_archived == False
 
-    # Суперпользователь видит всё
+    # Суперпользователь: видит все НЕ личные проекты + свои личные + расшаренные на него.
+    # Важно: личные проекты других пользователей не показываем даже суперпользователю,
+    # если они не расшарены явно.
     if user.is_superuser:
-        projects = (
+        owned = (
             db.query(Project)
-            .filter(archive_filter)
+            .filter(Project.owner_id == user.id, archive_filter)
+            .all()
+        )
+        owned_ids = {p.id for p in owned}
+
+        # Неличные проекты (общие)
+        public_projects = (
+            db.query(Project)
+            .filter(Project.is_personal == False, archive_filter)
             .order_by(Project.updated_at.desc())
             .all()
         )
-        return [(p, "owner") for p in projects]
+
+        # Явно расшаренные на суперпользователя (в т.ч. личные)
+        shared_projects = (
+            db.query(Project, ProjectShare.permission)
+            .join(ProjectShare, Project.id == ProjectShare.project_id)
+            .filter(
+                ProjectShare.share_type == "user",
+                ProjectShare.target_id == user.id,
+                archive_filter,
+                ~Project.id.in_(owned_ids),
+            )
+            .all()
+        )
+
+        results: List[Tuple[Project, str]] = []
+        for p in owned:
+            results.append((p, "owner"))
+        for p in public_projects:
+            if p.id not in owned_ids:
+                results.append((p, "owner"))
+        for p, perm in shared_projects:
+            if p.id not in owned_ids:
+                results.append((p, perm))
+
+        # Сортируем по дате обновления
+        results.sort(key=lambda x: x[0].updated_at or x[0].created_at, reverse=True)
+        return results
 
     # Получаем проекты пользователя (owner)
     owned_projects = (
@@ -97,12 +133,29 @@ def can_access_project(
     permission_levels = {"view": 1, "edit": 2, "admin": 3, "owner": 4}
     required_level = permission_levels.get(min_permission, 1)
 
-    if user.is_superuser:
-        return True
-
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return False
+
+    # Личные проекты: доступны только владельцу или если явно расшарены (даже для superuser).
+    if project.is_personal and project.owner_id != user.id:
+        share = (
+            db.query(ProjectShare)
+            .filter(
+                ProjectShare.project_id == project_id,
+                ProjectShare.share_type == "user",
+                ProjectShare.target_id == user.id,
+            )
+            .first()
+        )
+        if not share:
+            return False
+        user_level = permission_levels.get(share.permission, 0)
+        return user_level >= required_level
+
+    # Суперпользователь: полный доступ к НЕ личным проектам, и к своим личным.
+    if user.is_superuser:
+        return True
 
     # Владелец
     if project.owner_id == user.id:
@@ -137,12 +190,25 @@ def get_user_permission_for_project(
     Returns:
         'owner', 'admin', 'edit', 'view' или None
     """
-    if user.is_superuser:
-        return "owner"
-
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return None
+
+    # Личные проекты: только владелец или явный share (даже для superuser).
+    if project.is_personal and project.owner_id != user.id:
+        share = (
+            db.query(ProjectShare)
+            .filter(
+                ProjectShare.project_id == project_id,
+                ProjectShare.share_type == "user",
+                ProjectShare.target_id == user.id,
+            )
+            .first()
+        )
+        return share.permission if share else None
+
+    if user.is_superuser:
+        return "owner"
 
     if project.owner_id == user.id:
         return "owner"
