@@ -231,8 +231,9 @@ export function TicketsPage() {
   const [items, setItems] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const PAGE_SIZE = 20;
   const [search, setSearch] = useState("");
-  const [page, _setPage] = useState(1);
+  const [page, setPage] = useState(1);
   const [hideClosed, setHideClosed] = useState<boolean>(() => {
     const saved = localStorage.getItem("tickets_hide_closed");
     return saved === "true";
@@ -445,12 +446,14 @@ export function TicketsPage() {
     const newValue = !hideClosed;
     setHideClosed(newValue);
     localStorage.setItem("tickets_hide_closed", String(newValue));
+    setPage(1);
   };
 
   const toggleSortByPriority = () => {
     const newValue = !sortByPriority;
     setSortByPriority(newValue);
     localStorage.setItem("tickets_sort_priority", String(newValue));
+    setPage(1);
   };
 
   const load = async () => {
@@ -460,7 +463,7 @@ export function TicketsPage() {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       params.set("page", String(page));
-      params.set("page_size", "20");
+      params.set("page_size", String(PAGE_SIZE));
       const data = await apiGet<Ticket[]>(`/it/tickets/?${params}`);
       setItems(data);
     } catch (err) {
@@ -693,7 +696,10 @@ export function TicketsPage() {
     }
   };
 
-  const handleSearch = () => load();
+  const handleSearch = () => {
+    setPage(1);
+    load();
+  };
 
   const openCreate = async () => {
     setForm({
@@ -1187,6 +1193,28 @@ export function TicketsPage() {
         </div>
       ) : (
         <div className="glass-card overflow-hidden">
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-dark-600/50">
+            <div className="text-xs text-gray-500">
+              Страница: <span className="text-gray-300">{page}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-3 py-2 text-sm font-medium rounded-xl border border-dark-600/50 text-gray-300 hover:border-dark-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Назад
+              </button>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={items.length < PAGE_SIZE}
+                className="px-3 py-2 text-sm font-medium rounded-xl border border-dark-600/50 text-gray-300 hover:border-dark-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Вперёд
+              </button>
+            </div>
+          </div>
           <table className="min-w-full">
             <thead>
               <tr className="border-b border-dark-600/50">
