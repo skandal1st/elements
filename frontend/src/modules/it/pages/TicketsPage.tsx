@@ -462,6 +462,7 @@ export function TicketsPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
+      if (hideClosed) params.set("hide_closed", "true");
       params.set("page", String(page));
       params.set("page_size", String(PAGE_SIZE));
       const data = await apiGet<Ticket[]>(`/it/tickets/?${params}`);

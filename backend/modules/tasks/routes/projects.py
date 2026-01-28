@@ -5,8 +5,11 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+import re
+import uuid
 
 from backend.modules.hr.models.user import User
 from backend.modules.tasks.dependencies import (
@@ -28,6 +31,31 @@ from backend.modules.tasks.services.permissions import (
 )
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+def _default_kanban_columns() -> list[dict]:
+    return [
+        {"id": "todo", "title": "К выполнению", "color": "bg-gray-500"},
+        {"id": "in_progress", "title": "В работе", "color": "bg-blue-500"},
+        {"id": "review", "title": "На проверке", "color": "bg-yellow-500"},
+        {"id": "done", "title": "Готово", "color": "bg-green-500"},
+        {"id": "cancelled", "title": "Отменено", "color": "bg-gray-400"},
+    ]
+
+
+def _slug(s: str) -> str:
+    base = re.sub(r"[^a-zA-Z0-9]+", "_", (s or "").strip().lower()).strip("_")
+    return base or "stage"
+
+
+class KanbanColumnCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=50)
+    color: Optional[str] = Field(default="bg-gray-500", max_length=50)
+
+
+class KanbanColumnUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    color: Optional[str] = Field(default=None, max_length=50)
 
 
 @router.get(
@@ -280,3 +308,150 @@ def unarchive_project(
     db.commit()
     db.refresh(project)
     return project
+
+
+@router.get(
+    "/{project_id}/kanban-columns",
+    dependencies=[Depends(require_tasks_access())],
+)
+def get_kanban_columns(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Получить этапы (колонки) канбана проекта."""
+    permission = get_project_permission(db, project_id, user)
+    if not permission:
+        raise HTTPException(status_code=404, detail="Проект не найден или нет доступа")
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    settings = project.settings or {}
+    cols = settings.get("kanban_columns")
+    if not isinstance(cols, list) or len(cols) == 0:
+        cols = _default_kanban_columns()
+    return {"columns": cols}
+
+
+@router.post(
+    "/{project_id}/kanban-columns",
+    dependencies=[Depends(require_tasks_access())],
+)
+def add_kanban_column(
+    project_id: UUID,
+    payload: KanbanColumnCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Добавить этап в канбан проекта."""
+    permission = get_project_permission(db, project_id, user)
+    if not permission:
+        raise HTTPException(status_code=404, detail="Проект не найден или нет доступа")
+    if permission not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    settings = project.settings or {}
+    cols = settings.get("kanban_columns")
+    if not isinstance(cols, list) or len(cols) == 0:
+        cols = _default_kanban_columns()
+
+    col_id = f"{_slug(payload.title)}_{uuid.uuid4().hex[:6]}"
+    cols.append(
+        {
+            "id": col_id,
+            "title": payload.title,
+            "color": payload.color or "bg-gray-500",
+        }
+    )
+    settings["kanban_columns"] = cols
+    project.settings = settings
+    db.commit()
+    db.refresh(project)
+    return {"columns": cols}
+
+
+@router.patch(
+    "/{project_id}/kanban-columns/{column_id}",
+    dependencies=[Depends(require_tasks_access())],
+)
+def update_kanban_column(
+    project_id: UUID,
+    column_id: str,
+    payload: KanbanColumnUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Переименовать/перекрасить этап канбана."""
+    permission = get_project_permission(db, project_id, user)
+    if not permission:
+        raise HTTPException(status_code=404, detail="Проект не найден или нет доступа")
+    if permission not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    settings = project.settings or {}
+    cols = settings.get("kanban_columns") or _default_kanban_columns()
+    if not isinstance(cols, list):
+        cols = _default_kanban_columns()
+
+    found = False
+    for c in cols:
+        if isinstance(c, dict) and c.get("id") == column_id:
+            if payload.title is not None:
+                c["title"] = payload.title
+            if payload.color is not None:
+                c["color"] = payload.color
+            found = True
+            break
+    if not found:
+        raise HTTPException(status_code=404, detail="Этап не найден")
+
+    settings["kanban_columns"] = cols
+    project.settings = settings
+    db.commit()
+    db.refresh(project)
+    return {"columns": cols}
+
+
+@router.delete(
+    "/{project_id}/kanban-columns/{column_id}",
+    dependencies=[Depends(require_tasks_access())],
+)
+def delete_kanban_column(
+    project_id: UUID,
+    column_id: str,
+    move_to: str = Query("todo"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Удалить этап канбана. Задачи из этого этапа переносятся в move_to."""
+    permission = get_project_permission(db, project_id, user)
+    if not permission:
+        raise HTTPException(status_code=404, detail="Проект не найден или нет доступа")
+    if permission not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    if column_id in ("todo", "in_progress", "review", "done", "cancelled"):
+        raise HTTPException(status_code=400, detail="Нельзя удалить системный этап")
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    settings = project.settings or {}
+    cols = settings.get("kanban_columns") or _default_kanban_columns()
+    if not isinstance(cols, list):
+        cols = _default_kanban_columns()
+
+    cols2 = [
+        c for c in cols if not (isinstance(c, dict) and c.get("id") == column_id)
+    ]
+    if len(cols2) == len(cols):
+        raise HTTPException(status_code=404, detail="Этап не найден")
+
+    db.query(Task).filter(Task.project_id == project_id, Task.status == column_id).update(
+        {Task.status: move_to}, synchronize_session=False
+    )
+
+    settings["kanban_columns"] = cols2
+    project.settings = settings
+    db.commit()
+    db.refresh(project)
+    return {"columns": cols2}

@@ -110,7 +110,8 @@ class TaskCreate(TaskBase):
     project_id: UUID
     parent_id: Optional[UUID] = None
     assignee_id: Optional[UUID] = None
-    status: Optional[Literal["todo", "in_progress", "review", "done", "cancelled"]] = "todo"
+    # status хранится строкой, чтобы поддерживать кастомные этапы канбана
+    status: Optional[str] = "todo"
     # Чеклист при создании
     checklist: Optional[List[ChecklistItemCreate]] = None
 
@@ -120,7 +121,7 @@ class TaskUpdate(BaseModel):
 
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
-    status: Optional[Literal["todo", "in_progress", "review", "done", "cancelled"]] = None
+    status: Optional[str] = None
     priority: Optional[Literal["low", "medium", "high", "urgent"]] = None
     assignee_id: Optional[UUID] = None
     due_date: Optional[datetime] = None
@@ -151,6 +152,7 @@ class TaskOut(BaseModel):
     due_date: Optional[datetime] = None
     start_date: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    archived_at: Optional[datetime] = None
     order_index: int = 0
     labels: Optional[List[UUID]] = None
     recurrence: Optional[Dict[str, Any]] = None
@@ -177,7 +179,7 @@ class TaskWithDetails(TaskOut):
 class KanbanMove(BaseModel):
     """Схема для перемещения задачи на канбан-доске."""
 
-    status: Literal["todo", "in_progress", "review", "done", "cancelled"]
+    status: str
     order_index: int = Field(..., ge=0)
     # Опционально: позиционирование относительно другой задачи
     before_task_id: Optional[UUID] = None

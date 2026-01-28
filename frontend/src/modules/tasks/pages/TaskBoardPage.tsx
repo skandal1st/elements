@@ -13,14 +13,16 @@ import {
   MoreVertical,
   X,
   Check,
+  Archive,
 } from "lucide-react";
 import { useTasksStore, Task } from "../../../shared/store/tasks.store";
 
-const COLUMNS = [
+const DEFAULT_COLUMNS = [
   { id: "todo", title: "К выполнению", color: "bg-gray-500" },
   { id: "in_progress", title: "В работе", color: "bg-blue-500" },
   { id: "review", title: "На проверке", color: "bg-yellow-500" },
   { id: "done", title: "Готово", color: "bg-green-500" },
+  { id: "cancelled", title: "Отменено", color: "bg-gray-400" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -44,6 +46,7 @@ export function TaskBoardPage() {
   const {
     projects,
     kanbanColumns,
+    kanbanColumnDefs,
     tasksLoading,
     tasksError,
     loadProjects,
@@ -52,6 +55,8 @@ export function TaskBoardPage() {
     updateTask,
     moveTask,
     deleteTask,
+    addKanbanColumn,
+    archiveDoneTasks,
     setCurrentProject,
   } = useTasksStore();
 
@@ -73,6 +78,17 @@ export function TaskBoardPage() {
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [showAddStage, setShowAddStage] = useState(false);
+  const [newStageTitle, setNewStageTitle] = useState("");
+  const [newStageColor, setNewStageColor] = useState("bg-gray-500");
+
+  const columns = (kanbanColumnDefs && kanbanColumnDefs.length > 0
+    ? kanbanColumnDefs.map((c) => ({
+        id: c.id,
+        title: c.title,
+        color: c.color || "bg-gray-500",
+      }))
+    : DEFAULT_COLUMNS);
 
   // Load projects on mount
   useEffect(() => {
@@ -131,7 +147,7 @@ export function TaskBoardPage() {
         title: newTask.title,
         description: newTask.description,
         priority: newTask.priority,
-        status: createInColumn as Task["status"],
+        status: createInColumn,
         due_date: newTask.due_date ? new Date(newTask.due_date).toISOString() : undefined,
       });
       setShowCreateModal(false);
@@ -207,6 +223,14 @@ export function TaskBoardPage() {
               ))}
           </select>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAddStage(true)}
+            className="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Добавить этап
+          </button>
+        </div>
       </div>
 
       {tasksError && (
@@ -218,7 +242,7 @@ export function TaskBoardPage() {
       {/* Kanban Board */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {COLUMNS.map((column) => (
+          {columns.map((column) => (
             <div
               key={column.id}
               className="flex-shrink-0 w-80 bg-gray-100 dark:bg-gray-800/50 rounded-xl"
@@ -234,12 +258,28 @@ export function TaskBoardPage() {
                     {kanbanColumns[column.id]?.length || 0}
                   </span>
                 </div>
-                <button
-                  onClick={() => handleQuickAdd(column.id)}
-                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
-                >
-                  <Plus className="w-4 h-4 text-gray-500" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {column.id === "done" && (
+                    <button
+                      onClick={async () => {
+                        if (!selectedProjectId) return;
+                        if (!confirm("Архивировать все готовые задачи в этом проекте?")) return;
+                        await archiveDoneTasks(selectedProjectId);
+                      }}
+                      className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                      title="Архивировать готовые"
+                    >
+                      <Archive className="w-4 h-4 text-gray-500" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleQuickAdd(column.id)}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                    title="Добавить задачу"
+                  >
+                    <Plus className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
               </div>
 
               {/* Column Tasks */}
@@ -499,7 +539,81 @@ export function TaskBoardPage() {
             setEditingTask(null);
             if (selectedProjectId) loadKanban(selectedProjectId);
           }}
+          columns={columns}
         />
+      )}
+
+      {/* Add Stage Modal */}
+      {showAddStage && selectedProjectId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Новый этап
+              </h2>
+              <button
+                onClick={() => setShowAddStage(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Название
+                </label>
+                <input
+                  type="text"
+                  value={newStageTitle}
+                  onChange={(e) => setNewStageTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Например: Тестирование"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Цвет (класс Tailwind)
+                </label>
+                <input
+                  type="text"
+                  value={newStageColor}
+                  onChange={(e) => setNewStageColor(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="bg-purple-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Можно оставить по умолчанию: <code>bg-gray-500</code>
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setShowAddStage(false)}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={async () => {
+                  if (!newStageTitle.trim()) return;
+                  await addKanbanColumn(selectedProjectId, {
+                    title: newStageTitle.trim(),
+                    color: newStageColor.trim() || "bg-gray-500",
+                  });
+                  setNewStageTitle("");
+                  setNewStageColor("bg-gray-500");
+                  setShowAddStage(false);
+                }}
+                disabled={!newStageTitle.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Добавить
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -510,16 +624,18 @@ function TaskEditModal({
   task,
   onClose,
   onSave,
+  columns,
 }: {
   task: Task;
   onClose: () => void;
   onSave: (data: Partial<Task>) => Promise<void>;
+  columns: Array<{ id: string; title: string; color?: string }>;
 }) {
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
     priority: Task["priority"];
-    status: Task["status"];
+    status: string;
     due_date: string;
   }>({
     title: task.title,
@@ -605,16 +721,16 @@ function TaskEditModal({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    status: e.target.value as Task["status"],
+                    status: e.target.value,
                   })
                 }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               >
-                <option value="todo">К выполнению</option>
-                <option value="in_progress">В работе</option>
-                <option value="review">На проверке</option>
-                <option value="done">Готово</option>
-                <option value="cancelled">Отменено</option>
+                {columns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
               </select>
             </div>
 

@@ -40,6 +40,9 @@ export function TaskListPage() {
     loadTasks,
     updateTask,
     createTask,
+    loadKanban,
+    kanbanColumnDefs,
+    archiveDoneTasks,
     projects,
     loadProjects,
   } = useTasksStore();
@@ -53,6 +56,7 @@ export function TaskListPage() {
   const [quickAddTitle, setQuickAddTitle] = useState("");
   const [quickAddProject, setQuickAddProject] = useState<string>("");
   const [quickAddDueDate, setQuickAddDueDate] = useState<string>("");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
     loadTasks({ my_tasks: true });
@@ -347,6 +351,7 @@ export function TaskListPage() {
                     <div
                       key={task.id}
                       className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700/50 last:border-b-0"
+                      onClick={() => setEditingTask(task)}
                     >
                       {/* Checkbox */}
                       <button
@@ -413,6 +418,178 @@ export function TaskListPage() {
             <p className="text-sm mt-1">Все задачи выполнены или не назначены</p>
           </div>
         )}
+      </div>
+
+      {/* Edit Task Modal (простое редактирование) */}
+      {editingTask && (
+        <TaskEditModal
+          task={editingTask}
+          onClose={() => setEditingTask(null)}
+          onSave={async (data) => {
+            await updateTask(editingTask.id, data);
+            setEditingTask(null);
+            loadTasks({ my_tasks: true });
+          }}
+          columns={
+            kanbanColumnDefs && kanbanColumnDefs.length > 0
+              ? kanbanColumnDefs.map((c) => ({
+                  id: c.id,
+                  title: c.title,
+                }))
+              : [
+                  { id: "todo", title: "К выполнению" },
+                  { id: "in_progress", title: "В работе" },
+                  { id: "review", title: "На проверке" },
+                  { id: "done", title: "Готово" },
+                  { id: "cancelled", title: "Отменено" },
+                ]
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+function TaskEditModal({
+  task,
+  onClose,
+  onSave,
+  columns,
+}: {
+  task: Task;
+  onClose: () => void;
+  onSave: (data: Partial<Task>) => Promise<void>;
+  columns: Array<{ id: string; title: string }>;
+}) {
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    priority: Task["priority"];
+    status: string;
+    due_date: string;
+  }>({
+    title: task.title,
+    description: task.description || "",
+    priority: task.priority,
+    status: task.status,
+    due_date: task.due_date ? new Date(task.due_date).toISOString().split("T")[0] : "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave({
+        title: formData.title,
+        description: formData.description || undefined,
+        priority: formData.priority,
+        status: formData.status,
+        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : undefined,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Задача
+          </h2>
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          >
+            Закрыть
+          </button>
+        </div>
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Название
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Описание
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              rows={4}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Статус
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                {columns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Приоритет
+              </label>
+              <select
+                value={formData.priority}
+                onChange={(e) =>
+                  setFormData({ ...formData, priority: e.target.value as Task["priority"] })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="low">Низкий</option>
+                <option value="medium">Средний</option>
+                <option value="high">Высокий</option>
+                <option value="urgent">Срочный</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Срок выполнения
+            </label>
+            <input
+              type="date"
+              value={formData.due_date}
+              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          >
+            Отмена
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !formData.title.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "Сохранение..." : "Сохранить"}
+          </button>
+        </div>
       </div>
     </div>
   );

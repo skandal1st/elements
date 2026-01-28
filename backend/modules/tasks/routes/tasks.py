@@ -57,6 +57,7 @@ def list_tasks(
     assignee_id: Optional[UUID] = Query(None),
     my_tasks: bool = Query(False),
     search: Optional[str] = Query(None),
+    include_archived: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
 ) -> List[Task]:
@@ -78,6 +79,8 @@ def list_tasks(
         q = q.filter(Task.project_id.in_(accessible_ids))
 
     # Фильтры
+    if not include_archived:
+        q = q.filter(Task.archived_at.is_(None))
     if status:
         q = q.filter(Task.status == status)
     if priority:
@@ -111,6 +114,7 @@ def get_my_tasks(
     user: User = Depends(get_current_user),
     status: Optional[str] = Query(None),
     include_created: bool = Query(True),
+    include_archived: bool = Query(False),
 ) -> List[Task]:
     """Получить мои задачи (назначенные на меня и созданные мной)."""
     from backend.modules.tasks.services.permissions import get_accessible_projects
@@ -119,6 +123,8 @@ def get_my_tasks(
     accessible_ids = [p.id for p, _ in accessible]
 
     q = db.query(Task).filter(Task.project_id.in_(accessible_ids))
+    if not include_archived:
+        q = q.filter(Task.archived_at.is_(None))
 
     if include_created:
         q = q.filter(or_(Task.assignee_id == user.id, Task.creator_id == user.id))
@@ -146,30 +152,126 @@ def get_kanban_board(
     if not permission:
         raise HTTPException(status_code=404, detail="Проект не найден или нет доступа")
 
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+
+    # Колонки канбана из настроек проекта
+    settings = project.settings or {}
+    column_defs = settings.get("kanban_columns")
+    if not isinstance(column_defs, list) or len(column_defs) == 0:
+        column_defs = [
+            {"id": "todo", "title": "К выполнению", "color": "bg-gray-500"},
+            {"id": "in_progress", "title": "В работе", "color": "bg-blue-500"},
+            {"id": "review", "title": "На проверке", "color": "bg-yellow-500"},
+            {"id": "done", "title": "Готово", "color": "bg-green-500"},
+            {"id": "cancelled", "title": "Отменено", "color": "bg-gray-400"},
+        ]
+
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id, Task.parent_id.is_(None))
+        .filter(Task.archived_at.is_(None))
         .order_by(Task.order_index)
         .all()
     )
 
     # Группируем по статусам
-    columns = {
-        "todo": [],
-        "in_progress": [],
-        "review": [],
-        "done": [],
-        "cancelled": [],
-    }
+    columns = {c.get("id"): [] for c in column_defs if isinstance(c, dict) and c.get("id")}
 
     for task in tasks:
-        if task.status in columns:
-            columns[task.status].append(TaskOut.model_validate(task).model_dump())
+        if task.status not in columns:
+            # если встретили неизвестный статус (старые данные) — покажем отдельной колонкой
+            columns[task.status] = []
+            column_defs.append(
+                {"id": task.status, "title": task.status, "color": "bg-gray-500"}
+            )
+        columns[task.status].append(TaskOut.model_validate(task).model_dump())
 
     return {
         "project_id": str(project_id),
+        "column_defs": column_defs,
         "columns": columns,
     }
+
+
+@router.post(
+    "/{task_id}/archive",
+    response_model=TaskOut,
+    dependencies=[Depends(require_tasks_access())],
+)
+def archive_task(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Task:
+    """Архивировать задачу (скрыть из списков по умолчанию)."""
+    permission = get_task_permission(db, task_id, user)
+    if not permission:
+        raise HTTPException(status_code=404, detail="Задача не найдена или нет доступа")
+    if permission not in ("owner", "admin", "edit"):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    task = db.query(Task).filter(Task.id == task_id).first()
+    task.archived_at = datetime.utcnow()
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.post(
+    "/{task_id}/unarchive",
+    response_model=TaskOut,
+    dependencies=[Depends(require_tasks_access())],
+)
+def unarchive_task(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Task:
+    """Разархивировать задачу."""
+    permission = get_task_permission(db, task_id, user)
+    if not permission:
+        raise HTTPException(status_code=404, detail="Задача не найдена или нет доступа")
+    if permission not in ("owner", "admin", "edit"):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    task = db.query(Task).filter(Task.id == task_id).first()
+    task.archived_at = None
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.post(
+    "/archive-done/{project_id}",
+    dependencies=[Depends(require_tasks_access())],
+)
+def archive_done_tasks(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Архивировать все задачи в статусе done в проекте."""
+    permission = get_project_permission(db, project_id, user)
+    if not permission:
+        raise HTTPException(status_code=404, detail="Проект не найден или нет доступа")
+    if permission not in ("owner", "admin", "edit"):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    now = datetime.utcnow()
+    q = (
+        db.query(Task)
+        .filter(
+            Task.project_id == project_id,
+            Task.status == "done",
+            Task.archived_at.is_(None),
+        )
+    )
+    count = q.count()
+    q.update({Task.archived_at: now}, synchronize_session=False)
+    db.commit()
+    return {"archived": count}
 
 
 @router.get(

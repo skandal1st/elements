@@ -30,13 +30,14 @@ export interface Task {
   parent_id?: string
   title: string
   description?: string
-  status: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled'
+  status: string
   priority: 'low' | 'medium' | 'high' | 'urgent'
   creator_id: string
   assignee_id?: string
   due_date?: string
   start_date?: string
   completed_at?: string
+  archived_at?: string
   order_index: number
   labels?: string[]
   recurrence?: {
@@ -130,6 +131,7 @@ interface TasksState {
 
   // Kanban
   kanbanColumns: Record<string, Task[]>
+  kanbanColumnDefs: Array<{ id: string; title: string; color?: string }>
 
   // Labels
   labels: Label[]
@@ -151,6 +153,8 @@ interface TasksState {
   }) => Promise<void>
   loadTask: (id: string) => Promise<void>
   loadKanban: (projectId: string) => Promise<void>
+  addKanbanColumn: (projectId: string, data: { title: string; color?: string }) => Promise<void>
+  archiveDoneTasks: (projectId: string) => Promise<number>
   createTask: (data: Partial<Task>) => Promise<Task>
   updateTask: (id: string, data: Partial<Task>) => Promise<Task>
   moveTask: (
@@ -199,6 +203,7 @@ export const useTasksStore = create<TasksState>((set) => ({
     done: [],
     cancelled: [],
   },
+  kanbanColumnDefs: [],
 
   labels: [],
 
@@ -307,16 +312,32 @@ export const useTasksStore = create<TasksState>((set) => ({
   loadKanban: async (projectId: string) => {
     set({ tasksLoading: true, tasksError: null })
     try {
-      const data = await tasksGet<{ columns: Record<string, Task[]> }>(
+      const data = await tasksGet<{ columns: Record<string, Task[]>; column_defs?: Array<{ id: string; title: string; color?: string }> }>(
         `/tasks/kanban/${projectId}`
       )
-      set({ kanbanColumns: data.columns, tasksLoading: false })
+      set({
+        kanbanColumns: data.columns,
+        kanbanColumnDefs: data.column_defs || [],
+        tasksLoading: false,
+      })
     } catch (error) {
       set({
         tasksError: (error as Error).message,
         tasksLoading: false,
       })
     }
+  },
+
+  addKanbanColumn: async (projectId, data) => {
+    await tasksPost(`/projects/${projectId}/kanban-columns`, data)
+    // reload columns
+    await (useTasksStore.getState().loadKanban(projectId))
+  },
+
+  archiveDoneTasks: async (projectId) => {
+    const res = await tasksPost<{ archived: number }>(`/tasks/archive-done/${projectId}`)
+    await (useTasksStore.getState().loadKanban(projectId))
+    return res.archived || 0
   },
 
   createTask: async (data) => {

@@ -57,6 +57,7 @@ def list_tickets(
     category: Optional[str] = Query(None),
     source: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    hide_closed: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> List[Ticket]:
@@ -66,6 +67,8 @@ def list_tickets(
     q = db.query(Ticket, Employee.full_name).outerjoin(Employee, Ticket.employee_id == Employee.id)
     if role == "employee":
         q = q.filter(Ticket.creator_id == user.id)
+    if hide_closed:
+        q = q.filter(Ticket.status != "closed")
     if status:
         q = q.filter(Ticket.status == status)
     if priority:

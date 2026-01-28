@@ -153,6 +153,7 @@ class Task(Base):
     due_date = Column(DateTime(timezone=True), nullable=True)
     start_date = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    archived_at = Column(DateTime(timezone=True), nullable=True)
     order_index = Column(Integer, default=0, nullable=False)
     labels = Column(ARRAY(PGUUID(as_uuid=True)), default=[])
     recurrence = Column(JSONB, nullable=True)  # {type, interval, end_date}

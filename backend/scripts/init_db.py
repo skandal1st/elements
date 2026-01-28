@@ -571,6 +571,33 @@ def ensure_tasks_schema():
     print("Схема tasks готова")
 
 
+def migrate_tasks_archived_at():
+    """Добавляет archived_at в tasks.tasks (если нет)."""
+    print("Проверка миграции archived_at для задач...")
+    with engine.connect() as conn:
+        try:
+            result = conn.execute(
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'tasks' AND table_name = 'tasks' AND column_name = 'archived_at'
+            """
+                )
+            )
+            if result.fetchone():
+                print("Колонка tasks.tasks.archived_at уже существует")
+                return
+
+            print("Добавление колонки archived_at в tasks.tasks...")
+            conn.execute(text("ALTER TABLE tasks.tasks ADD COLUMN archived_at TIMESTAMPTZ"))
+            conn.commit()
+            print("✅ Миграция archived_at выполнена успешно")
+        except Exception as e:
+            print(f"⚠️  Ошибка миграции archived_at: {e}")
+            conn.rollback()
+
+
 def create_tables():
     """Создает все таблицы в БД"""
     print("Создание таблиц...")
@@ -579,6 +606,7 @@ def create_tables():
     print("Таблицы созданы успешно")
 
     # Применяем миграции для существующих таблиц
+    migrate_tasks_archived_at()
     migrate_equipment_table()
     migrate_rooms_and_related()
     migrate_ticket_history_and_source()
