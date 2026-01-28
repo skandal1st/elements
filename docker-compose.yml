@@ -83,6 +83,20 @@ services:
       timeout: 10s
       retries: 5
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: elements-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   # ===========================================================================
   # Elements Platform Backend (Python/FastAPI) - Основной backend
   # ===========================================================================
@@ -112,6 +126,10 @@ services:
       
       # Redis
       - REDIS_URL=redis://redis:6379/0
+
+      # Qdrant (Vector DB) — Knowledge Core stage 2
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-knowledge_articles_v1}
       
       # Seed admin
       - SEED_ADMIN_ENABLED=${SEED_ADMIN_ENABLED:-true}
@@ -124,6 +142,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -303,6 +323,8 @@ volumes:
     name: elements_rabbitmq_data
   minio_data:
     name: elements_minio_data
+  qdrant_data:
+    name: elements_qdrant_data
   hr_uploads:
     name: elements_hr_uploads
   it_uploads:

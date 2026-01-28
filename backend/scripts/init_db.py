@@ -52,6 +52,21 @@ from backend.modules.it.models import (
     TicketHistory,
 )
 
+# Knowledge Core модели (регистрация в Base для create_all)
+from backend.modules.knowledge_core.models import (  # noqa: F401
+    Credential,
+    CredentialAccessLog,
+    KnowledgeArticle,
+    KnowledgeArticleFeedback,
+    KnowledgeArticleIndex,
+    LLMRequestLog,
+    KnowledgeTicketSuggestionLog,
+    NetworkDevice,
+    PhysicalServer,
+    Service as KnowledgeService,
+    VirtualServer,
+)
+
 # Модели модуля Tasks (регистрация в Base для create_all)
 import backend.modules.tasks.models  # noqa: F401, E402
 

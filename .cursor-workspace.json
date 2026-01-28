@@ -1,0 +1,17 @@
+{
+  "exclude": {
+    "node_modules": true,
+    "__pycache__": true,
+    "dist": true,
+    "build": true,
+    ".cache": true,
+    "venv": true,
+    "env": true,
+    "coverage": true,
+    ".pytest_cache": true,
+    ".mypy_cache": true,
+    ".ruff_cache": true,
+    "logs": true,
+    "*.log": true
+  }
+}

@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 const links = [
   { to: "/it/equipment", label: "Оборудование" },
   { to: "/it/tickets", label: "Заявки" },
+  { to: "/it/knowledge", label: "База знаний" },
   { to: "/it/consumables", label: "Расходные материалы" },
   { to: "/it/equipment-requests", label: "Заявки на оборудование" },
   { to: "/it/reports", label: "Отчеты" },

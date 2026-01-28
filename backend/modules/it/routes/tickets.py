@@ -1,6 +1,8 @@
 """Роуты /it/tickets — заявки (тикеты)."""
 
+import json
 from datetime import datetime, timezone
+import time
 from typing import List, Optional
 from uuid import UUID
 
@@ -8,6 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from backend.core.config import settings
+from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.hr.models.user import User
 from backend.modules.it.dependencies import get_current_user, get_db, require_it_roles
 from backend.modules.it.models import (
@@ -29,6 +33,13 @@ from backend.modules.it.schemas.ticket import (
     TicketUpdate,
 )
 from backend.modules.it.services.ticket_history import log_ticket_changes
+from backend.modules.knowledge_core.models import (
+    KnowledgeArticle,
+    KnowledgeTicketSuggestionLog,
+)
+from backend.modules.knowledge_core.services.embeddings import create_embedding
+from backend.modules.knowledge_core.services.qdrant import QdrantClient
+from backend.modules.knowledge_core.services.llm import chat_completion
 
 UTC = timezone.utc
 
@@ -43,6 +54,215 @@ def _user_it_role(user: User) -> str:
         return "admin"
     return user.get_role("it") or "employee"
 
+
+def _get_settings_map(db: Session, keys: list[str]) -> dict[str, str]:
+    rows = (
+        db.query(SystemSettings.setting_key, SystemSettings.setting_value)
+        .filter(SystemSettings.setting_key.in_(keys))
+        .all()
+    )
+    return {k: (v or "") for k, v in rows}
+
+
+def _bool(val: str | None, default: bool = False) -> bool:
+    if val is None:
+        return default
+    v = str(val).strip().lower()
+    if v in ("true", "1", "yes", "y", "on"):
+        return True
+    if v in ("false", "0", "no", "n", "off"):
+        return False
+    return default
+
+
+class TicketSuggestionsResponse(BaseModel):
+    raw_response: str
+    suggestions: list[dict]
+    article_ids: list[str]
+
+
+@router.post(
+    "/{ticket_id}/suggestions",
+    response_model=TicketSuggestionsResponse,
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+)
+async def suggest_solutions_for_ticket(
+    ticket_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> TicketSuggestionsResponse:
+    t = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    role = _user_it_role(user)
+    if role == "employee" and t.creator_id != user.id:
+        raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
+
+    cfg = _get_settings_map(
+        db,
+        [
+            "llm_suggestions_enabled",
+            "openrouter_api_key",
+            "openrouter_base_url",
+            "openrouter_model",
+            "openrouter_embedding_model",
+            "qdrant_url",
+            "qdrant_collection",
+        ],
+    )
+
+    enabled_raw = cfg.get("llm_suggestions_enabled") or None
+    enabled = (
+        _bool(enabled_raw, False)
+        if enabled_raw is not None
+        else bool(settings.llm_suggestions_enabled)
+    )
+    if not enabled:
+        raise HTTPException(status_code=400, detail="LLM_SUGGESTIONS_ENABLED отключен")
+
+    api_key = cfg.get("openrouter_api_key") or settings.openrouter_api_key
+    base_url = cfg.get("openrouter_base_url") or settings.openrouter_base_url
+    chat_model = cfg.get("openrouter_model") or settings.openrouter_model
+    emb_model = (
+        cfg.get("openrouter_embedding_model") or settings.openrouter_embedding_model
+    )
+    qdrant_url = cfg.get("qdrant_url") or settings.qdrant_url
+    qdrant_collection = cfg.get("qdrant_collection") or settings.qdrant_collection
+    if not qdrant_url:
+        raise HTTPException(status_code=400, detail="Qdrant не настроен (qdrant_url пустой)")
+
+    query_text = f"Ticket title: {t.title}\n\nTicket description:\n{t.description}".strip()
+    log = KnowledgeTicketSuggestionLog(
+        ticket_id=t.id,
+        query_text=query_text,
+        embedding_model=emb_model,
+        chat_model=chat_model,
+        qdrant_collection=qdrant_collection,
+        found_article_ids=[],
+        response_text=None,
+        success=False,
+        duration_ms=None,
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+
+    t0 = time.time()
+    try:
+        vec, _meta = await create_embedding(
+            query_text, api_key=api_key, base_url=base_url, model=emb_model
+        )
+        qc = QdrantClient(url=qdrant_url, collection=qdrant_collection)
+        # коллекция должна существовать — если нет, объясним
+        await qc.ensure_collection(vector_size=len(vec))
+
+        equipment_id = str(t.equipment_id) if t.equipment_id else None
+        results = await qc.search(vector=vec, limit=5, equipment_id=equipment_id)
+
+        article_ids: list[UUID] = []
+        for r in results:
+            pid = r.get("id") or (r.get("payload") or {}).get("article_id")
+            try:
+                article_ids.append(UUID(str(pid)))
+            except Exception:
+                continue
+        # уникальные, с сохранением порядка
+        seen = set()
+        uniq_ids: list[UUID] = []
+        for x in article_ids:
+            if x in seen:
+                continue
+            seen.add(x)
+            uniq_ids.append(x)
+
+        log.found_article_ids = uniq_ids
+        db.commit()
+
+        if not uniq_ids:
+            log.response_text = "[]"
+            log.success = True
+            log.duration_ms = int((time.time() - t0) * 1000)
+            db.commit()
+            return TicketSuggestionsResponse(raw_response="[]", suggestions=[], article_ids=[])
+
+        articles = (
+            db.query(KnowledgeArticle)
+            .filter(KnowledgeArticle.id.in_(uniq_ids), KnowledgeArticle.status == "normalized")
+            .all()
+        )
+        art_map = {a.id: a for a in articles}
+
+        # контекст: только normalized_content, без Credentials
+        ctx_parts: list[str] = []
+        for aid in uniq_ids:
+            a = art_map.get(aid)
+            if not a:
+                continue
+            content = (a.normalized_content or "").strip()
+            if len(content) > 1800:
+                content = content[:1800] + "\n...(truncated)"
+            ctx_parts.append(
+                f"ARTICLE_ID: {a.id}\nTITLE: {a.title}\nCONFIDENCE_SCORE: {a.confidence_score}\nCONTENT:\n{content}"
+            )
+        ctx = "\n\n---\n\n".join(ctx_parts)
+
+        system_prompt = (
+            "Ты IT-ассистент. Твоя задача — предложить варианты решения тикета, "
+            "используя ТОЛЬКО предоставленные статьи базы знаний. "
+            "Не добавляй фактов, которых нет в статьях или тикете.\n\n"
+            "Верни ответ строго в JSON формате:\n"
+            "{\n"
+            '  \"suggestions\": [\n'
+            "    {\n"
+            '      \"article_id\": \"<uuid>\",\n'
+            '      \"title\": \"<string>\",\n'
+            '      \"why_relevant\": \"<string>\",\n'
+            '      \"solution_steps\": [\"<step>\", \"<step>\"]\n'
+            "    }\n"
+            "  ]\n"
+            "}\n"
+        )
+        user_prompt = (
+            f"Тикет:\n{query_text}\n\n"
+            f"Статьи (контекст):\n{ctx}\n\n"
+            "Сформируй до 5 вариантов."
+        )
+
+        raw, meta = await chat_completion(
+            api_key=api_key,
+            base_url=base_url,
+            model=chat_model,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.2,
+        )
+
+        suggestions: list[dict] = []
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict) and isinstance(parsed.get("suggestions"), list):
+                suggestions = parsed["suggestions"]
+        except Exception:
+            # fallback: без парсинга
+            suggestions = []
+
+        log.response_text = raw
+        log.success = True
+        log.duration_ms = meta.get("duration_ms")
+        db.commit()
+
+        return TicketSuggestionsResponse(
+            raw_response=raw,
+            suggestions=suggestions,
+            article_ids=[str(x) for x in uniq_ids],
+        )
+    except Exception as e:
+        log.response_text = str(e)
+        log.success = False
+        log.duration_ms = int((time.time() - t0) * 1000)
+        db.commit()
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get(
     "/",

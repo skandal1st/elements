@@ -60,6 +60,19 @@ class Settings(BaseSettings):
     # CORS — в .env строка "*" или "http://a,http://b"
     cors_origins: str = "*"
 
+    # LLM (OpenRouter) — опционально. Система должна работать и без LLM.
+    # Включение — только через флаги.
+    llm_normalization_enabled: bool = False
+    llm_suggestions_enabled: bool = False
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "openai/gpt-4o-mini"
+    openrouter_embedding_model: str = "openai/text-embedding-3-small"
+
+    # Qdrant (Vector DB) — Stage 2
+    qdrant_url: str = ""
+    qdrant_collection: str = "knowledge_articles_v1"
+
     def get_enabled_modules(self) -> List[str]:
         return _split_strip(self.enabled_modules)
 

@@ -18,6 +18,10 @@ import {
   X,
   Filter,
   SortDesc,
+  Sparkles,
+  ThumbsUp,
+  ThumbsDown,
+  BookOpen,
 } from "lucide-react";
 import {
   apiGet,
@@ -72,6 +76,19 @@ type TicketHistoryItem = {
   new_value?: string;
   created_at: string;
   changed_by_name?: string;
+};
+
+type TicketSuggestion = {
+  article_id: string;
+  title?: string;
+  why_relevant?: string;
+  solution_steps?: string[];
+};
+
+type TicketSuggestionsResponse = {
+  raw_response: string;
+  suggestions: TicketSuggestion[];
+  article_ids: string[];
 };
 
 type UserOption = {
@@ -321,6 +338,20 @@ export function TicketsPage() {
   const [replyEmailOpen, setReplyEmailOpen] = useState(false);
   const [replyEmailText, setReplyEmailText] = useState("");
   const [replyEmailSending, setReplyEmailSending] = useState(false);
+  const [kbModalOpen, setKbModalOpen] = useState(false);
+  const [kbSaving, setKbSaving] = useState(false);
+  const [kbForm, setKbForm] = useState({
+    title: "",
+    problem: "",
+    actions: "",
+    solution: "",
+    is_typical: false,
+  });
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiRaw, setAiRaw] = useState<string>("");
+  const [aiSuggestions, setAiSuggestions] = useState<TicketSuggestion[]>([]);
+  const [aiFeedback, setAiFeedback] = useState<Record<string, "up" | "down">>({});
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -848,6 +879,20 @@ export function TicketsPage() {
     setEditRoomEquipment([]);
     setConsumables([]);
     setSelectedConsumables(new Set());
+    setKbModalOpen(false);
+    setKbSaving(false);
+    setKbForm({
+      title: "",
+      problem: "",
+      actions: "",
+      solution: "",
+      is_typical: false,
+    });
+    setAiModalOpen(false);
+    setAiLoading(false);
+    setAiRaw("");
+    setAiSuggestions([]);
+    setAiFeedback({});
   };
 
   const saveChanges = useCallback(
@@ -1834,6 +1879,55 @@ export function TicketsPage() {
                     Ответить по email
                   </button>
                 )}
+                {detail.status === "closed" && (
+                  <button
+                    onClick={() => {
+                      setKbForm({
+                        title: detail.title || "",
+                        problem: detail.description || "",
+                        actions: "",
+                        solution: "",
+                        is_typical: false,
+                      });
+                      setKbModalOpen(true);
+                    }}
+                    className="px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-dark-700/50 text-gray-300 border border-dark-600/50 hover:text-white"
+                    title="Создать статью базы знаний из закрытого тикета"
+                  >
+                    <BookPlusIcon />
+                    Добавить в базу знаний
+                  </button>
+                )}
+                <button
+                  onClick={async () => {
+                    if (!detailId) return;
+                    setAiLoading(true);
+                    setAiRaw("");
+                    setAiSuggestions([]);
+                    setAiFeedback({});
+                    setError(null);
+                    setAiModalOpen(true);
+                    try {
+                      const res = await apiPost<TicketSuggestionsResponse>(
+                        `/it/tickets/${detailId}/suggestions`,
+                        {},
+                      );
+                      setAiRaw(res.raw_response || "");
+                      setAiSuggestions(res.suggestions || []);
+                    } catch (err) {
+                      setError((err as Error).message);
+                      setAiRaw("");
+                      setAiSuggestions([]);
+                    } finally {
+                      setAiLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-accent-purple/15 text-accent-purple border border-accent-purple/25 hover:bg-accent-purple/20"
+                  title="Сгенерировать подсказки решений по тикету (Этап 2)"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Попросить помощи у нейросети
+                </button>
                 <button
                   onClick={handleToggleHistory}
                   className={`px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all ${
@@ -2234,6 +2328,278 @@ export function TicketsPage() {
           </div>
         </div>
       )}
+
+      {/* Add to Knowledge Base Modal */}
+      {kbModalOpen && detailId && detail && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-4 mx-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  Добавить в базу знаний
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Статья будет создана со статусом <b>unprocessed</b>. Нормализацию
+                  нужно подтвердить вручную.
+                </p>
+              </div>
+              <button
+                onClick={() => setKbModalOpen(false)}
+                disabled={kbSaving}
+                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <input
+              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+              placeholder="Заголовок статьи"
+              value={kbForm.title}
+              onChange={(e) =>
+                setKbForm((p) => ({ ...p, title: e.target.value }))
+              }
+            />
+
+            <textarea
+              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[90px] resize-none"
+              placeholder="Описание проблемы"
+              value={kbForm.problem}
+              onChange={(e) =>
+                setKbForm((p) => ({ ...p, problem: e.target.value }))
+              }
+            />
+
+            <textarea
+              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[90px] resize-none"
+              placeholder="Выполненные действия"
+              value={kbForm.actions}
+              onChange={(e) =>
+                setKbForm((p) => ({ ...p, actions: e.target.value }))
+              }
+            />
+
+            <textarea
+              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[90px] resize-none"
+              placeholder="Ключевое решение"
+              value={kbForm.solution}
+              onChange={(e) =>
+                setKbForm((p) => ({ ...p, solution: e.target.value }))
+              }
+            />
+
+            <label className="flex items-center gap-3 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={kbForm.is_typical}
+                onChange={(e) =>
+                  setKbForm((p) => ({ ...p, is_typical: e.target.checked }))
+                }
+                className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
+              />
+              Типовое решение
+            </label>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setKbModalOpen(false)}
+                disabled={kbSaving}
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={async () => {
+                  if (!detailId) return;
+                  if (!kbForm.problem.trim() || !kbForm.actions.trim() || !kbForm.solution.trim()) {
+                    setError("Заполните: проблема, действия, решение");
+                    return;
+                  }
+                  setKbSaving(true);
+                  setError(null);
+                  try {
+                    const created = await apiPost<{ id: string }>(
+                      `/it/knowledge/articles/from-ticket/${detailId}`,
+                      {
+                        title: kbForm.title.trim() || undefined,
+                        problem: kbForm.problem,
+                        actions: kbForm.actions,
+                        solution: kbForm.solution,
+                        is_typical: kbForm.is_typical,
+                      },
+                    );
+                    setKbModalOpen(false);
+                    closeDetail();
+                    navigate(`/it/knowledge?open=${created.id}`);
+                  } catch (err) {
+                    setError((err as Error).message);
+                  } finally {
+                    setKbSaving(false);
+                  }
+                }}
+                disabled={kbSaving}
+                className="glass-button px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {kbSaving ? "Создание..." : "Создать статью"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Suggestions Modal */}
+      {aiModalOpen && detailId && detail && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-3xl p-6 space-y-4 mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  Подсказки по тикету
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Список вариантов на основе базы знаний (Qdrant + LLM). Тикет не
+                  будет изменён автоматически.
+                </p>
+              </div>
+              <button
+                onClick={() => setAiModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+                disabled={aiLoading}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {aiLoading ? (
+              <div className="flex items-center gap-3 text-gray-400">
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Генерация подсказок…
+              </div>
+            ) : aiSuggestions.length > 0 ? (
+              <div className="space-y-3">
+                {aiSuggestions.map((s, idx) => {
+                  const aid = s.article_id;
+                  const voted = aiFeedback[aid];
+                  return (
+                    <div
+                      key={`${aid}-${idx}`}
+                      className="bg-dark-700/30 rounded-xl p-4 border border-dark-600/40"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-white truncate">
+                            {s.title || "Статья базы знаний"}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Article ID: {aid}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => navigate(`/it/knowledge?open=${aid}`)}
+                            className="px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 bg-dark-700/50 text-gray-300 border border-dark-600/50 hover:text-white"
+                            title="Открыть статью"
+                          >
+                            <BookOpen className="w-4 h-4" />
+                            Открыть
+                          </button>
+                        </div>
+                      </div>
+
+                      {s.why_relevant && (
+                        <div className="mt-3 text-sm text-gray-300 whitespace-pre-wrap">
+                          <span className="text-xs font-medium text-gray-500 block mb-1">
+                            Почему релевантно
+                          </span>
+                          {s.why_relevant}
+                        </div>
+                      )}
+
+                      {Array.isArray(s.solution_steps) && s.solution_steps.length > 0 && (
+                        <div className="mt-3">
+                          <div className="text-xs font-medium text-gray-500 mb-2">
+                            Шаги решения
+                          </div>
+                          <ol className="list-decimal list-inside space-y-1 text-sm text-gray-300">
+                            {s.solution_steps.map((step, i) => (
+                              <li key={i} className="whitespace-pre-wrap">
+                                {step}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+
+                      <div className="mt-4 flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            if (!aid) return;
+                            setError(null);
+                            try {
+                              await apiPost(`/it/knowledge/articles/${aid}/feedback`, {
+                                helped: true,
+                              });
+                              setAiFeedback((p) => ({ ...p, [aid]: "up" }));
+                            } catch (err) {
+                              setError((err as Error).message);
+                            }
+                          }}
+                          className={`px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 border transition-all ${
+                            voted === "up"
+                              ? "bg-green-500/15 text-green-300 border-green-500/25"
+                              : "bg-dark-700/50 text-gray-300 border-dark-600/50 hover:text-white"
+                          }`}
+                          title="Помогло (confidence_score +1)"
+                        >
+                          <ThumbsUp className="w-4 h-4" />
+                          Помогло
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!aid) return;
+                            setError(null);
+                            try {
+                              await apiPost(`/it/knowledge/articles/${aid}/feedback`, {
+                                helped: false,
+                              });
+                              setAiFeedback((p) => ({ ...p, [aid]: "down" }));
+                            } catch (err) {
+                              setError((err as Error).message);
+                            }
+                          }}
+                          className={`px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 border transition-all ${
+                            voted === "down"
+                              ? "bg-red-500/10 text-red-300 border-red-500/25"
+                              : "bg-dark-700/50 text-gray-300 border-dark-600/50 hover:text-white"
+                          }`}
+                          title="Не помогло (confidence_score -1)"
+                        >
+                          <ThumbsDown className="w-4 h-4" />
+                          Не помогло
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-400">
+                Подсказок нет. Проверьте, что:\n- включён флаг LLM_SUGGESTIONS_ENABLED\n- настроен Qdrant и проиндексированы статьи\n- у вас есть нормализованные статьи (status=normalized)
+                {aiRaw ? (
+                  <div className="mt-3 p-3 rounded-xl bg-dark-800/40 border border-dark-600/50">
+                    <div className="text-xs font-medium text-gray-500 mb-2">
+                      Raw response
+                    </div>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap">
+                      {aiRaw}
+                    </pre>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -2254,6 +2620,27 @@ function PaperclipIcon({ isImage }: { isImage: boolean }) {
       className={isImage ? "text-accent-blue" : "text-gray-400"}
     >
       <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function BookPlusIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-4 h-4"
+    >
+      <path d="M12 7v14" />
+      <path d="M8 7h10" />
+      <path d="M18 3H6a2 2 0 0 0-2 2v16a2 2 0 0 1 2-2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
     </svg>
   );
 }

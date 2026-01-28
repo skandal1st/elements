@@ -22,6 +22,7 @@ import { HRPanel } from "./modules/hr/pages/HRPanel";
 import { UsersPage } from "./modules/hr/pages/UsersPage";
 import { EquipmentPage } from "./modules/it/pages/EquipmentPage";
 import { TicketsPage } from "./modules/it/pages/TicketsPage";
+import { KnowledgeBasePage } from "./modules/it/pages/KnowledgeBasePage";
 import { ConsumablesPage } from "./modules/it/pages/ConsumablesPage";
 import { EquipmentRequestsPage } from "./modules/it/pages/EquipmentRequestsPage";
 import { ReportsPage } from "./modules/it/pages/ReportsPage";
@@ -236,6 +237,7 @@ function AppRoutes() {
           <Route index element={<Navigate to="/it/equipment" replace />} />
           <Route path="equipment" element={<EquipmentPage />} />
           <Route path="tickets" element={<TicketsPage />} />
+          <Route path="knowledge" element={<KnowledgeBasePage />} />
           <Route path="consumables" element={<ConsumablesPage />} />
           <Route
             path="equipment-requests"

@@ -99,6 +99,14 @@ async def on_startup():
     logger.info("Запуск Elements Platform...")
     logger.info(f"Доступные модули: {', '.join(settings.get_enabled_modules())}")
 
+    # Минимальные миграции (best-effort), чтобы не падать на рассинхроне схемы БД
+    try:
+        from backend.core.startup_migrations import apply_startup_migrations
+
+        apply_startup_migrations()
+    except Exception as e:
+        logger.warning(f"Не удалось применить startup migrations: {e}")
+
     # Запускаем Telegram polling
     try:
         from backend.modules.it.services.telegram_service import telegram_service

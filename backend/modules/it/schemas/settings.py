@@ -101,6 +101,21 @@ class LdapSettings(BaseModel):
     ldap_enabled: Optional[bool] = False
 
 
+class LlmSettings(BaseModel):
+    """Настройки LLM / OpenRouter."""
+
+    llm_normalization_enabled: Optional[bool] = False
+    llm_suggestions_enabled: Optional[bool] = False
+
+    openrouter_api_key: Optional[str] = None
+    openrouter_base_url: Optional[str] = "https://openrouter.ai/api/v1"
+    openrouter_model: Optional[str] = "openai/gpt-4o-mini"
+    openrouter_embedding_model: Optional[str] = "openai/text-embedding-3-small"
+
+    qdrant_url: Optional[str] = None
+    qdrant_collection: Optional[str] = "knowledge_articles_v1"
+
+
 class GeneralSettings(BaseModel):
     """Общие настройки системы."""
 
@@ -123,3 +138,4 @@ class AllSettings(BaseModel):
     telegram: TelegramSettings = TelegramSettings()
     zabbix: ZabbixSettings = ZabbixSettings()
     ldap: LdapSettings = LdapSettings()
+    llm: LlmSettings = LlmSettings()

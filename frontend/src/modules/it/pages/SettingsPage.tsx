@@ -19,6 +19,7 @@ import {
   XCircle,
   AlertCircle,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { apiGet, apiPost } from "../../../shared/api/client";
 import {
@@ -35,6 +36,7 @@ type AllSettings = {
   telegram: TelegramSettings;
   zabbix: ZabbixSettings;
   ldap: LdapSettings;
+  llm: LlmSettings;
 };
 
 type GeneralSettings = {
@@ -92,6 +94,17 @@ type LdapSettings = {
   ldap_enabled?: boolean;
 };
 
+type LlmSettings = {
+  llm_normalization_enabled?: boolean;
+  llm_suggestions_enabled?: boolean;
+  openrouter_api_key?: string;
+  openrouter_base_url?: string;
+  openrouter_model?: string;
+  openrouter_embedding_model?: string;
+  qdrant_url?: string;
+  qdrant_collection?: string;
+};
+
 type ADUser = {
   dn?: string | null;
   sAMAccountName: string;
@@ -113,6 +126,7 @@ const TABS = [
   { id: "imap", label: "Email (IMAP)", icon: Mail },
   { id: "telegram", label: "Telegram", icon: MessageCircle },
   { id: "zabbix", label: "Zabbix", icon: Server },
+  { id: "llm", label: "LLM / OpenRouter", icon: Sparkles },
   { id: "ldap", label: "Active Directory", icon: Shield },
 ];
 
@@ -138,6 +152,7 @@ export function SettingsPage() {
     telegram: {},
     zabbix: {},
     ldap: {},
+    llm: {},
   });
 
   // Состояния для зданий
@@ -1229,6 +1244,82 @@ export function SettingsPage() {
                   "Admin",
                 )}
                 {renderInput("Пароль", "zabbix", "zabbix_password", "password")}
+              </div>
+            )}
+
+            {/* LLM / OpenRouter настройки */}
+            {activeTab === "llm" && (
+              <div className="space-y-4 max-w-xl">
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  LLM / OpenRouter
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Используется для нормализации статей базы знаний (Этап 1). При
+                  выключенном флаге система работает без LLM.
+                </p>
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200">
+                  Важно: для нормализации нужна <b>chat-модель</b>. Embedding-модели
+                  (например, <code>openai/text-embedding-3-small</code>) здесь не
+                  подойдут.
+                </div>
+
+                {renderInput(
+                  "Включить LLM-нормализацию",
+                  "llm",
+                  "llm_normalization_enabled",
+                  "checkbox",
+                )}
+                {renderInput(
+                  "Включить LLM-подсказки (Этап 2)",
+                  "llm",
+                  "llm_suggestions_enabled",
+                  "checkbox",
+                )}
+                {renderInput(
+                  "OpenRouter Base URL",
+                  "llm",
+                  "openrouter_base_url",
+                  "text",
+                  "https://openrouter.ai/api/v1",
+                )}
+                {renderInput(
+                  "OpenRouter Model",
+                  "llm",
+                  "openrouter_model",
+                  "text",
+                  "openai/gpt-4o-mini",
+                )}
+                {renderInput(
+                  "OpenRouter Embedding Model",
+                  "llm",
+                  "openrouter_embedding_model",
+                  "text",
+                  "openai/text-embedding-3-small",
+                )}
+                {renderInput(
+                  "OpenRouter API Key",
+                  "llm",
+                  "openrouter_api_key",
+                  "password",
+                  "sk-or-...",
+                )}
+
+                <div className="pt-2 border-t border-dark-600/50" />
+                <h4 className="text-sm font-semibold text-white">Qdrant</h4>
+                {renderInput(
+                  "Qdrant URL",
+                  "llm",
+                  "qdrant_url",
+                  "text",
+                  "http://qdrant:6333",
+                )}
+                {renderInput(
+                  "Qdrant Collection",
+                  "llm",
+                  "qdrant_collection",
+                  "text",
+                  "knowledge_articles_v1",
+                )}
               </div>
             )}
 

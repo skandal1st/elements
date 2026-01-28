@@ -29,6 +29,7 @@ from .routes import (
 from .routes import (
     settings as settings_routes,
 )
+from backend.modules.knowledge_core import api as knowledge_api
 
 router = APIRouter(prefix=f"{settings.api_v1_prefix}/it", tags=["it"])
 
@@ -50,6 +51,7 @@ router.include_router(settings_routes.router)
 router.include_router(zabbix.router)
 router.include_router(telegram.router)
 router.include_router(email.router)
+router.include_router(knowledge_api.router)
 
 
 @router.get("/")

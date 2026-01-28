@@ -14,6 +14,7 @@ from backend.modules.it.schemas.settings import (
     EmailSettings,
     GeneralSettings,
     ImapSettings,
+    LlmSettings,
     LdapSettings,
     SettingCreate,
     SettingOut,
@@ -69,6 +70,16 @@ SETTING_TYPE_MAP = {
         "ldap_user_filter",
         "ldap_enabled",
     ],
+    "llm": [
+        "llm_normalization_enabled",
+        "llm_suggestions_enabled",
+        "openrouter_api_key",
+        "openrouter_base_url",
+        "openrouter_model",
+        "openrouter_embedding_model",
+        "qdrant_url",
+        "qdrant_collection",
+    ],
 }
 
 # Настройки, которые должны быть скрыты при выводе (пароли и т.д.)
@@ -78,6 +89,7 @@ SENSITIVE_KEYS = [
     "telegram_bot_token",
     "zabbix_password",
     "ldap_bind_password",
+    "openrouter_api_key",
 ]
 
 
@@ -206,6 +218,22 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
             ),
             ldap_user_filter=get_val("ldap_user_filter", "(objectClass=user)"),
             ldap_enabled=get_val("ldap_enabled", False),
+        ),
+        llm=LlmSettings(
+            llm_normalization_enabled=get_val("llm_normalization_enabled", False),
+            llm_suggestions_enabled=get_val("llm_suggestions_enabled", False),
+            openrouter_api_key=_mask_sensitive(
+                get_val("openrouter_api_key"), "openrouter_api_key"
+            ),
+            openrouter_base_url=get_val(
+                "openrouter_base_url", "https://openrouter.ai/api/v1"
+            ),
+            openrouter_model=get_val("openrouter_model", "openai/gpt-4o-mini"),
+            openrouter_embedding_model=get_val(
+                "openrouter_embedding_model", "openai/text-embedding-3-small"
+            ),
+            qdrant_url=get_val("qdrant_url"),
+            qdrant_collection=get_val("qdrant_collection", "knowledge_articles_v1"),
         ),
     )
 
