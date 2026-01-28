@@ -42,7 +42,8 @@ def list_equipment(
     db: Session = Depends(get_db),
     status: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
-    owner_id: Optional[UUID] = Query(None),
+    owner_id: Optional[int] = Query(None),
+    room_id: Optional[UUID] = Query(None),
     search: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -54,6 +55,8 @@ def list_equipment(
         q = q.filter(Equipment.category == category)
     if owner_id:
         q = q.filter(Equipment.current_owner_id == owner_id)
+    if room_id:
+        q = q.filter(Equipment.room_id == room_id)
     if search and search.strip():
         s = f"%{search.strip()}%"
         q = q.filter(
@@ -78,6 +81,13 @@ def list_equipment(
             buildings = db.query(Building).filter(Building.id.in_(building_ids)).all()
             buildings_map = {b.id: b.name for b in buildings}
         rooms_map = {r.id: (r.name, buildings_map.get(r.building_id)) for r in rooms}
+
+    # Собираем владельцев (employees.id) для одного запроса
+    owner_ids = [eq.current_owner_id for eq in equipment_list if eq.current_owner_id]
+    owners_map = {}
+    if owner_ids:
+        owners = db.query(Employee).filter(Employee.id.in_(owner_ids)).all()
+        owners_map = {o.id: (o.full_name, o.email) for o in owners}
     
     # Формируем результат с информацией о кабинете
     result = []
@@ -87,6 +97,10 @@ def list_equipment(
             room_name, building_name = rooms_map[eq.room_id]
             eq_out.room_name = room_name
             eq_out.building_name = building_name
+        if eq.current_owner_id and eq.current_owner_id in owners_map:
+            owner_name, owner_email = owners_map[eq.current_owner_id]
+            eq_out.owner_name = owner_name
+            eq_out.owner_email = owner_email
         result.append(eq_out)
     
     return result

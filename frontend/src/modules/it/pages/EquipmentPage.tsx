@@ -154,6 +154,24 @@ export function EquipmentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<
+    "" | "in_stock" | "in_use" | "in_repair" | "written_off"
+  >("");
+  const [filterCategory, setFilterCategory] = useState<string>("");
+  const [filterBuildingId, setFilterBuildingId] = useState<string>("");
+  const [filterRoomId, setFilterRoomId] = useState<string>("");
+  const [filterEmployeeId, setFilterEmployeeId] = useState<string>("");
+  const [filterEmployeeSearch, setFilterEmployeeSearch] = useState("");
+  const [filterEmployees, setFilterEmployees] = useState<
+    Array<{ id: string; full_name: string }>
+  >([]);
+  const [filterEmployeesLoading, setFilterEmployeesLoading] = useState(false);
+  const [filterBuildings, setFilterBuildings] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [filterRooms, setFilterRooms] = useState<
+    Array<{ id: string; name: string; building_name?: string }>
+  >([]);
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
@@ -244,6 +262,10 @@ export function EquipmentPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
+      if (activeTab) params.set("status", activeTab);
+      if (filterCategory) params.set("category", filterCategory);
+      if (filterRoomId) params.set("room_id", filterRoomId);
+      if (filterEmployeeId) params.set("owner_id", filterEmployeeId);
       params.set("page", String(page));
       params.set("page_size", "20");
       const data = await apiGet<Equipment[]>(`/it/equipment/?${params}`);
@@ -260,6 +282,65 @@ export function EquipmentPage() {
     loadBrands();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  const loadFilterBuildings = async () => {
+    try {
+      const data = await buildingsService.getBuildings(true);
+      setFilterBuildings(data.map((b) => ({ id: b.id, name: b.name })));
+    } catch (err) {
+      console.error("Ошибка загрузки зданий (фильтр):", err);
+    }
+  };
+
+  const loadFilterRooms = async (buildingId: string) => {
+    try {
+      if (!buildingId) {
+        setFilterRooms([]);
+        return;
+      }
+      const data = await roomsService.getRooms(buildingId, true);
+      setFilterRooms(
+        data.map((r) => ({
+          id: r.id,
+          name: r.name,
+          building_name: r.building_name,
+        })),
+      );
+    } catch (err) {
+      console.error("Ошибка загрузки кабинетов (фильтр):", err);
+    }
+  };
+
+  const loadFilterEmployees = async () => {
+    try {
+      setFilterEmployeesLoading(true);
+      const params = new URLSearchParams();
+      if (filterEmployeeSearch.trim()) params.set("q", filterEmployeeSearch.trim());
+      const url = params.toString()
+        ? `/hr/employees/?${params.toString()}`
+        : "/hr/employees/";
+      const data = await apiGet<Array<{ id: string; full_name: string }>>(url);
+      setFilterEmployees(data);
+    } catch (err) {
+      console.error("Ошибка загрузки сотрудников (фильтр):", err);
+    } finally {
+      setFilterEmployeesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFilterBuildings();
+    loadFilterEmployees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      loadFilterEmployees();
+    }, 250);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterEmployeeSearch]);
 
   // Загрузка справочника
   const loadBrands = async () => {
@@ -448,6 +529,30 @@ export function EquipmentPage() {
   const handleSearch = () => {
     setPage(1); // Сбрасываем на первую страницу при поиске
     load();
+  };
+
+  const applyFilters = () => {
+    setPage(1);
+    load();
+  };
+
+  const resetFilters = () => {
+    setActiveTab("");
+    setFilterCategory("");
+    setFilterBuildingId("");
+    setFilterRoomId("");
+    setFilterEmployeeId("");
+    setFilterEmployeeSearch("");
+    setFilterRooms([]);
+    setPage(1);
+    load();
+  };
+
+  const handleTabClick = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setPage(1);
+    // дождёмся обновления состояния и сразу перезагрузим
+    window.setTimeout(() => load(), 0);
   };
 
   const openDetail = async (e: Equipment) => {
@@ -936,6 +1041,140 @@ export function EquipmentPage() {
         </button>
       </div>
 
+      {/* Табы по статусу */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => handleTabClick("")}
+          className={`px-3 py-2 rounded-xl text-sm border transition-all ${
+            activeTab === ""
+              ? "bg-accent-purple/20 text-accent-purple border-accent-purple/30"
+              : "bg-dark-700/30 text-gray-400 border-dark-600/50 hover:text-gray-200"
+          }`}
+        >
+          Все
+        </button>
+        {STATUSES.map((s) => (
+          <button
+            key={s}
+            onClick={() => handleTabClick(s as typeof activeTab)}
+            className={`px-3 py-2 rounded-xl text-sm border transition-all ${
+              activeTab === s
+                ? "bg-accent-purple/20 text-accent-purple border-accent-purple/30"
+                : "bg-dark-700/30 text-gray-400 border-dark-600/50 hover:text-gray-200"
+            }`}
+          >
+            {statusLabel[s] || s}
+          </button>
+        ))}
+      </div>
+
+      {/* Фильтры списка */}
+      <div className="glass-card p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Тип</label>
+            <select
+              className="glass-input w-full px-3 py-2.5 text-sm"
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+            >
+              <option value="" className="bg-dark-800">
+                Все типы
+              </option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c} className="bg-dark-800">
+                  {categoryLabel[c] || c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Здание</label>
+            <select
+              className="glass-input w-full px-3 py-2.5 text-sm"
+              value={filterBuildingId}
+              onChange={async (e) => {
+                const v = e.target.value;
+                setFilterBuildingId(v);
+                setFilterRoomId("");
+                await loadFilterRooms(v);
+              }}
+            >
+              <option value="" className="bg-dark-800">
+                Все здания
+              </option>
+              {filterBuildings.map((b) => (
+                <option key={b.id} value={b.id} className="bg-dark-800">
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Кабинет</label>
+            <select
+              className="glass-input w-full px-3 py-2.5 text-sm"
+              value={filterRoomId}
+              onChange={(e) => setFilterRoomId(e.target.value)}
+              disabled={!filterBuildingId}
+            >
+              <option value="" className="bg-dark-800">
+                {filterBuildingId ? "Все кабинеты" : "Сначала выберите здание"}
+              </option>
+              {filterRooms.map((r) => (
+                <option key={r.id} value={r.id} className="bg-dark-800">
+                  {r.name} {r.building_name ? `(${r.building_name})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Сотрудник</label>
+            <div className="mb-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  className="glass-input w-full pl-9 pr-3 py-2.5 text-sm"
+                  placeholder="Поиск сотрудника..."
+                  value={filterEmployeeSearch}
+                  onChange={(e) => setFilterEmployeeSearch(e.target.value)}
+                />
+              </div>
+            </div>
+            <select
+              className="glass-input w-full px-3 py-2.5 text-sm"
+              value={filterEmployeeId}
+              onChange={(e) => setFilterEmployeeId(e.target.value)}
+              disabled={filterEmployeesLoading}
+            >
+              <option value="" className="bg-dark-800">
+                {filterEmployeesLoading ? "Загрузка…" : "Все сотрудники"}
+              </option>
+              {filterEmployees.map((emp) => (
+                <option key={emp.id} value={emp.id} className="bg-dark-800">
+                  {emp.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 justify-end mt-4">
+          <button
+            onClick={resetFilters}
+            className="glass-button-secondary px-4 py-2 text-sm"
+          >
+            Сбросить
+          </button>
+          <button onClick={applyFilters} className="glass-button px-4 py-2 text-sm">
+            Применить
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
@@ -947,6 +1186,7 @@ export function EquipmentPage() {
               <tr className="border-b border-dark-600/50">
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Инв. №</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ответственный</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категория</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Место</th>
@@ -963,6 +1203,9 @@ export function EquipmentPage() {
                   <td className="px-4 py-4 text-gray-300">{e.inventory_number}</td>
                   <td className="px-4 py-4">
                     <span className="text-white font-medium">{e.name}</span>
+                  </td>
+                  <td className="px-4 py-4 text-gray-400">
+                    {(e as any).owner_name || "—"}
                   </td>
                   <td className="px-4 py-4 text-gray-400">{categoryLabel[e.category] || e.category}</td>
                   <td className="px-4 py-4 text-gray-400">{statusLabel[e.status] || e.status}</td>
