@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -225,6 +226,8 @@ const SourceIcon = ({ source }: { source?: string }) => {
 };
 
 export function TicketsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [items, setItems] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -273,6 +276,14 @@ export function TicketsPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("employee");
   const [users, setUsers] = useState<UserOption[]>([]);
+
+  // Deep-link: /it/tickets?open=<ticketId>
+  const pendingOpenRef = useRef<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const openId = (params.get("open") || params.get("ticket") || "").trim();
+    if (openId) pendingOpenRef.current = openId;
+  }, [location.search]);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -744,6 +755,21 @@ export function TicketsPage() {
       setCommentsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const openId = pendingOpenRef.current;
+    if (!openId) return;
+    // Ждём определения роли (инициализация по токену) чтобы корректно загрузить данные для IT
+    if (!userRole) return;
+    pendingOpenRef.current = null;
+    void openDetail(openId);
+    // Уберём параметр из URL, чтобы не открывалось повторно
+    try {
+      navigate("/it/tickets", { replace: true });
+    } catch {
+      // ignore
+    }
+  }, [userRole, navigate]);
 
   const openDetail = async (id: string) => {
     setDetailId(id);

@@ -107,6 +107,8 @@ class GeneralSettings(BaseModel):
     company_name: Optional[str] = None
     company_logo_url: Optional[str] = None
     system_email: Optional[str] = None
+    # Публичный URL системы (нужен для ссылок в Telegram)
+    public_app_url: Optional[str] = None
     default_ticket_priority: Optional[str] = "medium"
     auto_assign_tickets: Optional[bool] = False
     ticket_notifications_enabled: Optional[bool] = True

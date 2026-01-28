@@ -41,6 +41,7 @@ type GeneralSettings = {
   company_name?: string;
   company_logo_url?: string;
   system_email?: string;
+  public_app_url?: string;
   default_ticket_priority?: string;
   auto_assign_tickets?: boolean;
   ticket_notifications_enabled?: boolean;
@@ -784,6 +785,13 @@ export function SettingsPage() {
                   "system_email",
                   "text",
                   "support@company.com",
+                )}
+                {renderInput(
+                  "Публичный URL системы (для ссылок в Telegram)",
+                  "general",
+                  "public_app_url",
+                  "text",
+                  "https://elements.company.com",
                 )}
                 {renderSelect(
                   "Приоритет по умолчанию",

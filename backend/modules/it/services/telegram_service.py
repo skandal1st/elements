@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.hr.models.user import User
+from backend.modules.it.models import Ticket
 
 logger = logging.getLogger(__name__)
 
@@ -30,32 +31,159 @@ class TelegramService:
 
     # ── helpers ──────────────────────────────────────────────
 
-    def _get_bot_token(self, db: Session) -> Optional[str]:
-        """Получить токен бота из БД"""
+    def _get_setting(self, db: Session, key: str) -> Optional[str]:
         setting = (
-            db.query(SystemSettings)
-            .filter(SystemSettings.setting_key == "telegram_bot_token")
-            .first()
+            db.query(SystemSettings).filter(SystemSettings.setting_key == key).first()
         )
         return setting.setting_value if setting else None
+
+    def _get_bot_token(self, db: Session) -> Optional[str]:
+        """Получить токен бота из БД"""
+        return self._get_setting(db, "telegram_bot_token")
 
     def _is_enabled(self, db: Session) -> bool:
         """Проверить включена ли интеграция"""
-        setting = (
-            db.query(SystemSettings)
-            .filter(SystemSettings.setting_key == "telegram_bot_enabled")
-            .first()
-        )
-        return setting and setting.setting_value.lower() == "true"
+        value = self._get_setting(db, "telegram_bot_enabled")
+        return bool(value and value.lower() == "true")
 
     def _get_bot_username(self, db: Session) -> Optional[str]:
         """Получить username бота"""
-        setting = (
-            db.query(SystemSettings)
-            .filter(SystemSettings.setting_key == "telegram_bot_username")
+        return self._get_setting(db, "telegram_bot_username")
+
+    def _get_public_app_url(self, db: Session) -> Optional[str]:
+        """
+        Публичный URL системы (нужен для кнопок url в Telegram).
+        Берём из public_app_url, иначе пытаемся вывести из telegram_webhook_url.
+        """
+        raw = (self._get_setting(db, "public_app_url") or "").strip()
+        if raw:
+            return raw.rstrip("/")
+
+        webhook = (self._get_setting(db, "telegram_webhook_url") or "").strip()
+        if webhook.startswith("http://") or webhook.startswith("https://"):
+            # https://host/path -> https://host
+            try:
+                # без лишних зависимостей: грубо отрежем путь
+                parts = webhook.split("/")
+                if len(parts) >= 3:
+                    return f"{parts[0]}//{parts[2]}".rstrip("/")
+            except Exception:
+                pass
+
+        return None
+
+    def _ticket_url(self, db: Session, ticket_id: UUID) -> Optional[str]:
+        base = self._get_public_app_url(db)
+        if not base:
+            return None
+        return f"{base}/it/tickets?open={ticket_id}"
+
+    def _user_by_telegram_chat(self, db: Session, chat_id: int) -> Optional[User]:
+        return db.query(User).filter(User.telegram_id == chat_id).first()
+
+    def _is_it_user(self, user: User) -> bool:
+        if user.is_superuser:
+            return True
+        roles = user.roles or {}
+        return roles.get("it") in ("admin", "it_specialist")
+
+    async def _send_main_menu(self, db: Session, chat_id: int) -> None:
+        reply_markup = {
+            "inline_keyboard": [
+                [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}]
+            ]
+        }
+        await self.send_message(
+            db,
+            chat_id,
+            "Меню:\n\n- «Все активные тикеты» — список незакрытых заявок.",
+            reply_markup=reply_markup,
+        )
+
+    async def _send_active_tickets(
+        self, db: Session, chat_id: int, user: User, page: int = 0, page_size: int = 5
+    ) -> None:
+        page = max(0, int(page))
+        offset = page * page_size
+
+        q = db.query(Ticket).filter(Ticket.status.notin_(["closed", "resolved"]))
+        if not self._is_it_user(user):
+            q = q.filter(Ticket.creator_id == user.id)
+
+        tickets = q.order_by(Ticket.created_at.desc()).offset(offset).limit(page_size + 1).all()
+        has_next = len(tickets) > page_size
+        tickets = tickets[:page_size]
+
+        if not tickets:
+            await self.send_message(db, chat_id, "Активных тикетов не найдено.")
+            return
+
+        lines = []
+        keyboard_rows = []
+        for t in tickets:
+            short_id = str(t.id)[:8]
+            lines.append(f"• #{short_id} [{t.status}] {t.title}")
+
+            url = self._ticket_url(db, t.id)
+            if url:
+                keyboard_rows.append([{"text": f"📋 Открыть #{short_id}", "url": url}])
+            else:
+                keyboard_rows.append([{"text": f"📋 Открыть #{short_id}", "callback_data": f"ticket_view_{t.id}"}])
+
+            keyboard_rows.append([{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{t.id}"}])
+
+        nav = []
+        if page > 0:
+            nav.append({"text": "⬅️ Назад", "callback_data": f"tickets_active_{page-1}"})
+        if has_next:
+            nav.append({"text": "Вперёд ➡️", "callback_data": f"tickets_active_{page+1}"})
+        if nav:
+            keyboard_rows.append(nav)
+
+        await self.send_message(
+            db,
+            chat_id,
+            "Активные тикеты:\n\n" + "\n".join(lines),
+            reply_markup={"inline_keyboard": keyboard_rows},
+        )
+
+    async def _create_task_from_ticket(self, db: Session, user: User, ticket: Ticket) -> str:
+        from backend.modules.tasks.models import Project, Task
+
+        project = (
+            db.query(Project)
+            .filter(
+                Project.owner_id == user.id,
+                Project.is_personal == True,
+                Project.is_archived == False,
+            )
+            .order_by(Project.created_at.asc())
             .first()
         )
-        return setting.setting_value if setting else None
+        if not project:
+            project = Project(
+                owner_id=user.id,
+                title="Личные задачи",
+                description="Автоматически создано для задач из Telegram",
+                is_personal=True,
+            )
+            db.add(project)
+            db.flush()
+
+        task = Task(
+            project_id=project.id,
+            title=f"Заявка: {ticket.title}",
+            description=f"Создано из Telegram по заявке #{str(ticket.id)[:8]}",
+            status="todo",
+            priority="medium",
+            creator_id=user.id,
+            assignee_id=user.id,
+            linked_ticket_id=ticket.id,
+        )
+        db.add(task)
+        db.commit()
+        return str(task.id)
+
 
     # ── Telegram API ─────────────────────────────────────────
 
@@ -211,6 +339,23 @@ class TelegramService:
                         "Добро пожаловать!\n\n"
                         "Для привязки аккаунта получите код в разделе IT → Telegram и перейдите по ссылке с кодом.",
                     )
+                    if chat_id:
+                        await self._send_main_menu(db, chat_id)
+            elif text.strip() in ("/menu", "меню", "Menu", "MENU"):
+                if chat_id:
+                    await self._send_main_menu(db, chat_id)
+            elif text.strip() in ("/tickets", "тикеты", "активные тикеты"):
+                if not chat_id:
+                    return
+                u = self._user_by_telegram_chat(db, chat_id)
+                if not u:
+                    await self.send_message(
+                        db,
+                        chat_id,
+                        "Аккаунт не привязан. Откройте IT → Telegram и выполните привязку.",
+                    )
+                    return
+                await self._send_active_tickets(db, chat_id, u, page=0)
 
         # Обработка callback-кнопок
         callback_query = update.get("callback_query")
@@ -229,6 +374,102 @@ class TelegramService:
                             )
                     except Exception:
                         pass
+
+            data = (callback_query.get("data") or "").strip()
+            msg = callback_query.get("message") or {}
+            chat_id = (msg.get("chat") or {}).get("id")
+            if not chat_id:
+                return
+
+            user = self._user_by_telegram_chat(db, chat_id)
+            if not user:
+                await self.send_message(
+                    db,
+                    chat_id,
+                    "Аккаунт не привязан. Откройте IT → Telegram и выполните привязку.",
+                )
+                return
+
+            # Открыть заявку (fallback для старых callback-кнопок)
+            if data.startswith("ticket_view_"):
+                raw_id = data.replace("ticket_view_", "", 1)
+                try:
+                    ticket_id = UUID(raw_id)
+                except Exception:
+                    await self.send_message(db, chat_id, "Некорректный ID заявки.")
+                    return
+
+                url = self._ticket_url(db, ticket_id)
+                if url:
+                    await self.send_message(
+                        db,
+                        chat_id,
+                        "Открыть заявку:",
+                        reply_markup={
+                            "inline_keyboard": [[{"text": "📋 Открыть заявку", "url": url}]]
+                        },
+                    )
+                else:
+                    await self.send_message(
+                        db,
+                        chat_id,
+                        "Не настроен публичный URL системы (public_app_url). "
+                        "Администратор: IT → Настройки → Общие → «Публичный URL системы».",
+                    )
+                return
+
+            # Все активные тикеты
+            if data.startswith("tickets_active_"):
+                raw_page = data.replace("tickets_active_", "", 1)
+                try:
+                    page = int(raw_page)
+                except Exception:
+                    page = 0
+                await self._send_active_tickets(db, chat_id, user, page=page)
+                return
+
+            # Добавить задачу по тикету
+            if data.startswith("ticket_task_"):
+                raw_id = data.replace("ticket_task_", "", 1)
+                try:
+                    ticket_id = UUID(raw_id)
+                except Exception:
+                    await self.send_message(db, chat_id, "Некорректный ID заявки.")
+                    return
+
+                ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+                if not ticket:
+                    await self.send_message(db, chat_id, "Заявка не найдена.")
+                    return
+
+                # Права: сотрудник может создавать задачу только по своим тикетам
+                if not self._is_it_user(user) and ticket.creator_id != user.id:
+                    await self.send_message(db, chat_id, "Недостаточно прав для этой операции.")
+                    return
+
+                try:
+                    _ = await asyncio.get_event_loop().run_in_executor(
+                        None, self._create_task_from_ticket, db, user, ticket
+                    )
+                except Exception as e:
+                    await self.send_message(db, chat_id, f"Не удалось создать задачу: {type(e).__name__}: {e}")
+                    return
+
+                base = self._get_public_app_url(db)
+                reply_markup = None
+                if base:
+                    reply_markup = {
+                        "inline_keyboard": [
+                            [{"text": "🗂 Открыть «Мои задачи»", "url": f"{base}/tasks/my"}]
+                        ]
+                    }
+                await self.send_message(
+                    db,
+                    chat_id,
+                    "Задача создана в модуле Tasks.",
+                    reply_markup=reply_markup,
+                )
+                return
 
     # ── Long-polling ─────────────────────────────────────────
 
@@ -405,16 +646,23 @@ class TelegramService:
         # Добавляем кнопку если есть ticket_id
         reply_markup = None
         if ticket_id:
-            reply_markup = {
-                "inline_keyboard": [
-                    [
-                        {
-                            "text": "📋 Открыть заявку",
-                            "callback_data": f"ticket_view_{ticket_id}",
-                        }
+            url = self._ticket_url(db, ticket_id)
+            if url:
+                reply_markup = {
+                    "inline_keyboard": [
+                        [{"text": "📋 Открыть заявку", "url": url}],
+                        [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
+                        [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
                     ]
-                ]
-            }
+                }
+            else:
+                reply_markup = {
+                    "inline_keyboard": [
+                        [{"text": "📋 Открыть заявку", "callback_data": f"ticket_view_{ticket_id}"}],
+                        [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
+                        [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
+                    ]
+                }
 
         return await self.send_message(
             db, user.telegram_id, text, reply_markup=reply_markup
@@ -449,16 +697,23 @@ class TelegramService:
                 it_users.append(user)
 
         text = f'*🆕 Новая заявка*\n\nПоступила новая заявка: "{ticket_title}"'
-        reply_markup = {
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "📋 Открыть заявку",
-                        "callback_data": f"ticket_view_{ticket_id}",
-                    }
+        url = self._ticket_url(db, ticket_id)
+        if url:
+            reply_markup = {
+                "inline_keyboard": [
+                    [{"text": "📋 Открыть заявку", "url": url}],
+                    [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
+                    [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
                 ]
-            ]
-        }
+            }
+        else:
+            reply_markup = {
+                "inline_keyboard": [
+                    [{"text": "📋 Открыть заявку", "callback_data": f"ticket_view_{ticket_id}"}],
+                    [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
+                    [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
+                ]
+            }
 
         success_count = 0
         for user in it_users:
