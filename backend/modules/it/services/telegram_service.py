@@ -12,6 +12,7 @@ from typing import List, Optional
 from uuid import UUID
 
 import httpx
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -218,16 +219,40 @@ class TelegramService:
     def _create_task_from_ticket(self, db: Session, user: User, ticket: Ticket) -> str:
         from backend.modules.tasks.models import Project, Task
 
+        # Защита от дублей: несколько одновременных нажатий в Telegram могут
+        # создать несколько "Личных задач". На Postgres используем advisory-lock
+        # на время транзакции (ключ детерминированный по user.id).
+        try:
+            lock_key = int(user.id.int % 9223372036854775807)
+            db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": lock_key})
+        except Exception:
+            # Не Postgres / нет прав / другая БД — просто пропустим
+            pass
+
+        # Предпочитаем проект "Личные задачи" (создаётся ботом), иначе берём
+        # первый личный проект пользователя.
         project = (
             db.query(Project)
             .filter(
                 Project.owner_id == user.id,
                 Project.is_personal == True,
                 Project.is_archived == False,
+                Project.title == "Личные задачи",
             )
             .order_by(Project.created_at.asc())
             .first()
         )
+        if not project:
+            project = (
+                db.query(Project)
+                .filter(
+                    Project.owner_id == user.id,
+                    Project.is_personal == True,
+                    Project.is_archived == False,
+                )
+                .order_by(Project.created_at.asc())
+                .first()
+            )
         if not project:
             project = Project(
                 owner_id=user.id,
