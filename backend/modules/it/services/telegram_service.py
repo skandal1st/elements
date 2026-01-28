@@ -78,6 +78,74 @@ class TelegramService:
             return None
         return f"{base}/it/tickets?open={ticket_id}"
 
+    def _format_ticket_details(self, t: Ticket) -> str:
+        short_id = str(t.id)[:8]
+        status_labels = {
+            "new": "Новая",
+            "in_progress": "В работе",
+            "waiting": "Ожидание",
+            "resolved": "Решена",
+            "closed": "Закрыта",
+            "pending_user": "Ожидает привязки",
+        }
+        prio_labels = {
+            "low": "Низкий",
+            "medium": "Средний",
+            "high": "Высокий",
+            "critical": "Критический",
+        }
+        cat_labels = {
+            "hardware": "Оборудование",
+            "software": "ПО",
+            "network": "Сеть",
+            "hr": "HR",
+            "other": "Прочее",
+        }
+        src_labels = {"web": "Веб", "email": "Email", "api": "API", "telegram": "Telegram"}
+
+        status = status_labels.get(t.status, t.status)
+        priority = prio_labels.get(t.priority, t.priority)
+        category = cat_labels.get(t.category, t.category)
+        source = src_labels.get(t.source, t.source)
+
+        assignee = None
+        try:
+            if t.assignee:
+                assignee = t.assignee.full_name
+        except Exception:
+            assignee = None
+
+        employee_name = None
+        try:
+            if t.employee:
+                employee_name = t.employee.full_name
+        except Exception:
+            employee_name = None
+
+        lines = [
+            f"*Заявка #{short_id}*",
+            f"*Статус:* {status}",
+            f"*Приоритет:* {priority}",
+            f"*Категория:* {category}",
+            f"*Источник:* {source}",
+        ]
+        if employee_name:
+            lines.append(f"*Сотрудник:* {employee_name}")
+        if t.email_sender:
+            lines.append(f"*Email отправителя:* {t.email_sender}")
+        if assignee:
+            lines.append(f"*Исполнитель:* {assignee}")
+        lines.append("")
+        lines.append(f"*Тема:* {t.title}")
+        lines.append("")
+        # Ограничим размер текста (Telegram лимит на сообщение)
+        desc = (t.description or "").strip()
+        if len(desc) > 1200:
+            desc = desc[:1200] + "…"
+        if desc:
+            lines.append(f"*Описание:*\n{desc}")
+        return "\n".join(lines)
+
     def _user_by_telegram_chat(self, db: Session, chat_id: int) -> Optional[User]:
         return db.query(User).filter(User.telegram_id == chat_id).first()
 
@@ -147,7 +215,7 @@ class TelegramService:
             reply_markup={"inline_keyboard": keyboard_rows},
         )
 
-    async def _create_task_from_ticket(self, db: Session, user: User, ticket: Ticket) -> str:
+    def _create_task_from_ticket(self, db: Session, user: User, ticket: Ticket) -> str:
         from backend.modules.tasks.models import Project, Task
 
         project = (
@@ -410,11 +478,27 @@ class TelegramService:
                         },
                     )
                 else:
+                    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+                    if not ticket:
+                        await self.send_message(db, chat_id, "Заявка не найдена.")
+                        return
+
+                    # Права: сотрудник видит только свои тикеты
+                    if not self._is_it_user(user) and ticket.creator_id != user.id:
+                        await self.send_message(db, chat_id, "Недостаточно прав для просмотра этой заявки.")
+                        return
+
+                    text = self._format_ticket_details(ticket)
                     await self.send_message(
                         db,
                         chat_id,
-                        "Не настроен публичный URL системы (public_app_url). "
-                        "Администратор: IT → Настройки → Общие → «Публичный URL системы».",
+                        text,
+                        reply_markup={
+                            "inline_keyboard": [
+                                [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
+                                [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
+                            ]
+                        },
                     )
                 return
 
@@ -448,9 +532,7 @@ class TelegramService:
                     return
 
                 try:
-                    _ = await asyncio.get_event_loop().run_in_executor(
-                        None, self._create_task_from_ticket, db, user, ticket
-                    )
+                    self._create_task_from_ticket(db, user, ticket)
                 except Exception as e:
                     await self.send_message(db, chat_id, f"Не удалось создать задачу: {type(e).__name__}: {e}")
                     return
