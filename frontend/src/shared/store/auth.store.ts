@@ -26,37 +26,45 @@ interface AuthState {
 /**
  * Проверяет, истёк ли токен JWT
  */
-function isTokenExpired(token: string): boolean {
+function decodeJwtPayload(token: string): any | null {
   try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    if (!payload.exp) return false;
-    const expiryTime = payload.exp * 1000;
-    // Буфер 10 сек — избегаем ложного «истёк» при небольшом рассинхроне часов
-    return Date.now() >= expiryTime - 10000;
+    const part = token.split(".")[1];
+    if (!part) return null;
+    // JWT uses base64url, not base64
+    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "===".slice((base64.length + 3) % 4);
+    const json = atob(padded);
+    return JSON.parse(json);
   } catch {
-    return true;
+    return null;
   }
+}
+
+function isTokenExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload) return true;
+  if (!payload.exp) return false;
+  const expiryTime = payload.exp * 1000;
+  // Буфер 10 сек — избегаем ложного «истёк» при небольшом рассинхроне часов
+  return Date.now() >= expiryTime - 10000;
 }
 
 /**
  * Извлекает данные пользователя из токена
  */
 function getUserFromToken(token: string): User | null {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return {
-      id: payload.sub || payload.user_id || "",
-      email: payload.email || "",
-      full_name: payload.full_name || "",
-      role: payload.role,
-      roles: payload.roles || {},
-      is_superuser: payload.is_superuser || false,
-      is_active: payload.is_active !== false,
-      modules: payload.modules || [],
-    };
-  } catch {
-    return null;
-  }
+  const payload = decodeJwtPayload(token);
+  if (!payload) return null;
+  return {
+    id: payload.sub || payload.user_id || "",
+    email: payload.email || "",
+    full_name: payload.full_name || "",
+    role: payload.role,
+    roles: payload.roles || {},
+    is_superuser: payload.is_superuser || false,
+    is_active: payload.is_active !== false,
+    modules: payload.modules || [],
+  };
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
