@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formataddr, parseaddr
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -152,9 +153,18 @@ class EmailService:
             )
 
         try:
+            # Нормализуем адреса, чтобы заголовки были RFC-корректными:
+            # имя (может быть кириллица) кодируем отдельно, email — отдельно.
+            parsed_from_name, parsed_from_addr = parseaddr(config["from_email"])
+            from_addr = parsed_from_addr or (config["from_email"] or "").strip()
+            from_name = (config.get("from_name") or "").strip() or parsed_from_name or "Elements IT"
+
+            parsed_to_name, parsed_to_addr = parseaddr(to_email or "")
+            to_addr = parsed_to_addr or (to_email or "").strip()
+
             msg = MIMEMultipart("alternative")
-            msg["From"] = f"{config['from_name']} <{config['from_email']}>"
-            msg["To"] = to_email
+            msg["From"] = formataddr((from_name, from_addr))
+            msg["To"] = formataddr((parsed_to_name, to_addr)) if to_addr else (to_email or "")
             msg["Subject"] = subject
             msg["Date"] = email.utils.formatdate(localtime=True)
 
@@ -172,16 +182,20 @@ class EmailService:
             msg.attach(MIMEText(html_content, "html", "utf-8"))
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, self._send_email_sync, config, msg, to_email)
+            await loop.run_in_executor(
+                None, self._send_email_sync, config, msg, from_addr, to_addr
+            )
             return True, None
         except Exception as e:
             return False, f"{type(e).__name__}: {e}"
 
-    def _send_email_sync(self, config: dict, msg: MIMEMultipart, to_email: str):
+    def _send_email_sync(
+        self, config: dict, msg: MIMEMultipart, from_addr: str, to_addr: str
+    ):
         """Синхронная отправка email"""
         smtp = self._create_smtp_connection(config)
         try:
-            smtp.sendmail(config["from_email"], [to_email], msg.as_string())
+            smtp.sendmail(from_addr, [to_addr], msg.as_string())
         finally:
             smtp.quit()
 
