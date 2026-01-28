@@ -1412,29 +1412,44 @@ export function TicketsPage() {
               </div>
             </div>
 
-            {/* Email sender for pending_user */}
-            {detail.status === "pending_user" && detail.email_sender && (
-              <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
-                <p className="text-sm text-orange-400">
-                  <Mail className="w-4 h-4 inline mr-2" />
-                  Тикет создан из email: <strong>{detail.email_sender}</strong>
-                </p>
-                {detail.employee_name && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    Привязанный сотрудник:{" "}
-                    <span className="font-medium text-white">
-                      {detail.employee_name}
-                    </span>
+            {/* Инициатор */}
+            <div className="p-4 rounded-xl bg-dark-700/20 border border-dark-600/50">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-500 mb-1">
+                    Инициатор
                   </p>
-                )}
-                {canEdit && (
+                  <p className="text-sm text-gray-200 truncate">
+                    {detail.employee_name
+                      ? detail.employee_name
+                      : detail.email_sender
+                        ? `Email: ${detail.email_sender}`
+                        : "—"}
+                  </p>
+                  {detail.status === "pending_user" && (
+                    <p className="text-xs text-orange-400 mt-1">
+                      Требуется привязка инициатора
+                    </p>
+                  )}
+                </div>
+                {userRole === "it" && (
                   <button
                     onClick={openAssignEmployeeModal}
-                    className="mt-3 px-4 py-2 text-sm font-medium text-orange-400 border border-orange-500/30 rounded-xl hover:bg-orange-500/10 transition-all"
+                    className="px-4 py-2 text-sm font-medium text-accent-purple border border-accent-purple/30 rounded-xl hover:bg-accent-purple/10 transition-all"
                   >
-                    Привязать к сотруднику
+                    {detail.employee_name ? "Изменить" : "Выбрать"}
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* Email sender info */}
+            {detail.email_sender && (
+              <div className="p-4 rounded-xl bg-dark-700/10 border border-dark-600/30">
+                <p className="text-xs text-gray-400">
+                  <Mail className="w-4 h-4 inline mr-2" />
+                  Email отправителя: <strong className="text-gray-200">{detail.email_sender}</strong>
+                </p>
               </div>
             )}
 

@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.hr.models.user import User
-from backend.modules.it.models import Ticket, TicketComment
+from backend.modules.it.models import EmailSenderEmployeeMap, Ticket, TicketComment
 
 
 # Разрешённые расширения файлов
@@ -307,16 +307,29 @@ class EmailReceiverService:
 
         # Проверяем, существует ли пользователь
         user = db.query(User).filter(User.email == from_email).first()
+        from backend.modules.hr.models.employee import Employee
 
         category, priority = self._parse_category_and_priority(subject)
 
-        # Определяем статус
+        # Пытаемся определить инициатора (Employee) чтобы не требовать ручной привязки.
+        employee = None
         if user:
+            employee = db.query(Employee).filter(Employee.user_id == user.id).first()
+        if not employee:
+            employee = db.query(Employee).filter(Employee.email == from_email).first()
+        if not employee:
+            m = db.query(EmailSenderEmployeeMap).filter(EmailSenderEmployeeMap.email == from_email).first()
+            if m:
+                employee = db.query(Employee).filter(Employee.id == m.employee_id).first()
+
+        # Определяем статус и creator
+        if user or employee:
             status = "new"
-            creator_id = user.id
-            email_sender = None
+            creator_id = user.id if user else (employee.user_id if employee and employee.user_id else None)
+            # Для email-тикетов оставляем email_sender, чтобы можно было отвечать/уведомлять
+            email_sender = None if user else from_email
         else:
-            status = "pending_user"  # Требует привязки к пользователю
+            status = "pending_user"  # Требует привязки к сотруднику/пользователю
             creator_id = None
             email_sender = from_email
 
@@ -331,6 +344,7 @@ class EmailReceiverService:
             source="email",
             email_message_id=message_id,
             attachments=attachments if attachments else None,
+            employee_id=employee.id if employee else None,
         )
         db.add(ticket)
         db.flush()

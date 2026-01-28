@@ -13,6 +13,7 @@ from backend.modules.it.dependencies import get_current_user, get_db, require_it
 from backend.modules.it.models import (
     Consumable,
     ConsumableIssue,
+    EmailSenderEmployeeMap,
     Notification,
     Ticket,
     TicketConsumable,
@@ -503,8 +504,22 @@ def assign_employee_to_ticket(
     t.employee_id = employee.id
     if employee.user_id:
         t.creator_id = employee.user_id
-        if t.status == "pending_user":
-            t.status = "new"
+    if t.status == "pending_user":
+        t.status = "new"
+
+    # Запоминаем соответствие email -> сотрудник для будущих email-тикетов
+    if t.email_sender:
+        email_addr = (t.email_sender or "").strip().lower()
+        if email_addr:
+            m = (
+                db.query(EmailSenderEmployeeMap)
+                .filter(EmailSenderEmployeeMap.email == email_addr)
+                .first()
+            )
+            if m:
+                m.employee_id = employee.id
+            else:
+                db.add(EmailSenderEmployeeMap(email=email_addr, employee_id=employee.id))
 
     log_ticket_changes(
         db=db,

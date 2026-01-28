@@ -264,6 +264,53 @@ def migrate_ticket_employee_link():
             conn.rollback()
 
 
+def migrate_email_sender_employee_map():
+    """Создаёт таблицу соответствий email -> employee_id для авто-привязки email-тикетов."""
+    print("Проверка миграции email_sender_employee_map...")
+    with engine.connect() as conn:
+        try:
+            result = conn.execute(
+                text(
+                    """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_name = 'email_sender_employee_map'
+            """
+                )
+            )
+            if result.fetchone():
+                print("Таблица email_sender_employee_map уже существует")
+                return
+
+            print("Создание таблицы email_sender_employee_map...")
+            conn.execute(
+                text(
+                    """
+                CREATE TABLE email_sender_employee_map (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    email VARCHAR(255) NOT NULL UNIQUE,
+                    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                CREATE INDEX idx_email_sender_employee_map_employee_id
+                ON email_sender_employee_map(employee_id)
+            """
+                )
+            )
+            conn.commit()
+            print("✅ Миграция email_sender_employee_map выполнена успешно")
+        except Exception as e:
+            print(f"⚠️  Ошибка миграции email_sender_employee_map: {e}")
+            conn.rollback()
+
+
 def migrate_rooms_and_related():
     """Создает таблицу rooms и добавляет room_id в связанные таблицы"""
     print("Проверка миграций для кабинетов...")
@@ -536,6 +583,7 @@ def create_tables():
     migrate_rooms_and_related()
     migrate_ticket_history_and_source()
     migrate_ticket_employee_link()
+    migrate_email_sender_employee_map()
     migrate_consumable_supplies()
     migrate_ticket_consumables()
     migrate_telegram_fields()

@@ -221,6 +221,29 @@ class Ticket(Base):
     room = relationship("Room", foreign_keys=[room_id])
 
 
+class EmailSenderEmployeeMap(Base):
+    """
+    Соответствие email отправителя -> сотрудник (HR Employee).
+
+    Нужно для email-тикетов: если один раз IT привязал "инициатора" к письму,
+    последующие тикеты с этого адреса будут автоматически привязываться к сотруднику.
+    """
+
+    __tablename__ = "email_sender_employee_map"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    email = Column(String(255), nullable=False, unique=True)
+    employee_id = Column(
+        Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    employee = relationship("Employee", foreign_keys=[employee_id])
+
+
 class TicketComment(Base):
     """Комментарий к заявке"""
 
