@@ -33,8 +33,11 @@ class Settings(BaseSettings):
 
     # JWT аутентификация
     secret_key: str = "elements-super-secret-key-change-in-production-min-32-chars"
-    # 7 дней
+    # Время жизни access token.
+    # По умолчанию: 7 дней.
+    # Если задано access_token_expire_seconds — оно имеет приоритет (удобно, если в инфраструктуре принято задавать TTL в секундах).
     access_token_expire_minutes: int = 60 * 24 * 7
+    access_token_expire_seconds: int | None = None
     refresh_token_expire_days: int = 7
     algorithm: str = "HS256"
 

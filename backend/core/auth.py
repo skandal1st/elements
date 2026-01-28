@@ -82,9 +82,13 @@ def create_access_token(
             "iat": 1234567890
         }
     """
-    expire = datetime.utcnow() + (
-        expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
-    )
+    if expires_delta is not None:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        if getattr(settings, "access_token_expire_seconds", None):
+            expire = datetime.utcnow() + timedelta(seconds=settings.access_token_expire_seconds)
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     
     # Формируем payload
     to_encode = {
