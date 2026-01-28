@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from backend.core.auth import get_token_payload
 from backend.core.config import settings
 from backend.core.database import get_db
+from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.portal.services import PortalService
 
 router = APIRouter(prefix=f"{settings.api_v1_prefix}/portal", tags=["portal"])
@@ -48,3 +49,20 @@ async def get_stats(
     """
     service = PortalService(db)
     return service.get_company_stats()
+
+
+@router.get("/last-email-check")
+async def get_last_email_check(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+):
+    """
+    Время последней проверки почты (cron или ручной «Проверить почту»).
+    Доступно всем авторизованным пользователям.
+    """
+    row = (
+        db.query(SystemSettings)
+        .filter(SystemSettings.setting_key == "email_last_check_at")
+        .first()
+    )
+    return {"last_check_at": row.setting_value if row and row.setting_value else None}

@@ -11,6 +11,10 @@ interface UIState {
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
 
+  // Время последней проверки почты (ISO) — для плашки «Обновлено X назад»
+  lastEmailCheckAt: string | null
+  setLastEmailCheckAt: (value: string | null) => void
+
   // Инициализация из localStorage
   loadFromStorage: () => void
 }
@@ -20,6 +24,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   // поэтому держим dark как дефолт, чтобы Tailwind `dark:` работал стабильно
   theme: 'dark',
   sidebarCollapsed: false,
+  lastEmailCheckAt: null,
+
+  setLastEmailCheckAt: (value) => set({ lastEmailCheckAt: value }),
 
   toggleTheme: () => {
     const newTheme = get().theme === 'light' ? 'dark' : 'light'

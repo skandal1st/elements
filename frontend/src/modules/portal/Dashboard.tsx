@@ -14,6 +14,8 @@ import {
   BarChart3,
   Activity,
 } from "lucide-react";
+import { useUIStore } from "../../shared/store/ui.store";
+import { formatRelative } from "../../shared/utils/formatRelative";
 
 interface Birthday {
   id: number;
@@ -45,9 +47,16 @@ interface DashboardData {
 export function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastEmailCheckAt = useUIStore((s) => s.lastEmailCheckAt);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     fetchDashboardData();
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
   }, []);
 
   const fetchDashboardData = async () => {
@@ -150,7 +159,7 @@ export function Dashboard() {
           </div>
           <div className="hidden md:flex items-center gap-2 text-sm text-gray-400">
             <Clock className="w-4 h-4" />
-            <span>Последнее обновление: 2 мин назад</span>
+            <span>Последнее обновление: {formatRelative(lastEmailCheckAt)}</span>
           </div>
         </div>
       </div>

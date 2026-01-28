@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { apiGet, apiPost } from "../../../shared/api/client";
+import { useUIStore } from "../../../shared/store/ui.store";
 import {
   buildingsService,
   roomsService,
@@ -621,6 +622,8 @@ export function SettingsPage() {
     }
   };
 
+  const setLastEmailCheckAt = useUIStore((s) => s.setLastEmailCheckAt);
+
   const checkInbox = async () => {
     setError(null);
     setCheckInboxResult(null);
@@ -632,6 +635,7 @@ export function SettingsPage() {
         tickets_created: number;
         comments_created: number;
         errors: string[];
+        last_check_at?: string | null;
       }>("/it/email/check-inbox");
       setCheckInboxResult({
         emails_processed: result.emails_processed ?? 0,
@@ -639,6 +643,9 @@ export function SettingsPage() {
         comments_created: result.comments_created ?? 0,
         errors: result.errors ?? [],
       });
+      if (result.last_check_at != null) {
+        setLastEmailCheckAt(result.last_check_at);
+      }
       if (result.errors?.length) {
         setError(result.errors.join("; "));
       } else if ((result.emails_processed ?? 0) > 0) {

@@ -2,6 +2,9 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { Search, Settings, ChevronDown, LogOut, User } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
+import { useUIStore } from "../../store/ui.store";
+import { apiGet } from "../../api/client";
+import { formatRelative } from "../../utils/formatRelative";
 import { NotificationBell } from "../notifications/NotificationBell";
 
 function formatNameWithInitials(fullName: string): string {
@@ -81,6 +84,9 @@ export function Header() {
   }, [user, token]);
 
   const currentPageName = pageNames[location.pathname] || "Elements Platform";
+  const lastEmailCheckAt = useUIStore((s) => s.lastEmailCheckAt);
+  const setLastEmailCheckAt = useUIStore((s) => s.setLastEmailCheckAt);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     const onOutside = (e: MouseEvent) => {
@@ -90,13 +96,26 @@ export function Header() {
     return () => document.removeEventListener("mousedown", onOutside);
   }, [userOpen]);
 
+  useEffect(() => {
+    apiGet<{ last_check_at: string | null }>("/portal/last-email-check")
+      .then((data) => setLastEmailCheckAt(data.last_check_at))
+      .catch(() => {});
+  }, [setLastEmailCheckAt]);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const updatedLabel = formatRelative(lastEmailCheckAt);
+
   return (
     <header className="sticky top-0 z-30 bg-dark-900/80 backdrop-blur-xl border-b border-dark-700/50">
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-semibold text-white">{currentPageName}</h1>
           <span className="text-sm text-accent-purple bg-accent-purple/10 px-3 py-1 rounded-full">
-            Обновлено 2 мин назад
+            Обновлено {updatedLabel}
           </span>
         </div>
 

@@ -3,6 +3,7 @@ Email API Routes
 Маршруты для работы с Email интеграцией
 """
 
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -343,6 +344,24 @@ def check_inbox_emails(
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error", "Ошибка проверки почты"))
 
+    now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    existing = (
+        db.query(SystemSettings)
+        .filter(SystemSettings.setting_key == "email_last_check_at")
+        .first()
+    )
+    if existing:
+        existing.setting_value = now_iso
+    else:
+        db.add(
+            SystemSettings(
+                setting_key="email_last_check_at",
+                setting_value=now_iso,
+                setting_type="general",
+            )
+        )
+    db.commit()
+    result["last_check_at"] = now_iso
     return result
 
 
