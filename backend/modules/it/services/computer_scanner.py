@@ -76,6 +76,8 @@ def run_scan(
     user_esc = (username or "").replace("'", "''").replace("`", "``")
     pass_b64 = base64.b64encode((password or "").encode("utf-8")).decode("ascii")
 
+    # Подключение к целевому ПК через WMI/DCOM (не WinRM). WinRM на целевых ПК часто выключен,
+    # а WMI по DCOM обычно доступен — как в вашем рабочем скрипте.
     ps_script = f"""
 $ErrorActionPreference = 'Stop'
 $target = '{target_esc}'
@@ -84,41 +86,42 @@ $passB64 = '{pass_b64}'
 $pass = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($passB64))
 $sec = ConvertTo-SecureString $pass -AsPlainText -Force
 $cred = New-Object PSCredential($user, $sec)
-$sb = {{
-    $os = Get-WmiObject Win32_OperatingSystem -ErrorAction Stop
-    $cs = Get-WmiObject Win32_ComputerSystem -ErrorAction Stop
-    $bios = Get-WmiObject Win32_BIOS -ErrorAction Stop
-    $cpu = Get-WmiObject Win32_Processor -ErrorAction Stop | Select-Object -First 1
-    $ram = Get-WmiObject Win32_PhysicalMemory -ErrorAction Stop
-    $totalRAM = ($ram | Measure-Object Capacity -Sum).Sum / 1GB
-    $disks = Get-WmiObject Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction Stop
-    $diskLines = @()
-    foreach ($d in $disks) {{
+$os = Get-WmiObject Win32_OperatingSystem -ComputerName $target -Credential $cred -ErrorAction Stop
+$cs = Get-WmiObject Win32_ComputerSystem -ComputerName $target -Credential $cred -ErrorAction Stop
+$bios = Get-WmiObject Win32_BIOS -ComputerName $target -Credential $cred -ErrorAction Stop
+$cpuList = Get-WmiObject Win32_Processor -ComputerName $target -Credential $cred -ErrorAction Stop
+$cpu = if ($cpuList) {{ @($cpuList)[0] }} else {{ $null }}
+$ram = Get-WmiObject Win32_PhysicalMemory -ComputerName $target -Credential $cred -ErrorAction Stop
+$totalRAM = if ($ram) {{ (@($ram) | Measure-Object Capacity -Sum).Sum / 1GB }} else {{ 0 }}
+$disks = Get-WmiObject Win32_LogicalDisk -ComputerName $target -Credential $cred -Filter "DriveType=3" -ErrorAction Stop
+$diskLines = @()
+if ($disks) {{
+    foreach ($d in @($disks)) {{
         $size = [math]::Round($d.Size / 1GB, 2)
         $free = [math]::Round($d.FreeSpace / 1GB, 2)
         $diskLines += "$($d.DeviceID) - ${{size}} GB (свободно ${{free}} GB)"
     }}
-    $firstIP = $null
-    try {{
-        $adapters = Get-WmiObject Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" -ErrorAction Stop
-        if ($adapters -and $adapters.IPAddress) {{ $firstIP = $adapters.IPAddress[0] }}
-    }} catch {{}}
-    [PSCustomObject]@{{
-        Computer = $cs.Name
-        Manufacturer = $cs.Manufacturer
-        Model = $cs.Model
-        SerialNumber = $bios.SerialNumber
-        OS = $os.Caption
-        CPU = $cpu.Name.Trim()
-        RAM_GB = [math]::Round($totalRAM, 2)
-        Storage = ($diskLines -join "; ")
-        Disks = ($diskLines -join "`n")
-        FirstIP = $firstIP
-    }}
 }}
-$sessionOption = New-PSSessionOption -OperationTimeout 120000 -IdleTimeout 60000
-$r = Invoke-Command -ComputerName $target -Credential $cred -ScriptBlock $sb -SessionOption $sessionOption -ErrorAction Stop
-if ($r) {{ $r | ConvertTo-Json -Compress }} else {{ "{{}}" }}
+$firstIP = $null
+try {{
+    $adapters = Get-WmiObject Win32_NetworkAdapterConfiguration -ComputerName $target -Credential $cred -Filter "IPEnabled=True" -ErrorAction Stop
+    if ($adapters) {{
+        $a = @($adapters)[0]
+        if ($a.IPAddress) {{ $firstIP = @($a.IPAddress)[0] }}
+    }}
+}} catch {{}}
+[PSCustomObject]@{{
+    Computer = $cs.Name
+    Manufacturer = $cs.Manufacturer
+    Model = $cs.Model
+    SerialNumber = $bios.SerialNumber
+    OS = $os.Caption
+    CPU = if ($cpu) {{ $cpu.Name.Trim() }} else {{ $null }}
+    RAM_GB = [math]::Round($totalRAM, 2)
+    Storage = ($diskLines -join "; ")
+    Disks = ($diskLines -join "`n")
+    FirstIP = $firstIP
+}} | ConvertTo-Json -Compress
 """
 
     try:
@@ -134,8 +137,8 @@ if ($r) {{ $r | ConvertTo-Json -Compress }} else {{ "{{}}" }}
             err_lower = err.lower()
             if "winrmoperationtimeout" in err_lower or "pssessionstatebroken" in err_lower:
                 raise RuntimeError(
-                    f"Шлюз подключился, но не смог связаться с целевым ПК ({target}). "
-                    "Включите WinRM на целевом ПК (Enable-PSRemoting), проверьте сеть и firewall между шлюзом и ПК."
+                    f"Шлюз подключился, но не смог связаться с целевым ПК ({target}) по WMI. "
+                    "Проверьте сеть и firewall (порт 135 и RPC) между шлюзом и ПК."
                 )
             raise RuntimeError(f"Ошибка на шлюзе (код {r.status_code}): {err}")
 
