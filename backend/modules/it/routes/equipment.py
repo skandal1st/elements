@@ -1,5 +1,6 @@
 """Роуты /it/equipment — IT-оборудование."""
 
+import logging
 from typing import List, Optional
 from uuid import UUID
 
@@ -33,6 +34,7 @@ from backend.modules.it.schemas.equipment import (
 from backend.modules.it.services.computer_scanner import get_scan_config, run_scan
 from backend.modules.it.schemas.equipment_history import ChangeOwnerRequest
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/equipment", tags=["equipment"])
 
 
@@ -161,10 +163,16 @@ def scan_computer_and_sync(
         )
 
     try:
+        gateway_port = config.get("gateway_port")
+        try:
+            gateway_port = int(gateway_port) if gateway_port is not None else 5985
+        except (TypeError, ValueError):
+            gateway_port = 5985
+
         scan_result = run_scan(
             computer_name_or_ip=computer_name_or_ip,
             gateway_host=gateway_host,
-            gateway_port=int(config.get("gateway_port") or 5985),
+            gateway_port=gateway_port,
             gateway_use_ssl=bool(config.get("gateway_use_ssl")),
             username=username,
             password=password,
@@ -173,9 +181,24 @@ def scan_computer_and_sync(
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception("Ошибка при сканировании ПК: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка сканирования: {e!s}. Проверьте логи сервера.",
+        )
 
-    sync_payload = EquipmentSyncFromScan(**scan_result)
-    return sync_equipment_from_scan(sync_payload, db)
+    try:
+        sync_payload = EquipmentSyncFromScan(**scan_result)
+        return sync_equipment_from_scan(sync_payload, db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Ошибка при обновлении оборудования после сканирования: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Сканирование прошло, но не удалось обновить запись: {e!s}",
+        )
 
 
 @router.post(

@@ -21,8 +21,11 @@ def _get_setting_raw(db: Session, key: str) -> Optional[str]:
 def get_scan_config(db: Session) -> dict:
     """Читает настройки шлюза и AD для сканирования (пароль без маски)."""
     host = (_get_setting_raw(db, "scan_gateway_host") or "").strip()
-    port = _get_setting_raw(db, "scan_gateway_port")
-    port = int(port) if port else 5985
+    port_raw = _get_setting_raw(db, "scan_gateway_port")
+    try:
+        port = int(port_raw) if port_raw else 5985
+    except (TypeError, ValueError):
+        port = 5985
     use_ssl = (_get_setting_raw(db, "scan_gateway_use_ssl") or "false").lower() == "true"
     user = (_get_setting_raw(db, "ldap_bind_dn") or "").strip()
     password = _get_setting_raw(db, "ldap_bind_password") or ""
@@ -48,7 +51,12 @@ def run_scan(
     Шлюз — Windows в домене с включённым WinRM; учётка AD для подключения к шлюзу и к целевому ПК.
     Возвращает dict с полями: computer_name, ip_address, serial_number, manufacturer, model, os, cpu, ram, storage, disks.
     """
-    import winrm
+    try:
+        import winrm
+    except ImportError as e:
+        raise RuntimeError(
+            "Модуль pywinrm не установлен. Установите: pip install pywinrm"
+        ) from e
 
     target = (computer_name_or_ip or "").strip()
     if not target:
@@ -130,12 +138,14 @@ if ($r) {{ $r | ConvertTo-Json -Compress }} else {{ "{{}}" }}
         if not json_match:
             raise ValueError(f"Шлюз не вернул JSON. Вывод: {out[:500]}")
         data = json.loads(json_match.group())
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Некорректный ответ от шлюза (не JSON): {e}") from e
     except Exception as e:
-        if "WinRM" in str(e) or "winrm" in str(e):
+        if "WinRM" in str(e) or "winrm" in str(e) or "Connection" in str(type(e).__name__):
             raise RuntimeError(
                 "Не удалось подключиться к Windows-шлюзу. Проверьте scan_gateway_host, порт и учётку AD."
             ) from e
-        raise
+        raise RuntimeError(f"Ошибка сканирования через шлюз: {e}") from e
 
     # Нормализуем под EquipmentSyncFromScan
     return {
