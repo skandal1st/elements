@@ -99,10 +99,12 @@ class LdapSettings(BaseModel):
     ldap_bind_password: Optional[str] = None
     ldap_user_filter: Optional[str] = "(objectClass=user)"
     ldap_enabled: Optional[bool] = False
-    # Шлюз для сканирования ПК (Windows с WinRM; используется учётка AD выше)
+    # Шлюз для сканирования ПК (Windows с WinRM; пароль — ldap_bind_password)
     scan_gateway_host: Optional[str] = None
     scan_gateway_port: Optional[int] = 5985
     scan_gateway_use_ssl: Optional[bool] = False
+    # Пользователь для входа на шлюз: DOMAIN\user или user@domain.local (если пусто — ldap_bind_dn)
+    scan_gateway_username: Optional[str] = None
 
 
 class LlmSettings(BaseModel):

@@ -27,7 +27,10 @@ def get_scan_config(db: Session) -> dict:
     except (TypeError, ValueError):
         port = 5985
     use_ssl = (_get_setting_raw(db, "scan_gateway_use_ssl") or "false").lower() == "true"
-    user = (_get_setting_raw(db, "ldap_bind_dn") or "").strip()
+    # WinRM принимает DOMAIN\user или user@domain.local; LDAP DN (CN=...,OU=...) шлюз часто отклоняет
+    gateway_user = (_get_setting_raw(db, "scan_gateway_username") or "").strip()
+    ldap_dn = (_get_setting_raw(db, "ldap_bind_dn") or "").strip()
+    user = gateway_user if gateway_user else ldap_dn
     password = _get_setting_raw(db, "ldap_bind_password") or ""
     return {
         "gateway_host": host,
@@ -141,9 +144,15 @@ if ($r) {{ $r | ConvertTo-Json -Compress }} else {{ "{{}}" }}
     except json.JSONDecodeError as e:
         raise ValueError(f"Некорректный ответ от шлюза (не JSON): {e}") from e
     except Exception as e:
-        if "WinRM" in str(e) or "winrm" in str(e) or "Connection" in str(type(e).__name__):
+        err_msg = str(e).strip().lower()
+        if "credentials were rejected" in err_msg or "rejected by the server" in err_msg:
             raise RuntimeError(
-                "Не удалось подключиться к Windows-шлюзу. Проверьте scan_gateway_host, порт и учётку AD."
+                "Учётные данные отклонены шлюзом. Укажите в настройках «Пользователь для шлюза (WinRM)» "
+                "в формате DOMAIN\\user или user@domain.local (пароль — тот же, что Bind Password)."
+            ) from e
+        if "winrm" in err_msg or "connection" in err_msg:
+            raise RuntimeError(
+                "Не удалось подключиться к Windows-шлюзу. Проверьте хост, порт и учётку."
             ) from e
         raise RuntimeError(f"Ошибка сканирования через шлюз: {e}") from e
 

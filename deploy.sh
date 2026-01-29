@@ -5,6 +5,7 @@
 # Использование: ./deploy.sh [опции]
 # Опции:
 #   --no-build    Не пересобирать контейнеры
+#   --no-cache    Очистить кэш Docker и собрать образы заново (при ошибке "parent snapshot does not exist")
 #   --migrate     Только применить миграции
 #   --restart     Только перезапустить контейнеры
 #   --prod        Использовать docker-compose.prod.yml (по умолчанию)
@@ -29,6 +30,7 @@ ENV_FILE=".env.production"
 
 # Парсинг аргументов
 NO_BUILD=false
+NO_CACHE=false
 MIGRATE_ONLY=false
 RESTART_ONLY=false
 USE_DEV=false
@@ -37,6 +39,9 @@ for arg in "$@"; do
     case $arg in
         --no-build)
             NO_BUILD=true
+            ;;
+        --no-cache)
+            NO_CACHE=true
             ;;
         --migrate)
             MIGRATE_ONLY=true
@@ -114,8 +119,16 @@ if [ "$NO_BUILD" = true ]; then
     echo -e "${YELLOW}[3/6] Запуск контейнеров (без пересборки)...${NC}"
     docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
 else
-    echo -e "${YELLOW}[3/6] Пересборка и запуск контейнеров...${NC}"
-    docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build
+    if [ "$NO_CACHE" = true ]; then
+        echo -e "${YELLOW}[3/6] Очистка кэша сборки Docker...${NC}"
+        docker builder prune -f
+        echo -e "${YELLOW}[3/6] Пересборка образов без кэша и запуск контейнеров...${NC}"
+        docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" build --no-cache
+        docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
+    else
+        echo -e "${YELLOW}[3/6] Пересборка и запуск контейнеров...${NC}"
+        docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build
+    fi
 fi
 
 echo ""

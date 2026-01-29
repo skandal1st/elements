@@ -72,6 +72,7 @@ SETTING_TYPE_MAP = {
         "scan_gateway_host",
         "scan_gateway_port",
         "scan_gateway_use_ssl",
+        "scan_gateway_username",
     ],
     "llm": [
         "llm_normalization_enabled",
@@ -224,6 +225,7 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
             scan_gateway_host=get_val("scan_gateway_host"),
             scan_gateway_port=get_val("scan_gateway_port", 5985),
             scan_gateway_use_ssl=get_val("scan_gateway_use_ssl", False),
+            scan_gateway_username=get_val("scan_gateway_username"),
         ),
         llm=LlmSettings(
             llm_normalization_enabled=get_val("llm_normalization_enabled", False),

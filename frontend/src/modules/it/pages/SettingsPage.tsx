@@ -97,6 +97,8 @@ type LdapSettings = {
   scan_gateway_host?: string;
   scan_gateway_port?: number;
   scan_gateway_use_ssl?: boolean;
+  /** Пользователь для WinRM: DOMAIN\\user или user@domain.local (если пусто — Bind DN) */
+  scan_gateway_username?: string;
 };
 
 type LlmSettings = {
@@ -1473,6 +1475,16 @@ export function SettingsPage() {
                     "scan_gateway_use_ssl",
                     "checkbox",
                   )}
+                  {renderInput(
+                    "Пользователь для шлюза (WinRM)",
+                    "ldap",
+                    "scan_gateway_username",
+                    "text",
+                    "DOMAIN\\user или user@domain.local",
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Если шлюз отклоняет учётные данные (Bind DN в формате LDAP), укажите здесь имя в формате домена.
+                  </p>
                 </div>
               </div>
             )}
