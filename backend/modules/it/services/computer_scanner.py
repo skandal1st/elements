@@ -116,7 +116,8 @@ $sb = {{
         FirstIP = $firstIP
     }}
 }}
-$r = Invoke-Command -ComputerName $target -Credential $cred -ScriptBlock $sb -ErrorAction Stop
+$sessionOption = New-PSSessionOption -OperationTimeout 120000 -IdleTimeout 60000
+$r = Invoke-Command -ComputerName $target -Credential $cred -ScriptBlock $sb -SessionOption $sessionOption -ErrorAction Stop
 if ($r) {{ $r | ConvertTo-Json -Compress }} else {{ "{{}}" }}
 """
 
@@ -129,7 +130,13 @@ if ($r) {{ $r | ConvertTo-Json -Compress }} else {{ "{{}}" }}
         )
         r = session.run_ps(ps_script)
         if r.status_code != 0:
-            err = r.std_err.decode("utf-8", errors="replace") if r.std_err else ""
+            err = (r.std_err or b"").decode("utf-8", errors="replace")
+            err_lower = err.lower()
+            if "winrmoperationtimeout" in err_lower or "pssessionstatebroken" in err_lower:
+                raise RuntimeError(
+                    f"Шлюз подключился, но не смог связаться с целевым ПК ({target}). "
+                    "Включите WinRM на целевом ПК (Enable-PSRemoting), проверьте сеть и firewall между шлюзом и ПК."
+                )
             raise RuntimeError(f"Ошибка на шлюзе (код {r.status_code}): {err}")
 
         out = (r.std_out or b"").decode("utf-8", errors="replace").strip()

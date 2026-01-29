@@ -77,15 +77,25 @@ def ensure_tickets_columns() -> None:
     for sql in statements:
         _exec_best_effort(sql)
 
-    # Внешние ключи — best-effort (могут не добавиться в зависимости от состояния БД).
-    _exec_best_effort(
-        "ALTER TABLE tickets ADD CONSTRAINT IF NOT EXISTS tickets_employee_id_fkey "
-        "FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL"
-    )
-    _exec_best_effort(
-        "ALTER TABLE tickets ADD CONSTRAINT IF NOT EXISTS tickets_room_id_fkey "
-        "FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL"
-    )
+    # Внешние ключи — best-effort. В Postgres нет ADD CONSTRAINT IF NOT EXISTS, проверяем вручную.
+    _exec_best_effort("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tickets_employee_id_fkey') THEN
+                ALTER TABLE tickets ADD CONSTRAINT tickets_employee_id_fkey
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+    """)
+    _exec_best_effort("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tickets_room_id_fkey') THEN
+                ALTER TABLE tickets ADD CONSTRAINT tickets_room_id_fkey
+                FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+    """)
 
 
 def ensure_knowledge_core_tables() -> None:
