@@ -78,8 +78,11 @@ def run_scan(
 
     # Подключение к целевому ПК через WMI/DCOM (не WinRM). WinRM на целевых ПК часто выключен,
     # а WMI по DCOM обычно доступен — как в вашем рабочем скрипте.
+    # Принудительно UTF-8 для вывода, чтобы русский текст не превращался в "?" (cp1251 → utf-8).
     ps_script = f"""
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $target = '{target_esc}'
 $user = '{user_esc}'
 $passB64 = '{pass_b64}'
@@ -140,10 +143,22 @@ try {{
                     f"Шлюз подключился, но не смог связаться с целевым ПК ({target}) по WMI. "
                     "Проверьте сеть и firewall (порт 135 и RPC) между шлюзом и ПК."
                 )
+            if "rpc" in err_lower or "com exception" in err_lower or "getwmicom" in err_lower:
+                raise RuntimeError(
+                    f"Шлюз не смог подключиться к ПК {target} по WMI (RPC недоступен). "
+                    "Проверьте с шлюза: ping и Get-WmiObject Win32_OperatingSystem -ComputerName <имя_ПК> -Credential (Get-Credential). "
+                    "На целевом ПК: firewall — порт 135 (RPC) и правило «Удалённое администрирование WMI»; служба «Узел поставщика WMI» запущена."
+                )
             raise RuntimeError(f"Ошибка на шлюзе (код {r.status_code}): {err}")
 
-        out = (r.std_out or b"").decode("utf-8", errors="replace").strip()
-        # Убрать возможный BOM и лишний вывод
+        raw = r.std_out or b""
+        # На русской Windows вывод PowerShell часто в cp1251; при декодировании как UTF-8 получаются "?" или кракозябры
+        out = raw.decode("utf-8", errors="replace").strip()
+        if "\ufffd" in out:
+            try:
+                out = raw.decode("cp1251").strip()
+            except (UnicodeDecodeError, LookupError):
+                pass
         if out.startswith("\ufeff"):
             out = out[1:]
         # PowerShell может вывести что-то до/после JSON
