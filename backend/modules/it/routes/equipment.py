@@ -180,6 +180,15 @@ def scan_computer_and_sync(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
+        # Логируем исходную ошибку (WinRM/сеть), чтобы в docker logs была видна причина
+        cause = e.__cause__
+        if cause:
+            logger.warning(
+                "Сканирование ПК: %s (исходная ошибка: %s)",
+                e,
+                cause,
+                exc_info=False,
+            )
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         logger.exception("Ошибка при сканировании ПК: %s", e)
