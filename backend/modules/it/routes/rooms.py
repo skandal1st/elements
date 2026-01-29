@@ -182,7 +182,13 @@ def get_room_equipment(
         Equipment.room_id == room_id,
         or_(Equipment.status == "in_use", Equipment.status == "in_stock"),  # Только активное оборудование
     ).all()
-    
+
+    owner_ids = [eq.current_owner_id for eq in equipment if eq.current_owner_id]
+    owners_map = {}
+    if owner_ids:
+        owners = db.query(Employee).filter(Employee.id.in_(owner_ids)).all()
+        owners_map = {o.id: o.full_name for o in owners}
+
     return [
         {
             "id": str(eq.id),
@@ -190,6 +196,7 @@ def get_room_equipment(
             "inventory_number": eq.inventory_number,
             "category": eq.category,
             "status": eq.status,
+            "owner_name": owners_map.get(eq.current_owner_id) if eq.current_owner_id else None,
         }
         for eq in equipment
     ]

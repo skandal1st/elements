@@ -63,6 +63,7 @@ export const roomsService = {
     inventory_number: string
     category: string
     status: string
+    owner_name?: string
   }>> {
     return apiGet(`/it/rooms/${roomId}/equipment`)
   },

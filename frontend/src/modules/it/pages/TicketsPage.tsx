@@ -130,6 +130,7 @@ type EquipmentItem = {
   inventory_number: string;
   model?: string;
   category?: string;
+  owner_name?: string;
 };
 
 const CATEGORIES = ["hardware", "software", "network", "hr", "other"];
@@ -629,6 +630,7 @@ export function TicketsPage() {
           id: eq.id,
           name: eq.name,
           inventory_number: eq.inventory_number,
+          owner_name: eq.owner_name,
         })),
       );
     } catch (err) {
@@ -645,6 +647,7 @@ export function TicketsPage() {
           name: eq.name,
           inventory_number: eq.inventory_number,
           category: eq.category,
+          owner_name: eq.owner_name,
         })),
       );
     } catch (err) {
@@ -1428,7 +1431,7 @@ export function TicketsPage() {
                 <option value="" className="bg-dark-800">Выберите оборудование (необязательно)</option>
                 {roomEquipment.map((eq) => (
                   <option key={eq.id} value={eq.id} className="bg-dark-800">
-                    {eq.name} ({eq.inventory_number})
+                    {eq.name} ({eq.inventory_number}){eq.owner_name ? ` — ${eq.owner_name}` : ""}
                   </option>
                 ))}
               </select>
@@ -1776,7 +1779,7 @@ export function TicketsPage() {
                       </option>
                       {editRoomEquipment.map((eq) => (
                         <option key={eq.id} value={eq.id} className="bg-dark-800">
-                          {eq.name} ({eq.inventory_number})
+                          {eq.name} ({eq.inventory_number}){eq.owner_name ? ` — ${eq.owner_name}` : ""}
                         </option>
                       ))}
                     </select>
