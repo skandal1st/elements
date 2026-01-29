@@ -16,6 +16,7 @@ import {
   Building2,
   Server,
   X,
+  Scan,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -54,6 +55,7 @@ type Equipment = {
   building_name?: string;
   // IP-адрес для сетевого оборудования
   ip_address?: string;
+  hostname?: string;
   // Характеристики хранятся в JSON объекте
   specifications?: {
     cpu?: string;
@@ -194,6 +196,13 @@ export function EquipmentPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [editing, setEditing] = useState<Equipment | null>(null);
+
+  // Модалка «Сканировать ПК» (WinRM + обновление записи в Elements)
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [scanComputerNameOrIp, setScanComputerNameOrIp] = useState("");
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanResult, setScanResult] = useState<EquipmentDetail | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     model_id: "",
@@ -211,6 +220,7 @@ export function EquipmentPage() {
     resolution: "",
     diagonal: "",
     ip_address: "",
+    hostname: "",
   });
 
   // Состояние для справочника оборудования
@@ -754,6 +764,7 @@ export function EquipmentPage() {
       resolution: "",
       diagonal: "",
       ip_address: "",
+      hostname: "",
     });
     setSelectedBrandId("");
     setSelectedTypeId("");
@@ -808,6 +819,7 @@ export function EquipmentPage() {
       resolution: specs.resolution ?? "",
       diagonal: specs.diagonal ?? "",
       ip_address: e.ip_address ?? "",
+      hostname: (e as { hostname?: string }).hostname ?? "",
     });
 
     try {
@@ -945,8 +957,9 @@ export function EquipmentPage() {
       if (form.current_owner_id)
         payload.current_owner_id = form.current_owner_id;
       
-      // IP-адрес
+      // IP-адрес и hostname (имя ПК в сети — для синхронизации со сканером)
       if (form.ip_address) payload.ip_address = form.ip_address;
+      if (form.hostname) payload.hostname = form.hostname;
 
       // Собираем характеристики в объект specifications
       const specifications: Record<string, string> = {};
@@ -994,6 +1007,33 @@ export function EquipmentPage() {
     }
   };
 
+  const handleScanComputer = async () => {
+    const value = scanComputerNameOrIp.trim();
+    if (!value) {
+      setScanError("Введите имя или IP компьютера");
+      return;
+    }
+    setScanLoading(true);
+    setScanError(null);
+    setScanResult(null);
+    try {
+      const updated = await apiPost<EquipmentDetail>(
+        "/it/equipment/scan-computer",
+        { computer_name_or_ip: value }
+      );
+      setScanResult(updated);
+      await load();
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: string }).message)
+          : "Ошибка сканирования";
+      setScanError(msg);
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
   return (
     <section className="space-y-6">
       <div className="glass-card-purple p-6">
@@ -1002,12 +1042,26 @@ export function EquipmentPage() {
             <h2 className="text-2xl font-bold text-white mb-1">Оборудование</h2>
             <p className="text-gray-400">Учет IT-оборудования</p>
           </div>
-          <button
-            onClick={openCreate}
-            className="glass-button px-4 py-2.5 flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" /> Добавить
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setScanModalOpen(true);
+                setScanComputerNameOrIp("");
+                setScanResult(null);
+                setScanError(null);
+              }}
+              className="glass-button-secondary px-4 py-2.5 flex items-center gap-2"
+              title="Сканировать ПК по имени или IP и обновить запись в Elements (учётка AD из интеграции)"
+            >
+              <Scan className="w-5 h-5" /> Сканировать ПК
+            </button>
+            <button
+              onClick={openCreate}
+              className="glass-button px-4 py-2.5 flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" /> Добавить
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1566,6 +1620,26 @@ export function EquipmentPage() {
                         </div>
                       )}
 
+                      {/* Имя компьютера в сети (для синхронизации со сканером) */}
+                      {(form.category === "computer" || form.category === "server") && (
+                        <div className="border-t border-dark-600/50 pt-4 mt-4">
+                          <label className="block text-sm font-medium text-gray-400 mb-1">
+                            Имя компьютера в сети (hostname)
+                          </label>
+                          <input
+                            className="glass-input w-full px-4 py-3 text-sm"
+                            placeholder="Например: PC-USER-01"
+                            value={form.hostname}
+                            onChange={(e) =>
+                              setForm((p) => ({ ...p, hostname: e.target.value }))
+                            }
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Нужно для синхронизации со сканером (п.23) — по нему ищется запись в Elements.
+                          </p>
+                        </div>
+                      )}
+
                       {/* Для типов без характеристик и без IP */}
                       {form.category && !["computer", "server", "monitor", "printer", "network"].includes(form.category) && (
                         <p className="text-sm text-gray-500 py-4">
@@ -1826,6 +1900,12 @@ export function EquipmentPage() {
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-500">IP-адрес</span>
                           <span className="text-sm font-medium font-mono">{detailEquipment.ip_address}</span>
+                        </div>
+                      )}
+                      {(detailEquipment as { hostname?: string }).hostname && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500">Имя в сети (hostname)</span>
+                          <span className="text-sm font-medium font-mono">{(detailEquipment as { hostname?: string }).hostname}</span>
                         </div>
                       )}
                     </div>
@@ -2280,6 +2360,83 @@ export function EquipmentPage() {
               </button>
               <button onClick={downloadQrCode} className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium">
                 <Download className="w-4 h-4" /> Скачать PNG
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно «Сканировать ПК» */}
+      {scanModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Сканировать ПК</h3>
+                <p className="text-sm text-gray-400">
+                  По имени или IP через WinRM-шлюз. Учётка AD из настройки интеграции.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setScanModalOpen(false);
+                  setScanResult(null);
+                  setScanError(null);
+                }}
+                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <input
+              className="glass-input w-full px-4 py-3 text-sm"
+              placeholder="Имя компьютера или IP (например, PC-001 или 192.168.1.10)"
+              value={scanComputerNameOrIp}
+              onChange={(e) => setScanComputerNameOrIp(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleScanComputer()}
+              disabled={scanLoading}
+            />
+            {scanError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                {scanError}
+              </div>
+            )}
+            {scanResult && (
+              <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-sm text-green-400 space-y-1">
+                <p className="font-medium">Запись обновлена</p>
+                <p>
+                  {scanResult.name}
+                  {scanResult.inventory_number ? ` — инв. № ${scanResult.inventory_number}` : ""}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScanModalOpen(false);
+                    openDetail(scanResult as Equipment);
+                  }}
+                  className="text-accent-purple hover:underline mt-1"
+                >
+                  Открыть карточку →
+                </button>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setScanModalOpen(false);
+                  setScanResult(null);
+                  setScanError(null);
+                }}
+                className="glass-button-secondary px-4 py-2 text-sm font-medium"
+              >
+                Закрыть
+              </button>
+              <button
+                onClick={handleScanComputer}
+                disabled={scanLoading}
+                className="glass-button px-4 py-2 text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+              >
+                {scanLoading ? "Сканирование…" : "Сканировать"}
               </button>
             </div>
           </div>

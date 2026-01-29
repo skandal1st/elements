@@ -473,6 +473,28 @@ def migrate_equipment_table():
             # Не прерываем выполнение, так как это может быть первичная инициализация
 
 
+def migrate_equipment_hostname():
+    """Добавляет колонку hostname в таблицу equipment если её нет (имя ПК в сети для синхронизации со сканером)."""
+    print("Проверка миграции equipment.hostname...")
+    with engine.connect() as conn:
+        try:
+            result = conn.execute(
+                text("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'equipment' AND column_name = 'hostname'
+                """)
+            )
+            if result.fetchone():
+                print("Колонка hostname уже существует, пропускаем")
+                return
+            conn.execute(text("ALTER TABLE equipment ADD COLUMN hostname VARCHAR(255)"))
+            conn.commit()
+            print("✅ Колонка equipment.hostname добавлена")
+        except Exception as e:
+            print(f"⚠️  Ошибка миграции equipment.hostname: {e}")
+            conn.rollback()
+
+
 def migrate_consumable_supplies():
     """Создает таблицу consumable_supplies если её нет"""
     print("Проверка миграции для поставок расходников...")
@@ -623,6 +645,7 @@ def create_tables():
     # Применяем миграции для существующих таблиц
     migrate_tasks_archived_at()
     migrate_equipment_table()
+    migrate_equipment_hostname()
     migrate_rooms_and_related()
     migrate_ticket_history_and_source()
     migrate_ticket_employee_link()

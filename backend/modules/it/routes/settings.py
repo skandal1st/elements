@@ -69,6 +69,9 @@ SETTING_TYPE_MAP = {
         "ldap_bind_password",
         "ldap_user_filter",
         "ldap_enabled",
+        "scan_gateway_host",
+        "scan_gateway_port",
+        "scan_gateway_use_ssl",
     ],
     "llm": [
         "llm_normalization_enabled",
@@ -218,6 +221,9 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
             ),
             ldap_user_filter=get_val("ldap_user_filter", "(objectClass=user)"),
             ldap_enabled=get_val("ldap_enabled", False),
+            scan_gateway_host=get_val("scan_gateway_host"),
+            scan_gateway_port=get_val("scan_gateway_port", 5985),
+            scan_gateway_use_ssl=get_val("scan_gateway_use_ssl", False),
         ),
         llm=LlmSettings(
             llm_normalization_enabled=get_val("llm_normalization_enabled", False),

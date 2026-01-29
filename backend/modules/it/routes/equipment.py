@@ -26,8 +26,11 @@ from backend.modules.it.models import (
 from backend.modules.it.schemas.equipment import (
     EquipmentCreate,
     EquipmentOut,
+    EquipmentSyncFromScan,
     EquipmentUpdate,
+    ScanComputerRequest,
 )
+from backend.modules.it.services.computer_scanner import get_scan_config, run_scan
 from backend.modules.it.schemas.equipment_history import ChangeOwnerRequest
 
 router = APIRouter(prefix="/equipment", tags=["equipment"])
@@ -123,6 +126,141 @@ def list_my_equipment(
         .order_by(Equipment.name)
         .all()
     )
+
+
+@router.post(
+    "/scan-computer",
+    response_model=EquipmentOut,
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist"]))],
+)
+def scan_computer_and_sync(
+    payload: ScanComputerRequest,
+    db: Session = Depends(get_db),
+) -> EquipmentOut:
+    """
+    Сканировать ПК по имени или IP через WinRM-шлюз (учётка AD из интеграции),
+    затем обновить соответствующую запись оборудования в Elements.
+    """
+    computer_name_or_ip = (payload.computer_name_or_ip or "").strip()
+    if not computer_name_or_ip:
+        raise HTTPException(status_code=400, detail="Укажите имя или IP компьютера")
+
+    config = get_scan_config(db)
+    gateway_host = (config.get("gateway_host") or "").strip()
+    if not gateway_host:
+        raise HTTPException(
+            status_code=400,
+            detail="Не настроен шлюз сканирования. Укажите scan_gateway_host в настройках (Интеграция AD).",
+        )
+    username = (config.get("username") or "").strip()
+    password = config.get("password") or ""
+    if not username or not password:
+        raise HTTPException(
+            status_code=400,
+            detail="Не задана учётная запись AD для сканирования. Заполните ldap_bind_dn и ldap_bind_password в настройках.",
+        )
+
+    try:
+        scan_result = run_scan(
+            computer_name_or_ip=computer_name_or_ip,
+            gateway_host=gateway_host,
+            gateway_port=int(config.get("gateway_port") or 5985),
+            gateway_use_ssl=bool(config.get("gateway_use_ssl")),
+            username=username,
+            password=password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    sync_payload = EquipmentSyncFromScan(**scan_result)
+    return sync_equipment_from_scan(sync_payload, db)
+
+
+@router.post(
+    "/sync-from-scan",
+    response_model=EquipmentOut,
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist"]))],
+)
+def sync_equipment_from_scan(
+    payload: EquipmentSyncFromScan,
+    db: Session = Depends(get_db),
+) -> EquipmentOut:
+    """
+    Обновить оборудование данными от сканера ПК (по имени компьютера или по IP).
+    Ищет запись по полю hostname или ip_address, обновляет характеристики и IP.
+    """
+    computer_name = (payload.computer_name or "").strip()
+    ip_address = (payload.ip_address or "").strip() or None
+
+    q = db.query(Equipment).filter(Equipment.category.in_(["computer", "server", "other"]))
+    # Поиск: по hostname или по ip_address (если передан)
+    if computer_name and ip_address:
+        eq = q.filter(
+            (Equipment.hostname == computer_name) | (Equipment.ip_address == ip_address)
+        ).first()
+    elif computer_name:
+        eq = q.filter(Equipment.hostname == computer_name).first()
+    elif ip_address:
+        eq = q.filter(Equipment.ip_address == ip_address).first()
+    else:
+        raise HTTPException(status_code=400, detail="Укажите computer_name или ip_address")
+
+    if not eq:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Оборудование с hostname '{computer_name}' или IP '{ip_address}' не найдено. "
+            "Добавьте ПК в Elements и укажите имя компьютера (hostname) или IP.",
+        )
+
+    # Обновляем поля
+    if computer_name:
+        eq.hostname = computer_name
+    if ip_address:
+        eq.ip_address = ip_address
+    if payload.serial_number is not None:
+        eq.serial_number = payload.serial_number
+    if payload.manufacturer is not None:
+        eq.manufacturer = payload.manufacturer
+    if payload.model is not None:
+        eq.model = payload.model
+
+    specs = dict(eq.specifications or {})
+    if payload.cpu is not None:
+        specs["cpu"] = payload.cpu
+    if payload.ram is not None:
+        specs["ram"] = payload.ram
+    if payload.storage is not None:
+        specs["storage"] = payload.storage
+    if payload.os is not None:
+        specs["os"] = payload.os
+    if payload.disks is not None:
+        specs["disks"] = payload.disks
+    eq.specifications = specs if specs else None
+
+    try:
+        db.commit()
+        db.refresh(eq)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    result = EquipmentOut.model_validate(eq)
+    if eq.room_id:
+        room = db.query(Room).filter(Room.id == eq.room_id).first()
+        if room:
+            result.room_name = room.name
+            if room.building_id:
+                b = db.query(Building).filter(Building.id == room.building_id).first()
+                if b:
+                    result.building_name = b.name
+    if eq.current_owner_id:
+        owner = db.query(Employee).filter(Employee.id == eq.current_owner_id).first()
+        if owner:
+            result.owner_name = owner.full_name
+            result.owner_email = owner.email
+    return result
 
 
 @router.get(

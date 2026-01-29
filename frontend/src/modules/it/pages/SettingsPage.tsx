@@ -93,6 +93,10 @@ type LdapSettings = {
   ldap_bind_password?: string;
   ldap_user_filter?: string;
   ldap_enabled?: boolean;
+  /** Шлюз для сканирования ПК (Windows с WinRM); используется учётка AD выше */
+  scan_gateway_host?: string;
+  scan_gateway_port?: number;
+  scan_gateway_use_ssl?: boolean;
 };
 
 type LlmSettings = {
@@ -1442,6 +1446,34 @@ export function SettingsPage() {
                   "text",
                   "(objectClass=user)",
                 )}
+                <div className="pt-4 mt-4 border-t border-dark-600/50">
+                  <h4 className="text-sm font-medium text-gray-300 mb-3">
+                    Шлюз для сканирования ПК (WinRM)
+                  </h4>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Windows-сервер в домене с включённым WinRM. Для подключения к шлюзу и к целевым ПК используется учётная запись AD выше (Bind DN / Bind Password).
+                  </p>
+                  {renderInput(
+                    "Хост шлюза",
+                    "ldap",
+                    "scan_gateway_host",
+                    "text",
+                    "gateway.company.local",
+                  )}
+                  {renderInput(
+                    "Порт WinRM",
+                    "ldap",
+                    "scan_gateway_port",
+                    "number",
+                    "5985",
+                  )}
+                  {renderInput(
+                    "Использовать HTTPS (WinRM)",
+                    "ldap",
+                    "scan_gateway_use_ssl",
+                    "checkbox",
+                  )}
+                </div>
               </div>
             )}
 

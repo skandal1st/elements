@@ -89,7 +89,7 @@ class ZabbixSettings(BaseModel):
 
 
 class LdapSettings(BaseModel):
-    """Настройки Active Directory / LDAP."""
+    """Настройки Active Directory / LDAP и сканера ПК (через WinRM)."""
 
     ldap_server: Optional[str] = None
     ldap_port: Optional[int] = 389
@@ -99,6 +99,10 @@ class LdapSettings(BaseModel):
     ldap_bind_password: Optional[str] = None
     ldap_user_filter: Optional[str] = "(objectClass=user)"
     ldap_enabled: Optional[bool] = False
+    # Шлюз для сканирования ПК (Windows с WinRM; используется учётка AD выше)
+    scan_gateway_host: Optional[str] = None
+    scan_gateway_port: Optional[int] = 5985
+    scan_gateway_use_ssl: Optional[bool] = False
 
 
 class LlmSettings(BaseModel):

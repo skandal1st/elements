@@ -32,5 +32,8 @@ aio-pika==9.4.0
 # LDAP (для AD интеграции)
 ldap3==2.9.1
 
+# WinRM (для сканирования ПК через Windows-шлюз)
+pywinrm==0.4.3
+
 # Утилиты
 python-multipart==0.0.12

@@ -27,6 +27,7 @@ class EquipmentBase(BaseModel):
     location_room: Optional[str] = None  # Оставляем для обратной совместимости
     manufacturer: Optional[str] = None
     ip_address: Optional[str] = None
+    hostname: Optional[str] = None
     specifications: Optional[dict[str, Any]] = None
     attachments: Optional[List[str]] = None
 
@@ -54,6 +55,7 @@ class EquipmentUpdate(BaseModel):
     location_room: Optional[str] = None
     manufacturer: Optional[str] = None
     ip_address: Optional[str] = None
+    hostname: Optional[str] = None
     specifications: Optional[dict[str, Any]] = None
     attachments: Optional[List[str]] = None
 
@@ -72,3 +74,22 @@ class EquipmentOut(EquipmentBase):
     model_name: Optional[str] = None
     brand_name: Optional[str] = None
     type_name: Optional[str] = None
+
+
+class EquipmentSyncFromScan(BaseModel):
+    """Данные от сканера ПК (SysAdmin-MultiTool) для обновления оборудования по hostname или IP."""
+    computer_name: str  # Имя компьютера в сети (hostname)
+    ip_address: Optional[str] = None
+    serial_number: Optional[str] = None
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    os: Optional[str] = None
+    cpu: Optional[str] = None
+    ram: Optional[str] = None  # например "16 GB"
+    storage: Optional[str] = None  # сводка по дискам
+    disks: Optional[str] = None  # текст по дискам (сохраняем в specifications или не используем)
+
+
+class ScanComputerRequest(BaseModel):
+    """Запрос на сканирование ПК по имени или IP (через WinRM-шлюз, учётка AD из интеграции)."""
+    computer_name_or_ip: str

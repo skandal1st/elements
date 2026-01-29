@@ -119,6 +119,7 @@ class Equipment(Base):
     )  # Оставляем для обратной совместимости
     manufacturer = Column(String(255), nullable=True)
     ip_address = Column(String(50), nullable=True)
+    hostname = Column(String(255), nullable=True)  # Имя компьютера в сети (для синхронизации со сканером)
     specifications = Column(JSONB, nullable=True)
     attachments = Column(ARRAY(String), nullable=True)
     qr_code = Column(String(512), nullable=True)
