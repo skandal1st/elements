@@ -488,7 +488,7 @@ export function TicketsPage() {
     setPage(1);
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -504,11 +504,11 @@ export function TicketsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, hideClosed, search]);
 
   useEffect(() => {
     load();
-  }, [page]);
+  }, [load]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
