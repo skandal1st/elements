@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '../api/client'
+import { apiGet, apiPost, apiPatch } from '../api/client'
 
 export type Brand = {
   id: string
@@ -16,6 +16,7 @@ export type EquipmentType = {
   name: string
   category: string
   description?: string
+  zabbix_template_id?: string | null
   is_active: boolean
   brand_name?: string
   created_at: string
@@ -29,6 +30,7 @@ export type EquipmentModel = {
   model_number?: string
   description?: string
   image_url?: string
+  zabbix_template_id?: string | null
   is_active: boolean
   brand_name?: string
   type_name?: string
@@ -78,8 +80,12 @@ export const equipmentCatalogService = {
     return apiGet<EquipmentType[]>(`/it/equipment-catalog/types?${params}`)
   },
 
-  async createEquipmentType(data: { brand_id: string; name: string; category: string; description?: string }): Promise<EquipmentType> {
+  async createEquipmentType(data: { brand_id: string; name: string; category: string; description?: string; zabbix_template_id?: string | null }): Promise<EquipmentType> {
     return apiPost<EquipmentType>('/it/equipment-catalog/types', data)
+  },
+
+  async updateEquipmentType(typeId: string, data: { name?: string; category?: string; description?: string; zabbix_template_id?: string | null; is_active?: boolean }): Promise<EquipmentType> {
+    return apiPatch<EquipmentType>(`/it/equipment-catalog/types/${typeId}`, data)
   },
 
   async getModel(modelId: string): Promise<EquipmentModel> {
@@ -99,8 +105,19 @@ export const equipmentCatalogService = {
     name: string
     model_number?: string
     description?: string
+    zabbix_template_id?: string | null
   }): Promise<EquipmentModel> {
     return apiPost<EquipmentModel>('/it/equipment-catalog/models', data)
+  },
+
+  async updateEquipmentModel(modelId: string, data: { name?: string; model_number?: string; description?: string; image_url?: string; zabbix_template_id?: string | null; is_active?: boolean }): Promise<EquipmentModel> {
+    return apiPatch<EquipmentModel>(`/it/equipment-catalog/models/${modelId}`, data)
+  },
+
+  /** Список шаблонов Zabbix для привязки к типу/модели (требуются права IT) */
+  async getZabbixTemplates(search?: string): Promise<{ templateid: string; name: string; host: string }[]> {
+    const params = search ? `?search=${encodeURIComponent(search)}` : ''
+    return apiGet<{ templateid: string; name: string; host: string }[]>(`/it/zabbix/templates${params}`)
   },
 
   async getModelConsumables(modelId: string): Promise<ModelConsumable[]> {

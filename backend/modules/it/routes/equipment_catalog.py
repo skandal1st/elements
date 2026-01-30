@@ -265,6 +265,7 @@ def get_equipment_model(
         model_number=model.model_number,
         description=model.description,
         image_url=model.image_url,
+        zabbix_template_id=model.zabbix_template_id,
         is_active=model.is_active,
         created_at=model.created_at,
         updated_at=model.updated_at,

@@ -170,6 +170,19 @@ class ZabbixService:
 
         return None
 
+    async def get_host_by_id(self, db, host_id: str) -> Optional[Dict[str, Any]]:
+        """Получить хост по hostid"""
+        hosts = await self._request(
+            db,
+            "host.get",
+            {
+                "hostids": host_id,
+                "output": ["hostid", "host", "name", "status"],
+                "selectInterfaces": ["interfaceid", "ip", "type", "main", "available"],
+            },
+        )
+        return hosts[0] if hosts else None
+
     async def get_host_items(
         self, db, host_id: str, search: Optional[str] = None
     ) -> List[Dict[str, Any]]:
@@ -443,6 +456,22 @@ class ZabbixService:
 
         return await self._request(db, "template.get", params)
 
+    @staticmethod
+    def resolve_template_ids_for_equipment(equipment) -> Optional[List[str]]:
+        """
+        Разрешить template_ids по каталогу: модель → тип.
+        equipment должен быть загружен с model_ref и model_ref.equipment_type.
+        Возвращает None, если шаблон не задан в каталоге.
+        """
+        if not equipment.model_ref:
+            return None
+        model = equipment.model_ref
+        if model.zabbix_template_id:
+            return [model.zabbix_template_id]
+        if getattr(model, "equipment_type", None) and model.equipment_type.zabbix_template_id:
+            return [model.equipment_type.zabbix_template_id]
+        return None
+
     async def create_host(
         self,
         db,
@@ -452,18 +481,30 @@ class ZabbixService:
         template_ids: Optional[List[str]] = None,
         snmp_community: str = "public",
         description: Optional[str] = None,
+        interface_type: str = "snmp",
     ) -> Dict[str, Any]:
-        """Создать хост в Zabbix"""
+        """
+        Создать хост в Zabbix.
+        interface_type: "agent" (Zabbix Agent, порт 10050) или "snmp" (SNMP v2c, порт 161).
+        """
         import re
 
         # Создаём техническое имя хоста
         host_technical_name = re.sub(r"[^a-zA-Z0-9\-_]", "_", name)[:64]
 
-        params = {
-            "host": host_technical_name,
-            "name": name,
-            "groups": [{"groupid": gid} for gid in group_ids],
-            "interfaces": [
+        if interface_type == "agent":
+            interfaces = [
+                {
+                    "type": 1,  # Agent
+                    "main": 1,
+                    "useip": 1,
+                    "ip": ip,
+                    "dns": "",
+                    "port": "10050",
+                },
+            ]
+        else:
+            interfaces = [
                 {
                     "type": 2,  # SNMP
                     "main": 1,
@@ -476,7 +517,13 @@ class ZabbixService:
                         "community": snmp_community,
                     },
                 },
-            ],
+            ]
+
+        params = {
+            "host": host_technical_name,
+            "name": name,
+            "groups": [{"groupid": gid} for gid in group_ids],
+            "interfaces": interfaces,
         }
 
         if template_ids:
@@ -490,6 +537,36 @@ class ZabbixService:
     async def delete_host(self, db, host_id: str) -> Dict[str, Any]:
         """Удалить хост из Zabbix"""
         return await self._request(db, "host.delete", [host_id])
+
+    async def get_devices_online_count(self, db, host_ids: List[str]) -> Optional[int]:
+        """
+        Подсчитать количество хостов с доступностью available.
+        host_ids — список hostid из оборудования с непустым zabbix_host_id.
+        Возвращает число доступных или None при ошибке.
+        """
+        if not host_ids:
+            return 0
+        try:
+            if not self._is_enabled(db):
+                return None
+            hosts = await self._request(
+                db,
+                "host.get",
+                {
+                    "hostids": host_ids,
+                    "output": ["hostid"],
+                    "selectInterfaces": ["available"],
+                },
+            )
+            count = 0
+            for host in hosts:
+                for iface in host.get("interfaces", []):
+                    if str(iface.get("available", "0")) == "1":
+                        count += 1
+                        break
+            return count
+        except Exception:
+            return None
 
 
 # Singleton instance

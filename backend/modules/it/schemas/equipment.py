@@ -74,6 +74,7 @@ class EquipmentOut(EquipmentBase):
     model_name: Optional[str] = None
     brand_name: Optional[str] = None
     type_name: Optional[str] = None
+    zabbix_host_id: Optional[str] = None
 
 
 class EquipmentSyncFromScan(BaseModel):

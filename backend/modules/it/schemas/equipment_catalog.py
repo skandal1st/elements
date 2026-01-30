@@ -41,6 +41,7 @@ class EquipmentTypeBase(BaseModel):
     name: str
     category: str
     description: Optional[str] = None
+    zabbix_template_id: Optional[str] = None
     is_active: bool = True
 
 
@@ -52,6 +53,7 @@ class EquipmentTypeUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
+    zabbix_template_id: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -60,7 +62,7 @@ class EquipmentTypeOut(EquipmentTypeBase):
     brand_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -71,6 +73,7 @@ class EquipmentModelBase(BaseModel):
     model_number: Optional[str] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
+    zabbix_template_id: Optional[str] = None
     is_active: bool = True
 
 
@@ -83,6 +86,7 @@ class EquipmentModelUpdate(BaseModel):
     model_number: Optional[str] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
+    zabbix_template_id: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -93,7 +97,7 @@ class EquipmentModelOut(EquipmentModelBase):
     category: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 

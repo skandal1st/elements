@@ -143,14 +143,64 @@ def ensure_knowledge_core_tables() -> None:
             logger.warning("startup table create skipped (%s): %s", t.name, e)
 
 
+def ensure_zabbix_integration_columns() -> None:
+    """
+    Добавляет колонки для интеграции с Zabbix: zabbix_template_id в каталоге,
+    zabbix_host_id в equipment.
+    """
+    statements = [
+        "ALTER TABLE equipment_types ADD COLUMN IF NOT EXISTS zabbix_template_id VARCHAR(64)",
+        "ALTER TABLE equipment_models ADD COLUMN IF NOT EXISTS zabbix_template_id VARCHAR(64)",
+        "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS zabbix_host_id VARCHAR(32)",
+    ]
+    for sql in statements:
+        _exec_best_effort(sql)
+
+
+def ensure_equipment_category_network() -> None:
+    """Добавляет категорию equipment_category 'network' в словарь, если её ещё нет."""
+    try:
+        from backend.modules.it.models import Dictionary
+        from backend.core.database import SessionLocal
+        db = SessionLocal()
+        try:
+            existing = (
+                db.query(Dictionary)
+                .filter(
+                    Dictionary.dictionary_type == "equipment_category",
+                    Dictionary.key == "network",
+                )
+                .first()
+            )
+            if not existing:
+                db.add(
+                    Dictionary(
+                        dictionary_type="equipment_category",
+                        key="network",
+                        label="Сетевое оборудование",
+                        sort_order=4,
+                        is_active=True,
+                        is_system=True,
+                    )
+                )
+                db.commit()
+                logger.info("Добавлена категория equipment_category: network")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning("ensure_equipment_category_network skipped: %s", e)
+
+
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
     try:
         ensure_users_telegram_columns()
         ensure_tickets_columns()
         ensure_knowledge_core_tables()
+        ensure_zabbix_integration_columns()
+        ensure_equipment_category_network()
         logger.info(
-            "✅ Startup migrations: users.telegram_*, tickets.* и knowledge_core tables готовы"
+            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core и zabbix колонки готовы"
         )
     except Exception as e:
         # Не блокируем запуск приложения, но логируем проблему.

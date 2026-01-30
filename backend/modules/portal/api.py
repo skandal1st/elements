@@ -8,6 +8,8 @@ from backend.core.auth import get_token_payload
 from backend.core.config import settings
 from backend.core.database import get_db
 from backend.modules.hr.models.system_settings import SystemSettings
+from backend.modules.it.models import Equipment
+from backend.modules.it.services.zabbix_service import zabbix_service
 from backend.modules.portal.services import PortalService
 
 router = APIRouter(prefix=f"{settings.api_v1_prefix}/portal", tags=["portal"])
@@ -23,7 +25,21 @@ async def get_dashboard(
     Доступно всем авторизованным пользователям.
     """
     service = PortalService(db)
-    return service.get_dashboard_data()
+    data = service.get_dashboard_data()
+    rows = (
+        db.query(Equipment.zabbix_host_id)
+        .filter(Equipment.zabbix_host_id.isnot(None))
+        .distinct()
+        .all()
+    )
+    host_ids = [r[0] for r in rows if r[0]]
+    try:
+        data["stats"]["devices_online"] = await zabbix_service.get_devices_online_count(
+            db, host_ids
+        )
+    except Exception:
+        data["stats"]["devices_online"] = None
+    return data
 
 
 @router.get("/birthdays")
@@ -48,7 +64,21 @@ async def get_stats(
     Получает статистику по компании.
     """
     service = PortalService(db)
-    return service.get_company_stats()
+    stats = service.get_company_stats()
+    rows = (
+        db.query(Equipment.zabbix_host_id)
+        .filter(Equipment.zabbix_host_id.isnot(None))
+        .distinct()
+        .all()
+    )
+    host_ids = [r[0] for r in rows if r[0]]
+    try:
+        stats["devices_online"] = await zabbix_service.get_devices_online_count(
+            db, host_ids
+        )
+    except Exception:
+        stats["devices_online"] = None
+    return stats
 
 
 @router.get("/last-email-check")

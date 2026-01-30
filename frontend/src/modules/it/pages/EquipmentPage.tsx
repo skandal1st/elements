@@ -100,6 +100,24 @@ type EquipmentDetail = Equipment & {
   model_name?: string;
   brand_name?: string;
   type_name?: string;
+  zabbix_host_id?: string | null;
+};
+
+type ZabbixStatus = {
+  found: boolean;
+  message?: string;
+  available?: boolean;
+  lastCheck?: string;
+};
+
+type ZabbixCounters = {
+  total?: number | null;
+  black?: number | null;
+  color?: number | null;
+};
+
+type ZabbixSupplies = {
+  supplies: { name: string; level?: number; percent?: number; color?: string }[];
 };
 
 const CONSUMABLE_TYPES = [
@@ -188,6 +206,17 @@ export function EquipmentPage() {
   const [equipmentLicenses, setEquipmentLicenses] = useState<EquipmentLicense[]>([]);
   const [detailConsumables, setDetailConsumables] = useState<ModelConsumable[]>([]);
   const [detailTab, setDetailTab] = useState<"info" | "licenses" | "consumables" | "history">("info");
+  const [zabbixStatus, setZabbixStatus] = useState<ZabbixStatus | null>(null);
+  const [zabbixCounters, setZabbixCounters] = useState<ZabbixCounters | null>(null);
+  const [zabbixSupplies, setZabbixSupplies] = useState<ZabbixSupplies | null>(null);
+  const [zabbixLoading, setZabbixLoading] = useState(false);
+  const [zabbixError, setZabbixError] = useState<string | null>(null);
+  const [addToZabbixModalOpen, setAddToZabbixModalOpen] = useState(false);
+  const [zabbixGroups, setZabbixGroups] = useState<{ groupid: string; name: string }[]>([]);
+  const [addToZabbixGroupIds, setAddToZabbixGroupIds] = useState<string[]>([]);
+  const [addToZabbixInterfaceType, setAddToZabbixInterfaceType] = useState<"snmp" | "agent">("snmp");
+  const [addToZabbixLoading, setAddToZabbixLoading] = useState(false);
+  const [addToZabbixError, setAddToZabbixError] = useState<string | null>(null);
 
   // QR-код
   const [qrModalOpen, setQrModalOpen] = useState(false);
@@ -256,6 +285,9 @@ export function EquipmentPage() {
   const [addModelModal, setAddModelModal] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [newModelName, setNewModelName] = useState("");
+  const [zabbixTemplates, setZabbixTemplates] = useState<{ templateid: string; name: string; host: string }[]>([]);
+  const [selectedTypeZabbixTemplateId, setSelectedTypeZabbixTemplateId] = useState<string>("");
+  const [selectedModelZabbixTemplateId, setSelectedModelZabbixTemplateId] = useState<string>("");
 
   // Модальное окно для добавления расходника в модель
   const [addConsumableModal, setAddConsumableModal] = useState(false);
@@ -467,14 +499,15 @@ export function EquipmentPage() {
   const handleCreateType = async () => {
     if (!selectedBrandId || !form.category) return;
     try {
-      // Используем русское название категории как название типа
       const typeName = categoryLabel[form.category] || form.category;
       await equipmentCatalogService.createEquipmentType({
         brand_id: selectedBrandId,
         name: typeName,
         category: form.category,
+        zabbix_template_id: selectedTypeZabbixTemplateId || undefined,
       });
       setAddTypeModal(false);
+      setSelectedTypeZabbixTemplateId("");
       await loadEquipmentTypes(selectedBrandId);
     } catch (err) {
       setError((err as Error).message);
@@ -487,9 +520,11 @@ export function EquipmentPage() {
       const model = await equipmentCatalogService.createModel({
         equipment_type_id: selectedTypeId,
         name: newModelName,
+        zabbix_template_id: selectedModelZabbixTemplateId || undefined,
       });
       setNewModelName("");
       setAddModelModal(false);
+      setSelectedModelZabbixTemplateId("");
       await loadModels(selectedTypeId);
       setSelectedModelId(model.id);
       setForm((p) => ({ ...p, model_id: model.id, model: model.name }));
@@ -565,29 +600,60 @@ export function EquipmentPage() {
     window.setTimeout(() => load(), 0);
   };
 
+  const loadZabbixData = async (equipmentId: string, category: string) => {
+    setZabbixLoading(true);
+    setZabbixError(null);
+    setZabbixStatus(null);
+    setZabbixCounters(null);
+    setZabbixSupplies(null);
+    try {
+      const status = await apiGet<ZabbixStatus>(`/it/zabbix/equipment/${equipmentId}/status`);
+      setZabbixStatus(status);
+      if (category === "printer" && status.found) {
+        try {
+          const counters = await apiGet<ZabbixCounters>(`/it/zabbix/equipment/${equipmentId}/counters`);
+          setZabbixCounters(counters);
+        } catch {
+          setZabbixCounters({ total: null, black: null, color: null });
+        }
+        try {
+          const supplies = await apiGet<ZabbixSupplies>(`/it/zabbix/equipment/${equipmentId}/supplies`);
+          setZabbixSupplies(supplies);
+        } catch {
+          setZabbixSupplies({ supplies: [] });
+        }
+      }
+    } catch (err) {
+      setZabbixError((err as Error).message);
+      setZabbixStatus({ found: false, message: (err as Error).message });
+    } finally {
+      setZabbixLoading(false);
+    }
+  };
+
   const openDetail = async (e: Equipment) => {
     setDetailTab("info");
     setEquipmentHistory([]);
     setEquipmentLicenses([]);
     setDetailConsumables([]);
-    
-    // Загружаем детальную информацию об оборудовании
+    setZabbixStatus(null);
+    setZabbixCounters(null);
+    setZabbixSupplies(null);
+    setZabbixError(null);
+
     setDetailModalOpen(true);
-    
+
     try {
-      // Загружаем детальную информацию с бэкенда
       const detail = await apiGet<EquipmentDetail>(`/it/equipment/${e.id}`);
       setDetailEquipment(detail);
-      
-      // Загружаем лицензии, привязанные к оборудованию
+
       try {
         const licenses = await apiGet<EquipmentLicense[]>(`/it/equipment/${e.id}/licenses/`);
         setEquipmentLicenses(licenses);
       } catch (err) {
         console.log("Лицензии не найдены или endpoint не существует");
       }
-      
-      // Загружаем расходные материалы модели если есть model_id
+
       if (detail.model_id) {
         try {
           const consumables = await equipmentCatalogService.getModelConsumables(detail.model_id);
@@ -596,13 +662,18 @@ export function EquipmentPage() {
           console.log("Расходники модели не найдены");
         }
       }
-      
-      // Загружаем историю
+
       await loadHistory(e.id);
+
+      if (["printer", "network", "computer", "server"].includes(detail.category) && (detail.ip_address || (detail as EquipmentDetail).zabbix_host_id)) {
+        loadZabbixData(e.id, detail.category);
+      }
     } catch (err) {
-      // Если детальный endpoint не существует, используем базовую информацию
       setDetailEquipment(e as EquipmentDetail);
       await loadHistory(e.id);
+      if (["printer", "network", "computer", "server"].includes(e.category) && (e.ip_address || (e as EquipmentDetail).zabbix_host_id)) {
+        loadZabbixData(e.id, e.category);
+      }
     }
   };
 
@@ -612,6 +683,59 @@ export function EquipmentPage() {
     setEquipmentHistory([]);
     setEquipmentLicenses([]);
     setDetailConsumables([]);
+    setZabbixStatus(null);
+    setZabbixCounters(null);
+    setZabbixSupplies(null);
+    setZabbixError(null);
+  };
+
+  const openAddToZabbixModal = async () => {
+    setAddToZabbixModalOpen(true);
+    setAddToZabbixError(null);
+    setAddToZabbixGroupIds([]);
+    setAddToZabbixInterfaceType(detailEquipment?.category === "computer" || detailEquipment?.category === "server" ? "agent" : "snmp");
+    try {
+      const groups = await apiGet<{ groupid: string; name: string }[]>("/it/zabbix/groups");
+      setZabbixGroups(groups);
+    } catch (err) {
+      setAddToZabbixError((err as Error).message);
+    }
+  };
+
+  const handleAddToZabbix = async () => {
+    if (!detailEquipment || addToZabbixGroupIds.length === 0) return;
+    setAddToZabbixLoading(true);
+    setAddToZabbixError(null);
+    try {
+      await apiPost("/it/zabbix/equipment/" + detailEquipment.id + "/add", {
+        group_ids: addToZabbixGroupIds,
+        interface_type: addToZabbixInterfaceType,
+      });
+      setAddToZabbixModalOpen(false);
+      const detail = await apiGet<EquipmentDetail>(`/it/equipment/${detailEquipment.id}`);
+      setDetailEquipment(detail);
+      if (detail.category === "printer" || detail.category === "network") {
+        loadZabbixData(detailEquipment.id, detail.category);
+      }
+    } catch (err) {
+      setAddToZabbixError((err as Error).message);
+    } finally {
+      setAddToZabbixLoading(false);
+    }
+  };
+
+  const handleRemoveFromZabbix = async () => {
+    if (!detailEquipment || !window.confirm("Удалить оборудование из мониторинга Zabbix?")) return;
+    try {
+      await apiDelete(`/it/zabbix/equipment/${detailEquipment.id}/zabbix`);
+      const detail = await apiGet<EquipmentDetail>(`/it/equipment/${detailEquipment.id}`);
+      setDetailEquipment(detail);
+      setZabbixStatus({ found: false, message: "Оборудование удалено из Zabbix" });
+      setZabbixCounters(null);
+      setZabbixSupplies(null);
+    } catch (err) {
+      setZabbixError((err as Error).message);
+    }
   };
 
   // QR-код функции
@@ -1910,6 +2034,73 @@ export function EquipmentPage() {
                       )}
                     </div>
 
+                    {/* Мониторинг Zabbix — принтеры, сетевое, компьютеры/серверы */}
+                    {["printer", "network", "computer", "server"].includes(detailEquipment.category) && (detailEquipment.ip_address || (detailEquipment as EquipmentDetail).zabbix_host_id) && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
+                          <Server className="w-4 h-4 text-gray-500" />
+                          Мониторинг Zabbix
+                        </h4>
+                        <div className="bg-dark-700/30 rounded-xl p-4 space-y-3">
+                          {zabbixLoading && (
+                            <p className="text-sm text-gray-500">Загрузка…</p>
+                          )}
+                          {!zabbixLoading && zabbixError && (
+                            <p className="text-sm text-amber-400">{zabbixError}</p>
+                          )}
+                          {!zabbixLoading && zabbixStatus && !zabbixStatus.found && (
+                            <div className="space-y-2">
+                              <p className="text-sm text-gray-400">Не добавлено в Zabbix</p>
+                              {detailEquipment.ip_address && (
+                                <button
+                                  type="button"
+                                  onClick={openAddToZabbixModal}
+                                  className="glass-button px-3 py-2 text-sm font-medium"
+                                >
+                                  Добавить в Zabbix
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {!zabbixLoading && zabbixStatus?.found && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`inline-block w-2 h-2 rounded-full ${zabbixStatus.available ? "bg-green-500" : "bg-red-500"}`} />
+                                <span className="text-sm font-medium">{zabbixStatus.available ? "Онлайн" : "Офлайн"}</span>
+                              </div>
+                              {detailEquipment.category === "printer" && zabbixCounters && (
+                                <div className="text-sm text-gray-400 pt-2 border-t border-dark-600/50">
+                                  <span className="font-medium text-gray-300">Страниц: </span>
+                                  {zabbixCounters.total != null ? `всего ${zabbixCounters.total}` : "—"}
+                                  {zabbixCounters.black != null && `, ч/б ${zabbixCounters.black}`}
+                                  {zabbixCounters.color != null && `, цвет ${zabbixCounters.color}`}
+                                  {(zabbixCounters.total == null && zabbixCounters.black == null && zabbixCounters.color == null) && "Нет данных"}
+                                </div>
+                              )}
+                              {detailEquipment.category === "printer" && zabbixSupplies && zabbixSupplies.supplies.length > 0 && (
+                                <div className="text-sm text-gray-400 pt-2 border-t border-dark-600/50">
+                                  <span className="font-medium text-gray-300">Расходники: </span>
+                                  {zabbixSupplies.supplies.map((s, i) => (
+                                    <span key={i}>
+                                      {i > 0 && ", "}
+                                      {s.name} {s.percent != null ? `${s.percent}%` : s.level != null ? s.level : ""}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleRemoveFromZabbix}
+                                className="text-xs text-gray-500 hover:text-red-400 mt-2"
+                              >
+                                Удалить из Zabbix
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Ответственный */}
                     <h4 className="text-sm font-semibold text-white flex items-center gap-2 mt-4">
                       <User className="w-4 h-4 text-gray-500" />
@@ -2262,8 +2453,22 @@ export function EquipmentPage() {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Шаблон Zabbix (необязательно)</label>
+              <select
+                className="glass-input w-full px-4 py-3 text-sm"
+                value={selectedTypeZabbixTemplateId}
+                onChange={(e) => setSelectedTypeZabbixTemplateId(e.target.value)}
+                onFocus={() => { if (zabbixTemplates.length === 0) equipmentCatalogService.getZabbixTemplates().then(setZabbixTemplates).catch(() => {}); }}
+              >
+                <option value="" className="bg-dark-800">Не задан</option>
+                {zabbixTemplates.map((t) => (
+                  <option key={t.templateid} value={t.templateid} className="bg-dark-800">{t.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setAddTypeModal(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={() => { setAddTypeModal(false); setSelectedTypeZabbixTemplateId(""); }} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
               <button onClick={handleCreateType} disabled={!form.category} className="glass-button px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">Добавить</button>
             </div>
           </div>
@@ -2281,8 +2486,22 @@ export function EquipmentPage() {
               onChange={(e) => setNewModelName(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleCreateModel()}
             />
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Шаблон Zabbix (необязательно)</label>
+              <select
+                className="glass-input w-full px-4 py-3 text-sm"
+                value={selectedModelZabbixTemplateId}
+                onChange={(e) => setSelectedModelZabbixTemplateId(e.target.value)}
+                onFocus={() => { if (zabbixTemplates.length === 0) equipmentCatalogService.getZabbixTemplates().then(setZabbixTemplates).catch(() => {}); }}
+              >
+                <option value="" className="bg-dark-800">Не задан</option>
+                {zabbixTemplates.map((t) => (
+                  <option key={t.templateid} value={t.templateid} className="bg-dark-800">{t.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setAddModelModal(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={() => { setAddModelModal(false); setSelectedModelZabbixTemplateId(""); }} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
               <button onClick={handleCreateModel} className="glass-button px-4 py-2 text-sm font-medium">Создать</button>
             </div>
           </div>
@@ -2360,6 +2579,49 @@ export function EquipmentPage() {
               </button>
               <button onClick={downloadQrCode} className="glass-button flex items-center gap-2 px-4 py-2.5 text-sm font-medium">
                 <Download className="w-4 h-4" /> Скачать PNG
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно «Добавить в Zabbix» */}
+      {addToZabbixModalOpen && detailEquipment && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
+            <h3 className="text-lg font-semibold text-white">Добавить в Zabbix</h3>
+            <p className="text-sm text-gray-400">{detailEquipment.name} — {detailEquipment.ip_address || "IP не указан"}</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Группа хостов Zabbix *</label>
+              <select
+                className="glass-input w-full px-4 py-3 text-sm"
+                value={addToZabbixGroupIds[0] ?? ""}
+                onChange={(e) => setAddToZabbixGroupIds(e.target.value ? [e.target.value] : [])}
+              >
+                <option value="" className="bg-dark-800">Выберите группу</option>
+                {zabbixGroups.map((g) => (
+                  <option key={g.groupid} value={g.groupid} className="bg-dark-800">{g.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Тип интерфейса</label>
+              <select
+                className="glass-input w-full px-4 py-3 text-sm"
+                value={addToZabbixInterfaceType}
+                onChange={(e) => setAddToZabbixInterfaceType(e.target.value as "snmp" | "agent")}
+              >
+                <option value="snmp" className="bg-dark-800">SNMP (принтеры, сетевое)</option>
+                <option value="agent" className="bg-dark-800">Agent (компьютеры Windows)</option>
+              </select>
+            </div>
+            {addToZabbixError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">{addToZabbixError}</div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setAddToZabbixModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
+              <button onClick={handleAddToZabbix} disabled={addToZabbixLoading || addToZabbixGroupIds.length === 0} className="glass-button px-4 py-2 text-sm font-medium disabled:opacity-50">
+                {addToZabbixLoading ? "Добавление…" : "Добавить"}
               </button>
             </div>
           </div>

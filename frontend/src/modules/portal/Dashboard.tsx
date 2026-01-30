@@ -35,6 +35,7 @@ interface Stats {
   employees_count: number;
   active_tickets: number;
   equipment_in_use: number;
+  devices_online?: number | null;
 }
 
 interface DashboardData {
@@ -135,11 +136,11 @@ export function Dashboard() {
       color: "cyan",
     },
     {
-      label: "Эффективность",
-      value: "94%",
+      label: "Устройств онлайн",
+      value: data.stats.devices_online != null ? String(data.stats.devices_online) : "—",
       icon: Activity,
-      trend: "+8%",
-      trendUp: true,
+      trend: undefined,
+      trendUp: undefined,
       color: "green",
     },
   ];
@@ -199,18 +200,20 @@ export function Dashboard() {
                     }`}
                   />
                 </div>
-                <div
-                  className={`flex items-center gap-1 text-sm ${
-                    stat.trendUp ? "text-green-400" : "text-red-400"
-                  }`}
-                >
-                  {stat.trendUp ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  )}
-                  <span>{stat.trend}</span>
-                </div>
+                {stat.trend != null && (
+                  <div
+                    className={`flex items-center gap-1 text-sm ${
+                      stat.trendUp ? "text-green-400" : "text-red-400"
+                    }`}
+                  >
+                    {stat.trendUp ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" />
+                    )}
+                    <span>{stat.trend}</span>
+                  </div>
+                )}
               </div>
               <p className="text-3xl font-bold text-white mb-1">{stat.value}</p>
               <p className="text-sm text-gray-400">{stat.label}</p>

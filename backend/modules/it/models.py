@@ -120,6 +120,7 @@ class Equipment(Base):
     manufacturer = Column(String(255), nullable=True)
     ip_address = Column(String(50), nullable=True)
     hostname = Column(String(255), nullable=True)  # Имя компьютера в сети (для синхронизации со сканером)
+    zabbix_host_id = Column(String(32), nullable=True)  # hostid в Zabbix после добавления в мониторинг
     specifications = Column(JSONB, nullable=True)
     attachments = Column(ARRAY(String), nullable=True)
     qr_code = Column(String(512), nullable=True)
@@ -564,6 +565,7 @@ class EquipmentType(Base):
         String(50), nullable=False
     )  # computer, monitor, printer, etc. (из словаря)
     description = Column(Text, nullable=True)
+    zabbix_template_id = Column(String(64), nullable=True)  # ID шаблона Zabbix для типа
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
@@ -596,6 +598,7 @@ class EquipmentModel(Base):
     model_number = Column(String(100), nullable=True)  # Артикул/номер модели
     description = Column(Text, nullable=True)
     image_url = Column(String(512), nullable=True)
+    zabbix_template_id = Column(String(64), nullable=True)  # ID шаблона Zabbix для модели
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
