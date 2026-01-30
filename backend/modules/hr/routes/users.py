@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from backend.core.auth import get_password_hash
 from backend.modules.hr.dependencies import (
@@ -13,8 +14,20 @@ from backend.modules.hr.dependencies import (
     require_superuser,
 )
 from backend.modules.hr.models.user import User
+from backend.modules.hr.models.employee import Employee
 from backend.modules.hr.schemas.user import PasswordReset, UserCreate, UserOut, UserUpdate
 from backend.modules.hr.services.audit import log_action
+
+# Модели IT модуля, ссылающиеся на users — нужны для корректного удаления пользователя
+from backend.modules.it.models import (
+    Ticket,
+    TicketComment,
+    TicketHistory,
+    EquipmentHistory,
+    ConsumableIssue,
+    EquipmentRequest,
+    ConsumableSupply,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -105,6 +118,52 @@ def reset_password(
     return user
 
 
+def _clear_user_references(db: Session, user_id: UUID) -> None:
+    """Обнуляет ссылки на пользователя в полях, где это допустимо (nullable)."""
+    db.query(Employee).filter(Employee.user_id == user_id).update(
+        {"user_id": None}, synchronize_session=False
+    )
+    db.query(Ticket).filter(Ticket.creator_id == user_id).update(
+        {"creator_id": None}, synchronize_session=False
+    )
+    db.query(Ticket).filter(Ticket.assignee_id == user_id).update(
+        {"assignee_id": None}, synchronize_session=False
+    )
+    db.query(EquipmentRequest).filter(EquipmentRequest.reviewer_id == user_id).update(
+        {"reviewer_id": None}, synchronize_session=False
+    )
+
+
+def _blocking_references(db: Session, user_id: UUID) -> list[str]:
+    """Проверяет, есть ли записи, которые не позволяют удалить пользователя (NOT NULL FK)."""
+    blocks = []
+    if db.query(TicketComment).filter(TicketComment.user_id == user_id).limit(1).first():
+        blocks.append("комментарии к заявкам")
+    if db.query(TicketHistory).filter(TicketHistory.changed_by_id == user_id).limit(1).first():
+        blocks.append("история изменений заявок")
+    if db.query(EquipmentHistory).filter(EquipmentHistory.changed_by_id == user_id).limit(1).first():
+        blocks.append("история перемещений оборудования")
+    if (
+        db.query(ConsumableIssue)
+        .filter(
+            or_(
+                ConsumableIssue.issued_to_id == user_id,
+                ConsumableIssue.issued_by_id == user_id,
+            )
+        )
+        .limit(1)
+        .first()
+    ):
+        blocks.append("выдача расходных материалов")
+    if db.query(EquipmentRequest).filter(EquipmentRequest.requester_id == user_id).limit(1).first():
+        blocks.append("заявки на оборудование (инициатор)")
+    if (
+        db.query(ConsumableSupply).filter(ConsumableSupply.created_by_id == user_id).limit(1).first()
+    ):
+        blocks.append("поставки расходных материалов")
+    return blocks
+
+
 @router.delete("/{user_id}", dependencies=[Depends(require_superuser)])
 def delete_user(
     user_id: UUID,
@@ -116,7 +175,20 @@ def delete_user(
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Нельзя удалить самого себя")
+
+    blocking = _blocking_references(db, user_id)
+    if blocking:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Невозможно удалить пользователя: он связан с — "
+                + ", ".join(blocking)
+                + ". Удалите или переназначьте эти записи в модуле IT."
+            ),
+        )
+
     username = user.username or user.email
+    _clear_user_references(db, user_id)
     db.delete(user)
     db.commit()
     log_action(db, _audit_user(current_user), "delete", "user", f"id={user_id}, username={username}")
