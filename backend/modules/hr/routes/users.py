@@ -4,7 +4,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 
 from backend.core.auth import get_password_hash
 from backend.modules.hr.dependencies import (
@@ -134,34 +133,29 @@ def _clear_user_references(db: Session, user_id: UUID) -> None:
     )
 
 
-def _blocking_references(db: Session, user_id: UUID) -> list[str]:
-    """Проверяет, есть ли записи, которые не позволяют удалить пользователя (NOT NULL FK)."""
-    blocks = []
-    if db.query(TicketComment).filter(TicketComment.user_id == user_id).limit(1).first():
-        blocks.append("комментарии к заявкам")
-    if db.query(TicketHistory).filter(TicketHistory.changed_by_id == user_id).limit(1).first():
-        blocks.append("история изменений заявок")
-    if db.query(EquipmentHistory).filter(EquipmentHistory.changed_by_id == user_id).limit(1).first():
-        blocks.append("история перемещений оборудования")
-    if (
-        db.query(ConsumableIssue)
-        .filter(
-            or_(
-                ConsumableIssue.issued_to_id == user_id,
-                ConsumableIssue.issued_by_id == user_id,
-            )
-        )
-        .limit(1)
-        .first()
-    ):
-        blocks.append("выдача расходных материалов")
-    if db.query(EquipmentRequest).filter(EquipmentRequest.requester_id == user_id).limit(1).first():
-        blocks.append("заявки на оборудование (инициатор)")
-    if (
-        db.query(ConsumableSupply).filter(ConsumableSupply.created_by_id == user_id).limit(1).first()
-    ):
-        blocks.append("поставки расходных материалов")
-    return blocks
+def _reassign_blocking_references(db: Session, user_id: UUID, new_user_id: UUID) -> None:
+    """Переназначает все блокирующие ссылки (NOT NULL FK) на другого пользователя."""
+    db.query(TicketComment).filter(TicketComment.user_id == user_id).update(
+        {"user_id": new_user_id}, synchronize_session=False
+    )
+    db.query(TicketHistory).filter(TicketHistory.changed_by_id == user_id).update(
+        {"changed_by_id": new_user_id}, synchronize_session=False
+    )
+    db.query(EquipmentHistory).filter(EquipmentHistory.changed_by_id == user_id).update(
+        {"changed_by_id": new_user_id}, synchronize_session=False
+    )
+    db.query(ConsumableIssue).filter(ConsumableIssue.issued_to_id == user_id).update(
+        {"issued_to_id": new_user_id}, synchronize_session=False
+    )
+    db.query(ConsumableIssue).filter(ConsumableIssue.issued_by_id == user_id).update(
+        {"issued_by_id": new_user_id}, synchronize_session=False
+    )
+    db.query(EquipmentRequest).filter(EquipmentRequest.requester_id == user_id).update(
+        {"requester_id": new_user_id}, synchronize_session=False
+    )
+    db.query(ConsumableSupply).filter(ConsumableSupply.created_by_id == user_id).update(
+        {"created_by_id": new_user_id}, synchronize_session=False
+    )
 
 
 @router.delete("/{user_id}", dependencies=[Depends(require_superuser)])
@@ -176,18 +170,8 @@ def delete_user(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Нельзя удалить самого себя")
 
-    blocking = _blocking_references(db, user_id)
-    if blocking:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Невозможно удалить пользователя: он связан с — "
-                + ", ".join(blocking)
-                + ". Удалите или переназначьте эти записи в модуле IT."
-            ),
-        )
-
     username = user.username or user.email
+    _reassign_blocking_references(db, user_id, current_user.id)
     _clear_user_references(db, user_id)
     db.delete(user)
     db.commit()
