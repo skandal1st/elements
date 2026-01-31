@@ -13,6 +13,7 @@ from .routes import (
     employees,
     equipment,
     hr_requests,
+    integrations,
     org,
     phonebook,
     positions,
@@ -31,6 +32,7 @@ router.include_router(org.router)
 router.include_router(equipment.router)
 router.include_router(audit.router)
 router.include_router(users.router)
+router.include_router(integrations.router)
 
 
 @router.get("/")

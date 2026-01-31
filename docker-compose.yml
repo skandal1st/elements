@@ -4,7 +4,7 @@
 # Использование:
 #   docker-compose up -d              # Запустить все сервисы
 #   docker-compose up -d postgres     # Только PostgreSQL
-#   docker-compose logs -f backend-hr # Логи HR backend
+#   docker-compose logs -f backend    # Логи backend
 # =============================================================================
 
 services:
@@ -149,83 +149,6 @@ services:
       retries: 5
 
   # ===========================================================================
-  # Elements HR (Python/FastAPI) - Старый модуль (для совместимости)
-  # ===========================================================================
-
-  backend-hr:
-    build:
-      context: ./HR_desk/backend
-      dockerfile: Dockerfile
-    container_name: elements-hr-backend
-    restart: unless-stopped
-    ports:
-      - "8001:8000"
-    environment:
-      # Database
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-elements}:${POSTGRES_PASSWORD:-elements}@postgres:5432/${POSTGRES_DB:-elements}
-
-      # Auth (общий секрет для всех модулей)
-      - SECRET_KEY=${JWT_SECRET:-elements-super-secret-key-change-in-production}
-
-      # SupporIT integration
-      - SUPPORIT_API_URL=http://backend-it:3001/api
-      - SUPPORIT_TOKEN=${SUPPORIT_TOKEN:-}
-
-      # Active Directory
-      - AD_SERVER=${AD_SERVER:-}
-      - AD_USER=${AD_USER:-}
-      - AD_PASSWORD=${AD_PASSWORD:-}
-      - AD_BASE_DN=${AD_BASE_DN:-}
-      - AD_DOMAIN=${AD_DOMAIN:-}
-      - AD_USE_SSL=${AD_USE_SSL:-true}
-
-      # Mailcow
-      - MAILCOW_API_URL=${MAILCOW_API_URL:-}
-      - MAILCOW_API_KEY=${MAILCOW_API_KEY:-}
-
-      # 1C ZUP
-      - ZUP_API_URL=${ZUP_API_URL:-}
-      - ZUP_USERNAME=${ZUP_USERNAME:-}
-      - ZUP_PASSWORD=${ZUP_PASSWORD:-}
-
-      # RabbitMQ
-      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-elements}:${RABBITMQ_PASSWORD:-elements}@rabbitmq:5672/
-
-      # Redis
-      - REDIS_URL=redis://redis:6379/0
-
-      # Seed admin
-      - SEED_ADMIN_ENABLED=${SEED_ADMIN_ENABLED:-true}
-      - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-admin@elements.local}
-      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}
-      - SEED_ADMIN_ROLE=admin
-    volumes:
-      - hr_uploads:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  frontend-hr:
-    build:
-      context: ./HR_desk/frontend
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE=/api/v1
-    container_name: elements-hr-frontend
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    depends_on:
-      - backend-hr
-
-  # ===========================================================================
   # Elements IT / SupporIT (Node.js/Express)
   # ===========================================================================
 
@@ -322,8 +245,6 @@ volumes:
     name: elements_minio_data
   qdrant_data:
     name: elements_qdrant_data
-  hr_uploads:
-    name: elements_hr_uploads
   it_uploads:
     name: elements_it_uploads
 
