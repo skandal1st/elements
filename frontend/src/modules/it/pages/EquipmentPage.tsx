@@ -56,6 +56,7 @@ type Equipment = {
   // IP-адрес для сетевого оборудования
   ip_address?: string;
   hostname?: string;
+  rustdesk_id?: string;
   // Характеристики хранятся в JSON объекте
   specifications?: {
     cpu?: string;
@@ -250,6 +251,7 @@ export function EquipmentPage() {
     diagonal: "",
     ip_address: "",
     hostname: "",
+    rustdesk_id: "",
   });
 
   // Состояние для справочника оборудования
@@ -889,6 +891,7 @@ export function EquipmentPage() {
       diagonal: "",
       ip_address: "",
       hostname: "",
+      rustdesk_id: "",
     });
     setSelectedBrandId("");
     setSelectedTypeId("");
@@ -944,6 +947,7 @@ export function EquipmentPage() {
       diagonal: specs.diagonal ?? "",
       ip_address: e.ip_address ?? "",
       hostname: (e as { hostname?: string }).hostname ?? "",
+      rustdesk_id: (e as { rustdesk_id?: string }).rustdesk_id ?? "",
     });
 
     try {
@@ -1084,6 +1088,7 @@ export function EquipmentPage() {
       // IP-адрес и hostname (имя ПК в сети — для синхронизации со сканером)
       if (form.ip_address) payload.ip_address = form.ip_address;
       if (form.hostname) payload.hostname = form.hostname;
+      if (form.rustdesk_id) payload.rustdesk_id = form.rustdesk_id;
 
       // Собираем характеристики в объект specifications
       const specifications: Record<string, string> = {};
@@ -1129,6 +1134,14 @@ export function EquipmentPage() {
     } catch (err) {
       setError((err as Error).message);
     }
+  };
+
+  const handleRustDeskConnect = (rustdeskId: string) => {
+    // Custom URI scheme для RustDesk
+    const rustdeskUri = `rustdesk://${rustdeskId}`;
+
+    // Открыть URI
+    window.location.href = rustdeskUri;
   };
 
   const handleScanComputer = async () => {
@@ -1400,6 +1413,15 @@ export function EquipmentPage() {
                       >
                         Изменить
                       </button>
+                      {e.rustdesk_id && e.category === "computer" && (
+                        <button
+                          onClick={() => handleRustDeskConnect(e.rustdesk_id!)}
+                          className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
+                          title="Подключиться через RustDesk"
+                        >
+                          <Monitor className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => openQrModal(e)}
                         className="p-1.5 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all"
@@ -1764,6 +1786,26 @@ export function EquipmentPage() {
                         </div>
                       )}
 
+                      {/* RustDesk ID для удалённого подключения */}
+                      {form.category === "computer" && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-gray-400 mb-1">
+                            RustDesk ID
+                          </label>
+                          <input
+                            className="glass-input w-full px-4 py-3 text-sm"
+                            placeholder="123456789"
+                            value={form.rustdesk_id || ""}
+                            onChange={(e) =>
+                              setForm((p) => ({ ...p, rustdesk_id: e.target.value }))
+                            }
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            ID компьютера в RustDesk для удалённого подключения
+                          </p>
+                        </div>
+                      )}
+
                       {/* Для типов без характеристик и без IP */}
                       {form.category && !["computer", "server", "monitor", "printer", "network"].includes(form.category) && (
                         <p className="text-sm text-gray-500 py-4">
@@ -2030,6 +2072,12 @@ export function EquipmentPage() {
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-500">Имя в сети (hostname)</span>
                           <span className="text-sm font-medium font-mono">{(detailEquipment as { hostname?: string }).hostname}</span>
+                        </div>
+                      )}
+                      {(detailEquipment as { rustdesk_id?: string }).rustdesk_id && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500">RustDesk ID</span>
+                          <span className="text-sm font-medium font-mono">{(detailEquipment as { rustdesk_id?: string }).rustdesk_id}</span>
                         </div>
                       )}
                     </div>

@@ -28,6 +28,7 @@ class EquipmentBase(BaseModel):
     manufacturer: Optional[str] = None
     ip_address: Optional[str] = None
     hostname: Optional[str] = None
+    rustdesk_id: Optional[str] = None
     specifications: Optional[dict[str, Any]] = None
     attachments: Optional[List[str]] = None
 
@@ -56,6 +57,7 @@ class EquipmentUpdate(BaseModel):
     manufacturer: Optional[str] = None
     ip_address: Optional[str] = None
     hostname: Optional[str] = None
+    rustdesk_id: Optional[str] = None
     specifications: Optional[dict[str, Any]] = None
     attachments: Optional[List[str]] = None
 
@@ -75,6 +77,7 @@ class EquipmentOut(EquipmentBase):
     brand_name: Optional[str] = None
     type_name: Optional[str] = None
     zabbix_host_id: Optional[str] = None
+    rustdesk_id: Optional[str] = None
 
 
 class EquipmentSyncFromScan(BaseModel):

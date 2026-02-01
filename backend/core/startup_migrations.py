@@ -203,6 +203,15 @@ def ensure_rocketchat_columns() -> None:
         _exec_best_effort(sql)
 
 
+def ensure_rustdesk_column() -> None:
+    """Добавить колонку rustdesk_id в таблицу equipment."""
+    statements = [
+        "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS rustdesk_id VARCHAR(255)",
+    ]
+    for sql in statements:
+        _exec_best_effort(sql)
+
+
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
     try:
@@ -212,8 +221,9 @@ def apply_startup_migrations() -> None:
         ensure_zabbix_integration_columns()
         ensure_equipment_category_network()
         ensure_rocketchat_columns()
+        ensure_rustdesk_column()
         logger.info(
-            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix и rocketchat колонки готовы"
+            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat и rustdesk колонки готовы"
         )
     except Exception as e:
         # Не блокируем запуск приложения, но логируем проблему.

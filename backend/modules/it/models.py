@@ -120,6 +120,7 @@ class Equipment(Base):
     manufacturer = Column(String(255), nullable=True)
     ip_address = Column(String(50), nullable=True)
     hostname = Column(String(255), nullable=True)  # Имя компьютера в сети (для синхронизации со сканером)
+    rustdesk_id = Column(String(255), nullable=True)  # RustDesk ID для удалённого подключения
     zabbix_host_id = Column(String(32), nullable=True)  # hostid в Zabbix после добавления в мониторинг
     specifications = Column(JSONB, nullable=True)
     attachments = Column(ARRAY(String), nullable=True)
