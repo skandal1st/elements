@@ -66,6 +66,8 @@ class TicketOut(TicketBase):
     source: str = "web"
     email_sender: Optional[str] = None
     email_message_id: Optional[str] = None
+    rocketchat_message_id: Optional[str] = None
+    rocketchat_sender: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

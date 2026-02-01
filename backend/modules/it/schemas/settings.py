@@ -79,12 +79,23 @@ class TelegramSettings(BaseModel):
     telegram_webhook_url: Optional[str] = None
 
 
+class RocketChatSettings(BaseModel):
+    """Настройки интеграции с RocketChat."""
+
+    rocketchat_enabled: Optional[bool] = False
+    rocketchat_url: Optional[str] = None
+    rocketchat_user_id: Optional[str] = None
+    rocketchat_auth_token: Optional[str] = None
+    rocketchat_webhook_token: Optional[str] = None
+    rocketchat_channel_name: Optional[str] = None
+    rocketchat_bot_user_id: Optional[str] = None
+
+
 class ZabbixSettings(BaseModel):
     """Настройки интеграции с Zabbix."""
 
     zabbix_url: Optional[str] = None
-    zabbix_user: Optional[str] = None
-    zabbix_password: Optional[str] = None
+    zabbix_api_token: Optional[str] = None
     zabbix_enabled: Optional[bool] = False
 
 
@@ -142,6 +153,7 @@ class AllSettings(BaseModel):
     email: EmailSettings = EmailSettings()
     imap: ImapSettings = ImapSettings()
     telegram: TelegramSettings = TelegramSettings()
+    rocketchat: RocketChatSettings = RocketChatSettings()
     zabbix: ZabbixSettings = ZabbixSettings()
     ldap: LdapSettings = LdapSettings()
     llm: LlmSettings = LlmSettings()

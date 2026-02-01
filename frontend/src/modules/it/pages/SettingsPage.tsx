@@ -20,6 +20,7 @@ import {
   AlertCircle,
   Users,
   Sparkles,
+  Rocket,
 } from "lucide-react";
 import { apiGet, apiPost } from "../../../shared/api/client";
 import { useUIStore } from "../../../shared/store/ui.store";
@@ -30,11 +31,22 @@ import {
   type Room,
 } from "../../../shared/services/rooms.service";
 
+type RocketChatSettings = {
+  rocketchat_enabled?: boolean;
+  rocketchat_url?: string;
+  rocketchat_user_id?: string;
+  rocketchat_auth_token?: string;
+  rocketchat_webhook_token?: string;
+  rocketchat_channel_name?: string;
+  rocketchat_bot_user_id?: string;
+};
+
 type AllSettings = {
   general: GeneralSettings;
   email: EmailSettings;
   imap: ImapSettings;
   telegram: TelegramSettings;
+  rocketchat: RocketChatSettings;
   zabbix: ZabbixSettings;
   ldap: LdapSettings;
   llm: LlmSettings;
@@ -79,8 +91,7 @@ type TelegramSettings = {
 
 type ZabbixSettings = {
   zabbix_url?: string;
-  zabbix_user?: string;
-  zabbix_password?: string;
+  zabbix_api_token?: string;
   zabbix_enabled?: boolean;
 };
 
@@ -132,6 +143,7 @@ const TABS = [
   { id: "email", label: "Email (SMTP)", icon: Mail },
   { id: "imap", label: "Email (IMAP)", icon: Mail },
   { id: "telegram", label: "Telegram", icon: MessageCircle },
+  { id: "rocketchat", label: "RocketChat", icon: Rocket },
   { id: "zabbix", label: "Zabbix", icon: Server },
   { id: "llm", label: "LLM / OpenRouter", icon: Sparkles },
   { id: "ldap", label: "Active Directory", icon: Shield },
@@ -157,6 +169,7 @@ export function SettingsPage() {
     email: {},
     imap: {},
     telegram: {},
+    rocketchat: {},
     zabbix: {},
     ldap: {},
     llm: {},
@@ -442,17 +455,28 @@ export function SettingsPage() {
     }
   };
 
-  const testConnection = async (type: "smtp" | "imap" | "ldap" | "telegram") => {
+  const testConnection = async (type: "smtp" | "imap" | "ldap" | "telegram" | "rocketchat" | "zabbix") => {
     setError(null);
     try {
-      const result = await apiPost<{ status: string; message: string }>(
-        `/it/settings/test/${type}`,
-        {},
-      );
-      if (result.status === "success") {
-        setSuccess(result.message);
+      if (type === "zabbix") {
+        const result = await apiGet<{ connected: boolean; version?: string; error?: string }>(
+          `/it/zabbix/status`,
+        );
+        if (result.connected) {
+          setSuccess(`Zabbix подключён, версия ${result.version || "N/A"}`);
+        } else {
+          setError(result.error || "Не удалось подключиться к Zabbix");
+        }
       } else {
-        setError(result.message);
+        const result = await apiPost<{ status: string; message: string }>(
+          `/it/settings/test/${type}`,
+          {},
+        );
+        if (result.status === "success") {
+          setSuccess(result.message);
+        } else {
+          setError(result.message);
+        }
       }
       setTimeout(() => {
         setSuccess(null);
@@ -1230,6 +1254,82 @@ export function SettingsPage() {
               </div>
             )}
 
+            {/* RocketChat настройки */}
+            {activeTab === "rocketchat" && (
+              <div className="space-y-4 max-w-xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-white">
+                    Настройки RocketChat
+                  </h3>
+                  <button
+                    onClick={() => testConnection("rocketchat")}
+                    className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
+                  >
+                    <TestTube className="w-4 h-4" />
+                    Тест
+                  </button>
+                </div>
+                {renderInput(
+                  "Включить интеграцию RocketChat",
+                  "rocketchat",
+                  "rocketchat_enabled",
+                  "checkbox",
+                )}
+                {renderInput(
+                  "URL RocketChat",
+                  "rocketchat",
+                  "rocketchat_url",
+                  "text",
+                  "https://chat.company.com",
+                )}
+                {renderInput(
+                  "User ID бота (X-User-Id)",
+                  "rocketchat",
+                  "rocketchat_user_id",
+                  "text",
+                  "aBcDeFgHiJkLmN",
+                )}
+                {renderInput(
+                  "Auth Token бота (X-Auth-Token)",
+                  "rocketchat",
+                  "rocketchat_auth_token",
+                  "password",
+                  "aBcDeFgHiJkLmN...",
+                )}
+                {renderInput(
+                  "Webhook Token",
+                  "rocketchat",
+                  "rocketchat_webhook_token",
+                  "password",
+                  "Токен для валидации Outgoing Webhook",
+                )}
+                {renderInput(
+                  "Канал для заявок",
+                  "rocketchat",
+                  "rocketchat_channel_name",
+                  "text",
+                  "helpdesk",
+                )}
+                {renderInput(
+                  "User ID бота в RocketChat",
+                  "rocketchat",
+                  "rocketchat_bot_user_id",
+                  "text",
+                  "rocket.cat или ID бота",
+                )}
+                <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-sm text-gray-400 space-y-2">
+                  <p className="font-medium text-gray-300">Настройка Outgoing Webhook в RocketChat:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-xs">
+                    <li>Откройте Administration &rarr; Integrations &rarr; New Outgoing Webhook</li>
+                    <li>Event Trigger: <b>Message Sent</b></li>
+                    <li>Channel: <b>#{settings.rocketchat?.rocketchat_channel_name || "helpdesk"}</b></li>
+                    <li>URLs: <code className="bg-dark-600 px-1 rounded">{settings.general?.public_app_url || "https://..."}/api/v1/it/rocketchat/webhook</code></li>
+                    <li>Token: укажите тот же токен, что в поле «Webhook Token» выше</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+
             {/* Zabbix настройки */}
             {activeTab === "zabbix" && (
               <div className="space-y-4 max-w-xl">
@@ -1250,13 +1350,20 @@ export function SettingsPage() {
                   "https://zabbix.company.com/api_jsonrpc.php",
                 )}
                 {renderInput(
-                  "Пользователь",
+                  "API токен",
                   "zabbix",
-                  "zabbix_user",
-                  "text",
-                  "Admin",
+                  "zabbix_api_token",
+                  "password",
                 )}
-                {renderInput("Пароль", "zabbix", "zabbix_password", "password")}
+                <p className="text-sm text-gray-500 mt-2">
+                  Используется Bearer-аутентификация (Zabbix 7.x). Создайте API-токен в Zabbix: Администрирование → Общие → API-токены.
+                </p>
+                <button
+                  onClick={() => testConnection("zabbix")}
+                  className="glass-button-secondary px-4 py-2 text-sm font-medium flex items-center gap-2"
+                >
+                  <TestTube size={16} /> Тест подключения
+                </button>
               </div>
             )}
 

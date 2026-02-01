@@ -22,6 +22,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   BookOpen,
+  Rocket,
 } from "lucide-react";
 import {
   apiGet,
@@ -49,7 +50,7 @@ type Ticket = {
   equipment_id?: string;
   room_id?: string;
   attachments?: string[] | null;
-  source?: "web" | "email" | "api" | "telegram";
+  source?: "web" | "email" | "api" | "telegram" | "rocketchat";
   email_sender?: string;
   email_message_id?: string;
   created_at?: string;
@@ -189,6 +190,7 @@ const sourceLabel: Record<string, string> = {
   email: "Email",
   api: "API",
   telegram: "Telegram",
+  rocketchat: "RocketChat",
 };
 
 const fieldLabel: Record<string, string> = {
@@ -226,6 +228,12 @@ const SourceIcon = ({ source }: { source?: string }) => {
       return (
         <span title="Telegram">
           <MessageCircle className="w-4 h-4 text-accent-cyan" />
+        </span>
+      );
+    case "rocketchat":
+      return (
+        <span title="RocketChat">
+          <Rocket className="w-4 h-4 text-red-400" />
         </span>
       );
     case "api":

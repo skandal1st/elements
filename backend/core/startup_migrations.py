@@ -191,6 +191,18 @@ def ensure_equipment_category_network() -> None:
         logger.warning("ensure_equipment_category_network skipped: %s", e)
 
 
+def ensure_rocketchat_columns() -> None:
+    """
+    Добавляет колонки для интеграции с RocketChat в таблицу tickets.
+    """
+    statements = [
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rocketchat_message_id VARCHAR(255)",
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rocketchat_sender VARCHAR(255)",
+    ]
+    for sql in statements:
+        _exec_best_effort(sql)
+
+
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
     try:
@@ -199,8 +211,9 @@ def apply_startup_migrations() -> None:
         ensure_knowledge_core_tables()
         ensure_zabbix_integration_columns()
         ensure_equipment_category_network()
+        ensure_rocketchat_columns()
         logger.info(
-            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core и zabbix колонки готовы"
+            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix и rocketchat колонки готовы"
         )
     except Exception as e:
         # Не блокируем запуск приложения, но логируем проблему.

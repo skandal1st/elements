@@ -19,6 +19,7 @@ from .routes import (
     licenses,
     notifications,
     reports,
+    rocketchat,
     rooms,
     telegram,
     ticket_comments,
@@ -50,6 +51,7 @@ router.include_router(users.router)
 router.include_router(settings_routes.router)
 router.include_router(zabbix.router)
 router.include_router(telegram.router)
+router.include_router(rocketchat.router)
 router.include_router(email.router)
 router.include_router(knowledge_api.router)
 

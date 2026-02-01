@@ -209,6 +209,8 @@ class Ticket(Base):
     email_message_id = Column(
         String(255), nullable=True
     )  # Message-ID для email threading
+    rocketchat_message_id = Column(String(255), nullable=True)
+    rocketchat_sender = Column(String(255), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(

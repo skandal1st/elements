@@ -16,6 +16,7 @@ from backend.modules.it.schemas.settings import (
     ImapSettings,
     LlmSettings,
     LdapSettings,
+    RocketChatSettings,
     SettingCreate,
     SettingOut,
     SettingsBulkUpdate,
@@ -59,7 +60,12 @@ SETTING_TYPE_MAP = {
         "email_check_interval",
     ],
     "telegram": ["telegram_bot_token", "telegram_bot_enabled", "telegram_webhook_url", "telegram_bot_username"],
-    "zabbix": ["zabbix_url", "zabbix_user", "zabbix_password", "zabbix_enabled"],
+    "rocketchat": [
+        "rocketchat_enabled", "rocketchat_url", "rocketchat_user_id",
+        "rocketchat_auth_token", "rocketchat_webhook_token",
+        "rocketchat_channel_name", "rocketchat_bot_user_id",
+    ],
+    "zabbix": ["zabbix_url", "zabbix_api_token", "zabbix_enabled"],
     "ldap": [
         "ldap_server",
         "ldap_port",
@@ -91,7 +97,9 @@ SENSITIVE_KEYS = [
     "smtp_password",
     "imap_password",
     "telegram_bot_token",
-    "zabbix_password",
+    "rocketchat_auth_token",
+    "rocketchat_webhook_token",
+    "zabbix_api_token",
     "ldap_bind_password",
     "openrouter_api_key",
 ]
@@ -203,11 +211,23 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
             telegram_bot_enabled=get_val("telegram_bot_enabled", False),
             telegram_webhook_url=get_val("telegram_webhook_url"),
         ),
+        rocketchat=RocketChatSettings(
+            rocketchat_enabled=get_val("rocketchat_enabled", False),
+            rocketchat_url=get_val("rocketchat_url"),
+            rocketchat_user_id=get_val("rocketchat_user_id"),
+            rocketchat_auth_token=_mask_sensitive(
+                get_val("rocketchat_auth_token"), "rocketchat_auth_token"
+            ),
+            rocketchat_webhook_token=_mask_sensitive(
+                get_val("rocketchat_webhook_token"), "rocketchat_webhook_token"
+            ),
+            rocketchat_channel_name=get_val("rocketchat_channel_name"),
+            rocketchat_bot_user_id=get_val("rocketchat_bot_user_id"),
+        ),
         zabbix=ZabbixSettings(
             zabbix_url=get_val("zabbix_url"),
-            zabbix_user=get_val("zabbix_user"),
-            zabbix_password=_mask_sensitive(
-                get_val("zabbix_password"), "zabbix_password"
+            zabbix_api_token=_mask_sensitive(
+                get_val("zabbix_api_token"), "zabbix_api_token"
             ),
             zabbix_enabled=get_val("zabbix_enabled", False),
         ),
@@ -706,6 +726,23 @@ async def test_telegram_connection(db: Session = Depends(get_db)) -> dict:
     return {
         "status": "success",
         "message": f"Telegram бот @{bot_username} подключен успешно",
+    }
+
+
+@router.post("/test/rocketchat", dependencies=[Depends(require_superuser)])
+async def test_rocketchat_connection(db: Session = Depends(get_db)) -> dict:
+    """Тестировать подключение к RocketChat."""
+    from backend.modules.it.services.rocketchat_service import rocketchat_service
+
+    result = await rocketchat_service.check_connection(db)
+    if result:
+        return {
+            "status": "success",
+            "message": "RocketChat подключён успешно",
+        }
+    return {
+        "status": "error",
+        "message": "Не удалось подключиться к RocketChat. Проверьте URL, User ID и Auth Token.",
     }
 
 

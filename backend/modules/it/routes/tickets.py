@@ -430,6 +430,16 @@ async def create_ticket(
     except Exception:
         pass  # Не блокируем создание заявки при ошибке уведомления
 
+    # Уведомление в RocketChat (только если тикет не из RocketChat)
+    if t.source != "rocketchat":
+        try:
+            from backend.modules.it.services.rocketchat_service import rocketchat_service
+            await rocketchat_service.send_channel_message(
+                db, f"Новая заявка #{str(t.id)[:8]}: {t.title}"
+            )
+        except Exception:
+            pass
+
     return t
 
 
@@ -575,6 +585,14 @@ async def update_ticket(
                         t.title,
                         t.status,
                     )
+            except Exception:
+                pass
+
+            # RocketChat (если тикет из RocketChat)
+            try:
+                if t.rocketchat_sender:
+                    from backend.modules.it.services.rocketchat_service import rocketchat_service
+                    await rocketchat_service.notify_ticket_status_changed(db, t)
             except Exception:
                 pass
         except Exception:
@@ -831,6 +849,15 @@ async def assign_executor_to_ticket(
         try:
             from backend.modules.it.services.telegram_service import telegram_service
             await telegram_service.notify_ticket_assigned(db, new_assignee_id, t.id, t.title)
+        except Exception:
+            pass
+
+        # RocketChat (если тикет из RocketChat)
+        try:
+            if t.rocketchat_sender:
+                from backend.modules.it.services.rocketchat_service import rocketchat_service
+                assignee_name = target.full_name if target else "неизвестен"
+                await rocketchat_service.notify_ticket_assigned(db, t, assignee_name)
         except Exception:
             pass
 
