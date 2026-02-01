@@ -27,6 +27,7 @@ class RocketChatService:
 
     def __init__(self):
         self._channel_id: Optional[str] = None
+        self._channel_type: Optional[str] = None  # "channels" или "groups"
         self._polling_task: Optional[asyncio.Task] = None
         self._polling_active = False
         self._last_processed_ts: Optional[str] = None
@@ -97,7 +98,7 @@ class RocketChatService:
         return False
 
     async def get_channel_id(self, db: Session, channel_name: Optional[str] = None) -> Optional[str]:
-        """Получить ID канала по имени. Кэширует результат."""
+        """Получить ID канала по имени. Пробует public (channels) и private (groups). Кэширует."""
         if self._channel_id:
             return self._channel_id
 
@@ -108,12 +109,14 @@ class RocketChatService:
 
         name = channel_name or self._get_setting(db, "rocketchat_channel_name")
         if not name:
+            logger.warning("[RocketChat] Имя канала не задано в настройках")
             return None
         # Убираем # если есть
         name = name.lstrip("#")
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
+                # Сначала пробуем публичный канал (channels)
                 response = await client.get(
                     f"{base_url}/api/v1/channels.info",
                     headers=headers,
@@ -123,7 +126,25 @@ class RocketChatService:
                     data = response.json()
                     if data.get("success"):
                         self._channel_id = data["channel"]["_id"]
+                        self._channel_type = "channels"
+                        logger.info(f"[RocketChat] Канал '{name}' найден (public), ID: {self._channel_id}")
                         return self._channel_id
+
+                # Если не найден — пробуем приватную группу (groups)
+                response = await client.get(
+                    f"{base_url}/api/v1/groups.info",
+                    headers=headers,
+                    params={"roomName": name},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("success"):
+                        self._channel_id = data["group"]["_id"]
+                        self._channel_type = "groups"
+                        logger.info(f"[RocketChat] Канал '{name}' найден (private group), ID: {self._channel_id}")
+                        return self._channel_id
+
+                logger.warning(f"[RocketChat] Канал '{name}' не найден ни как public, ни как private group")
         except Exception as e:
             logger.error(f"[RocketChat] Ошибка получения ID канала '{name}': {e}")
 
@@ -375,9 +396,12 @@ class RocketChatService:
                 }
 
                 try:
+                    # Используем правильный endpoint в зависимости от типа канала
+                    history_endpoint = f"{base_url}/api/v1/{self._channel_type or 'channels'}.history"
+
                     async with httpx.AsyncClient(timeout=15.0) as client:
                         response = await client.get(
-                            f"{base_url}/api/v1/channels.history",
+                            history_endpoint,
                             headers=headers,
                             params=params,
                         )
@@ -520,6 +544,7 @@ class RocketChatService:
         await self.stop_polling()
         # Сбрасываем кэш канала — настройки могли измениться
         self._channel_id = None
+        self._channel_type = None
         await self.start_polling()
 
     # ── Уведомления ──────────────────────────────────────────
