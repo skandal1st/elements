@@ -114,6 +114,13 @@ async def on_startup():
     except Exception as e:
         logger.warning(f"Не удалось запустить Telegram polling: {e}")
 
+    # Запускаем RocketChat polling
+    try:
+        from backend.modules.it.services.rocketchat_service import rocketchat_service
+        await rocketchat_service.start_polling()
+    except Exception as e:
+        logger.warning(f"Не удалось запустить RocketChat polling: {e}")
+
     logger.info("Elements Platform запущен успешно")
 
 
@@ -123,6 +130,11 @@ async def on_shutdown():
     try:
         from backend.modules.it.services.telegram_service import telegram_service
         await telegram_service.stop_polling()
+    except Exception:
+        pass
+    try:
+        from backend.modules.it.services.rocketchat_service import rocketchat_service
+        await rocketchat_service.stop_polling()
     except Exception:
         pass
 

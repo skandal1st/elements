@@ -1318,14 +1318,21 @@ export function SettingsPage() {
                   "rocket.cat или ID бота",
                 )}
                 <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-sm text-gray-400 space-y-2">
-                  <p className="font-medium text-gray-300">Настройка Outgoing Webhook в RocketChat:</p>
+                  <p className="font-medium text-gray-300">Как это работает:</p>
+                  <p className="text-xs">
+                    Elements периодически опрашивает канал RocketChat (polling каждые 10 сек). Входящие сообщения автоматически создают заявки.
+                    Внешний IP для Elements <b>не требуется</b> — достаточно исходящего доступа в интернет.
+                  </p>
+                  <p className="font-medium text-gray-300 mt-2">Настройка:</p>
                   <ol className="list-decimal list-inside space-y-1 text-xs">
-                    <li>Откройте Administration &rarr; Integrations &rarr; New Outgoing Webhook</li>
-                    <li>Event Trigger: <b>Message Sent</b></li>
-                    <li>Channel: <b>#{settings.rocketchat?.rocketchat_channel_name || "helpdesk"}</b></li>
-                    <li>URLs: <code className="bg-dark-600 px-1 rounded">{settings.general?.public_app_url || "https://..."}/api/v1/it/rocketchat/webhook</code></li>
-                    <li>Token: укажите тот же токен, что в поле «Webhook Token» выше</li>
+                    <li>Создайте бота в RocketChat (Administration &rarr; Rooms &rarr; создайте пользователя-бота)</li>
+                    <li>Скопируйте <b>User ID</b> и <b>Auth Token</b> бота из Administration &rarr; Users &rarr; бот</li>
+                    <li>Укажите канал (например, <b>helpdesk</b>), куда сотрудники будут писать заявки</li>
+                    <li>Добавьте бота в этот канал</li>
                   </ol>
+                  <p className="text-xs text-gray-500 mt-2">
+                    <b>Webhook Token</b> — опционально, нужен только если вы дополнительно настроите Outgoing Webhook в RocketChat для мгновенной доставки (требует сетевой доступность Elements из RocketChat).
+                  </p>
                 </div>
               </div>
             )}

@@ -736,9 +736,14 @@ async def test_rocketchat_connection(db: Session = Depends(get_db)) -> dict:
 
     result = await rocketchat_service.check_connection(db)
     if result:
+        # Перезапускаем polling чтобы подхватить новые настройки
+        try:
+            await rocketchat_service.restart_polling()
+        except Exception:
+            pass
         return {
             "status": "success",
-            "message": "RocketChat подключён успешно",
+            "message": "RocketChat подключён успешно. Polling перезапущен.",
         }
     return {
         "status": "error",

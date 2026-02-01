@@ -1,10 +1,14 @@
 """
 RocketChat Service
-Интеграция с RocketChat CE для создания тикетов через Outgoing Webhook
-и отправки уведомлений обратно в канал.
+Интеграция с RocketChat CE для создания тикетов и отправки уведомлений в канал.
+
+Основной режим — polling (Elements опрашивает RocketChat через REST API channels.history).
+Webhook-режим доступен как альтернатива, если RocketChat может достучаться до Elements.
 """
 
+import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -23,6 +27,10 @@ class RocketChatService:
 
     def __init__(self):
         self._channel_id: Optional[str] = None
+        self._polling_task: Optional[asyncio.Task] = None
+        self._polling_active = False
+        self._last_processed_ts: Optional[str] = None
+        self._processed_ids: set = set()
 
     # ── helpers ──────────────────────────────────────────────
 
@@ -296,6 +304,223 @@ class RocketChatService:
         if url:
             return {"text": f"Заявка #{short_id} создана\n{url}"}
         return {"text": f"Заявка #{short_id} создана"}
+
+    # ── Polling (основной режим) ─────────────────────────────
+
+    async def _process_polled_message(
+        self, db: Session, msg_id: str, text: str, rc_username: str, tmid: Optional[str]
+    ) -> None:
+        """Обработать сообщение, полученное через polling channels.history."""
+        # Дедупликация по rocketchat_message_id в БД
+        if msg_id:
+            existing = (
+                db.query(Ticket)
+                .filter(Ticket.rocketchat_message_id == msg_id)
+                .first()
+            )
+            if existing:
+                return
+
+        # Если тред — добавляем комментарий к существующему тикету
+        if tmid:
+            result = await self._add_comment_from_thread(db, tmid, text, rc_username)
+            if result:
+                await self.send_channel_message(db, result["text"])
+            return
+
+        # Создаём новый тикет
+        result = await self._create_ticket_from_message(db, text, rc_username, msg_id)
+        if result:
+            await self.send_channel_message(db, result["text"])
+
+    async def _poll_loop(self) -> None:
+        """Основной цикл polling через channels.history."""
+        from backend.core.database import SessionLocal
+
+        POLL_INTERVAL = 10  # секунд между запросами
+        MAX_PROCESSED_IDS = 1000
+
+        # При первом запуске берём текущее время, чтобы не обрабатывать старые сообщения
+        self._last_processed_ts = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%S.%fZ"
+        )
+        self._processed_ids = set()
+
+        logger.info("[RocketChat] Polling запущен")
+
+        while self._polling_active:
+            db = SessionLocal()
+            try:
+                if not self._is_enabled(db):
+                    await asyncio.sleep(15)
+                    continue
+
+                base_url = self._get_base_url(db)
+                headers = self._get_auth_headers(db)
+                if not base_url or not headers:
+                    await asyncio.sleep(15)
+                    continue
+
+                rid = await self.get_channel_id(db)
+                if not rid:
+                    await asyncio.sleep(15)
+                    continue
+
+                bot_user_id = self._get_setting(db, "rocketchat_bot_user_id")
+
+                params = {
+                    "roomId": rid,
+                    "oldest": self._last_processed_ts,
+                    "count": 50,
+                }
+
+                try:
+                    async with httpx.AsyncClient(timeout=15.0) as client:
+                        response = await client.get(
+                            f"{base_url}/api/v1/channels.history",
+                            headers=headers,
+                            params=params,
+                        )
+
+                    if response.status_code != 200:
+                        logger.warning(
+                            f"[RocketChat] channels.history вернул {response.status_code}"
+                        )
+                        await asyncio.sleep(POLL_INTERVAL)
+                        continue
+
+                    data = response.json()
+                    if not data.get("success"):
+                        logger.warning("[RocketChat] channels.history ошибка")
+                        await asyncio.sleep(POLL_INTERVAL)
+                        continue
+
+                    messages = data.get("messages", [])
+                    # channels.history возвращает newest-first — сортируем хронологически
+                    messages.sort(key=lambda m: m.get("ts", ""))
+
+                    for msg in messages:
+                        msg_id = msg.get("_id", "")
+
+                        # Пропускаем уже обработанные
+                        if msg_id in self._processed_ids:
+                            continue
+
+                        msg_ts = msg.get("ts", "")
+                        user_info = msg.get("u", {})
+                        sender_id = user_info.get("_id", "")
+                        username = user_info.get("username", "")
+                        text = (msg.get("msg") or "").strip()
+                        tmid = msg.get("tmid")
+
+                        # Системные сообщения (user joined, etc.) имеют поле "t"
+                        if msg.get("t"):
+                            self._processed_ids.add(msg_id)
+                            if msg_ts:
+                                self._last_processed_ts = msg_ts
+                            continue
+
+                        # Пропуск сообщений бота
+                        if msg.get("bot"):
+                            self._processed_ids.add(msg_id)
+                            if msg_ts:
+                                self._last_processed_ts = msg_ts
+                            continue
+                        if bot_user_id and sender_id == bot_user_id:
+                            self._processed_ids.add(msg_id)
+                            if msg_ts:
+                                self._last_processed_ts = msg_ts
+                            continue
+
+                        if not text:
+                            self._processed_ids.add(msg_id)
+                            if msg_ts:
+                                self._last_processed_ts = msg_ts
+                            continue
+
+                        try:
+                            await self._process_polled_message(
+                                db, msg_id, text, username, tmid
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"[RocketChat] Ошибка обработки сообщения {msg_id}: {e}"
+                            )
+
+                        self._processed_ids.add(msg_id)
+                        if msg_ts:
+                            self._last_processed_ts = msg_ts
+
+                    # Ограничиваем размер множества обработанных ID
+                    if len(self._processed_ids) > MAX_PROCESSED_IDS:
+                        self._processed_ids = set(
+                            list(self._processed_ids)[-MAX_PROCESSED_IDS // 2 :]
+                        )
+
+                except httpx.TimeoutException:
+                    pass
+                except httpx.ConnectError as e:
+                    logger.warning(f"[RocketChat] Нет связи с сервером: {e}")
+                    await asyncio.sleep(POLL_INTERVAL)
+                    continue
+                except Exception as e:
+                    logger.error(f"[RocketChat] Ошибка polling: {e}")
+                    await asyncio.sleep(POLL_INTERVAL)
+                    continue
+
+            except Exception as e:
+                logger.error(f"[RocketChat] Критическая ошибка в poll_loop: {e}")
+                await asyncio.sleep(POLL_INTERVAL)
+            finally:
+                db.close()
+
+            await asyncio.sleep(POLL_INTERVAL)
+
+        logger.info("[RocketChat] Polling остановлен")
+
+    async def start_polling(self) -> None:
+        """Запустить фоновый polling."""
+        if self._polling_task and not self._polling_task.done():
+            return  # Уже запущен
+
+        from backend.core.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            enabled = self._is_enabled(db)
+            base_url = self._get_base_url(db)
+            headers = self._get_auth_headers(db)
+        finally:
+            db.close()
+
+        if not enabled or not base_url or not headers:
+            logger.info(
+                "[RocketChat] Polling не запущен: интеграция отключена или не настроена"
+            )
+            return
+
+        self._polling_active = True
+        self._polling_task = asyncio.create_task(self._poll_loop())
+        logger.info("[RocketChat] Фоновый polling запущен")
+
+    async def stop_polling(self) -> None:
+        """Остановить фоновый polling."""
+        self._polling_active = False
+        if self._polling_task and not self._polling_task.done():
+            self._polling_task.cancel()
+            try:
+                await self._polling_task
+            except asyncio.CancelledError:
+                pass
+        self._polling_task = None
+        logger.info("[RocketChat] Polling остановлен")
+
+    async def restart_polling(self) -> None:
+        """Перезапустить polling (после изменения настроек)."""
+        await self.stop_polling()
+        # Сбрасываем кэш канала — настройки могли измениться
+        self._channel_id = None
+        await self.start_polling()
 
     # ── Уведомления ──────────────────────────────────────────
 
