@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Edit, ArrowRightLeft, Trash2, Users } from 'lucide-react'
 import { apiDelete, apiGet, apiPatch, apiPost } from '../../../shared/api/client'
+import { buildingsService, roomsService } from '../../../shared/services/rooms.service'
 
 type PhonebookEntry = {
   id: number
@@ -37,7 +38,11 @@ export function Phonebook() {
     external_phone: '',
     email: '',
     birthday: '',
+    room_id: '',
   })
+  const [buildings, setBuildings] = useState<Array<{ id: string; name: string }>>([])
+  const [rooms, setRooms] = useState<Array<{ id: string; name: string; building_name?: string }>>([])
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('')
 
   // Модальное окно перевода
   const [transferModalOpen, setTransferModalOpen] = useState(false)
@@ -80,21 +85,87 @@ export function Phonebook() {
     load()
   }, [])
 
+  const loadBuildings = async () => {
+    try {
+      const data = await buildingsService.getBuildings(true)
+      setBuildings(data)
+    } catch (err) {
+      console.error('Ошибка загрузки зданий:', err)
+    }
+  }
+
+  const loadRooms = async (buildingId: string) => {
+    try {
+      const data = await roomsService.getRooms(buildingId, true)
+      setRooms(data)
+    } catch (err) {
+      console.error('Ошибка загрузки кабинетов:', err)
+      setRooms([])
+    }
+  }
+
+  useEffect(() => {
+    if (editModalOpen) {
+      loadBuildings()
+    }
+  }, [editModalOpen])
+
+  useEffect(() => {
+    if (selectedBuildingId) {
+      loadRooms(selectedBuildingId)
+    } else {
+      setRooms([])
+    }
+  }, [selectedBuildingId])
+
   // Открыть редактирование
-  const openEdit = (emp: PhonebookEntry) => {
+  const openEdit = async (emp: PhonebookEntry) => {
     setEditingEmployee(emp)
-    setEditForm({
-      full_name: emp.full_name,
-      department_id: emp.department_id ? String(emp.department_id) : '',
-      position_id: emp.position_id ? String(emp.position_id) : '',
-      internal_phone: emp.internal_phone || '',
-      external_phone: emp.external_phone || '',
-      email: emp.email || '',
-      birthday: emp.birthday || '',
-    })
     setError(null)
     setMessage(null)
     setEditModalOpen(true)
+
+    // Загружаем полную информацию о сотруднике, включая room_id
+    try {
+      const fullEmployee = await apiGet<PhonebookEntry & { room_id?: string }>(`/hr/employees/${emp.id}`)
+
+      setEditForm({
+        full_name: fullEmployee.full_name,
+        department_id: fullEmployee.department_id ? String(fullEmployee.department_id) : '',
+        position_id: fullEmployee.position_id ? String(fullEmployee.position_id) : '',
+        internal_phone: fullEmployee.internal_phone || '',
+        external_phone: fullEmployee.external_phone || '',
+        email: fullEmployee.email || '',
+        birthday: fullEmployee.birthday || '',
+        room_id: fullEmployee.room_id || '',
+      })
+
+      // Определяем здание по room_id
+      if (fullEmployee.room_id) {
+        try {
+          const room = await apiGet<{ id: string; building_id: string }>(`/it/rooms/${fullEmployee.room_id}`)
+          setSelectedBuildingId(room.building_id)
+        } catch (err) {
+          console.error('Ошибка загрузки информации о кабинете:', err)
+        }
+      } else {
+        setSelectedBuildingId('')
+        setRooms([])
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки полной информации о сотруднике:', err)
+      // Заполняем доступными данными
+      setEditForm({
+        full_name: emp.full_name,
+        department_id: emp.department_id ? String(emp.department_id) : '',
+        position_id: emp.position_id ? String(emp.position_id) : '',
+        internal_phone: emp.internal_phone || '',
+        external_phone: emp.external_phone || '',
+        email: emp.email || '',
+        birthday: emp.birthday || '',
+        room_id: '',
+      })
+    }
   }
 
   // Сохранить редактирование
@@ -115,6 +186,7 @@ export function Phonebook() {
         external_phone: editForm.external_phone.trim() || null,
         email: editForm.email.trim() || null,
         birthday: editForm.birthday || null,
+        room_id: editForm.room_id || null,
       }
 
       await apiPatch(`/hr/employees/${editingEmployee.id}`, payload)
@@ -329,6 +401,22 @@ export function Phonebook() {
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
               <input className="glass-input w-full px-4 py-3 text-sm" type="email" placeholder="email@example.com" value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Здание</label>
+                <select className="glass-input w-full px-4 py-3 text-sm" value={selectedBuildingId} onChange={(e) => setSelectedBuildingId(e.target.value)}>
+                  <option value="" className="bg-dark-800">Не выбрано</option>
+                  {buildings.map((b) => <option key={b.id} value={b.id} className="bg-dark-800">{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Кабинет</label>
+                <select className="glass-input w-full px-4 py-3 text-sm" value={editForm.room_id} onChange={(e) => setEditForm((p) => ({ ...p, room_id: e.target.value }))} disabled={!selectedBuildingId}>
+                  <option value="" className="bg-dark-800">Не выбрано</option>
+                  {rooms.map((r) => <option key={r.id} value={r.id} className="bg-dark-800">{r.name} {r.building_name ? `(${r.building_name})` : ''}</option>)}
+                </select>
+              </div>
             </div>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
