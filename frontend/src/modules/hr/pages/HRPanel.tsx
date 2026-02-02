@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../../../shared/api/client'
+import { buildingsService, roomsService } from '../../../shared/services/rooms.service'
 
 type HRRequest = {
   id: number
@@ -38,7 +39,11 @@ export function HRPanel() {
     birthday: '',
     uses_it_equipment: false,
     pass_number: '',
+    room_id: '',
   })
+  const [buildings, setBuildings] = useState<Array<{ id: string; name: string }>>([])
+  const [rooms, setRooms] = useState<Array<{ id: string; name: string; building_name?: string }>>([])
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('')
 
   const loadData = async () => {
     setLoading(true)
@@ -61,9 +66,43 @@ export function HRPanel() {
     }
   }
 
+  const loadBuildings = async () => {
+    try {
+      const data = await buildingsService.getBuildings(true)
+      setBuildings(data)
+    } catch (err) {
+      console.error('Ошибка загрузки зданий:', err)
+    }
+  }
+
+  const loadRooms = async (buildingId: string) => {
+    try {
+      const data = await roomsService.getRooms(buildingId, true)
+      setRooms(data)
+    } catch (err) {
+      console.error('Ошибка загрузки кабинетов:', err)
+      setRooms([])
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (isModalOpen) {
+      loadBuildings()
+    }
+  }, [isModalOpen])
+
+  useEffect(() => {
+    if (selectedBuildingId) {
+      loadRooms(selectedBuildingId)
+      setNewEmployee((p) => ({ ...p, room_id: '' }))
+    } else {
+      setRooms([])
+    }
+  }, [selectedBuildingId])
 
   const filteredEmployees = employees.filter((e) => {
     const q = fireEmployeeSearch.trim().toLowerCase()
@@ -96,6 +135,7 @@ export function HRPanel() {
         birthday: newEmployee.birthday || undefined,
         uses_it_equipment: newEmployee.uses_it_equipment,
         pass_number: newEmployee.pass_number || undefined,
+        room_id: newEmployee.room_id || undefined,
       }
       const employee = await apiPost<Employee>('/hr/employees/', payload)
       await apiPost<HRRequest>('/hr/hr-requests/', {
@@ -118,7 +158,10 @@ export function HRPanel() {
         birthday: '',
         uses_it_equipment: false,
         pass_number: '',
+        room_id: '',
       })
+      setSelectedBuildingId('')
+      setRooms([])
       setHireDate('')
       await loadData()
     } catch (err) {
@@ -294,6 +337,20 @@ export function HRPanel() {
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Номер пропуска</label>
                 <input className="glass-input w-full px-4 py-3 text-sm" placeholder="00001" value={newEmployee.pass_number} onChange={(e) => setNewEmployee((p) => ({ ...p, pass_number: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Здание</label>
+                <select className="glass-input w-full px-4 py-3 text-sm" value={selectedBuildingId} onChange={(e) => setSelectedBuildingId(e.target.value)}>
+                  <option value="" className="bg-dark-800">Выберите здание</option>
+                  {buildings.map((b) => <option key={b.id} value={b.id} className="bg-dark-800">{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Кабинет</label>
+                <select className="glass-input w-full px-4 py-3 text-sm" value={newEmployee.room_id} onChange={(e) => setNewEmployee((p) => ({ ...p, room_id: e.target.value }))} disabled={!selectedBuildingId}>
+                  <option value="" className="bg-dark-800">Выберите кабинет</option>
+                  {rooms.map((r) => <option key={r.id} value={r.id} className="bg-dark-800">{r.name} {r.building_name ? `(${r.building_name})` : ''}</option>)}
+                </select>
               </div>
               <div className="flex items-center md:col-span-2">
                 <label className="flex items-center gap-2 cursor-pointer">
