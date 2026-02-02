@@ -20,6 +20,8 @@ const ROLE_LABELS: Record<string, string> = {
   hr: 'HR-специалист',
   user: 'Пользователь',
   viewer: 'Просмотр',
+  it_specialist: 'ИТ-специалист',
+  employee: 'Сотрудник',
 }
 
 const MODULE_LABELS: Record<string, string> = {
@@ -27,6 +29,14 @@ const MODULE_LABELS: Record<string, string> = {
   it: 'IT',
   tasks: 'Задачи',
   portal: 'Портал',
+}
+
+// Роли для каждого модуля
+const MODULE_ROLES: Record<string, string[]> = {
+  hr: ['admin', 'hr', 'employee'],
+  it: ['admin', 'it_specialist', 'employee'],
+  tasks: ['admin', 'employee'],
+  portal: ['admin', 'user'],
 }
 
 export function UsersPage() {
@@ -347,7 +357,7 @@ export function UsersPage() {
                   <div key={module} className="bg-dark-700/30 rounded-xl p-4">
                     <div className="text-sm font-medium text-white mb-2">{moduleLabel}</div>
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(ROLE_LABELS).map(([role, roleLabel]) => (
+                      {(MODULE_ROLES[module] || []).map((role) => (
                         <button
                           key={role}
                           type="button"
@@ -358,7 +368,7 @@ export function UsersPage() {
                               : 'bg-dark-700/50 border border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500'
                           }`}
                         >
-                          {roleLabel}
+                          {ROLE_LABELS[role] || role}
                         </button>
                       ))}
                     </div>
