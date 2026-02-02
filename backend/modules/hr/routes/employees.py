@@ -111,3 +111,56 @@ def delete_employee(
 
     log_action(db, _audit_user(user), "delete", "employee", f"id={employee.id}")
     return {"detail": "Сотрудник помечен как dismissed"}
+
+
+@router.get(
+    "/{employee_id}/card",
+    dependencies=[Depends(require_roles(["hr", "it", "manager"]))],
+)
+def get_employee_card(
+    employee_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Получить карточку сотрудника с расширенной информацией"""
+    from backend.modules.hr.models.position import Position
+    from backend.modules.it.models import Room, Building
+
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+
+    position_name = None
+    if employee.position_id:
+        position = db.query(Position).filter(Position.id == employee.position_id).first()
+        if position:
+            position_name = position.name
+
+    department_name = None
+    if employee.department_id:
+        department = db.query(Department).filter(Department.id == employee.department_id).first()
+        if department:
+            department_name = department.name
+
+    room_name = None
+    building_name = None
+    if employee.room_id:
+        room = db.query(Room).filter(Room.id == employee.room_id).first()
+        if room:
+            room_name = room.name
+            if room.building_id:
+                building = db.query(Building).filter(Building.id == room.building_id).first()
+                if building:
+                    building_name = building.name
+
+    return {
+        "id": employee.id,
+        "full_name": employee.full_name,
+        "position_name": position_name,
+        "department_name": department_name,
+        "room_name": room_name,
+        "room_id": str(employee.room_id) if employee.room_id else None,
+        "building_name": building_name,
+        "internal_phone": employee.internal_phone,
+        "external_phone": employee.external_phone,
+        "email": employee.email,
+    }

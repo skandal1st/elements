@@ -134,6 +134,19 @@ type EquipmentItem = {
   owner_name?: string;
 };
 
+type EmployeeCard = {
+  id: number;
+  full_name: string;
+  position_name?: string | null;
+  department_name?: string | null;
+  room_name?: string | null;
+  room_id?: string | null;
+  building_name?: string | null;
+  internal_phone?: string | null;
+  external_phone?: string | null;
+  email?: string | null;
+};
+
 const CATEGORIES = ["hardware", "software", "network", "hr", "other"];
 const PRIORITIES = ["low", "medium", "high", "critical"];
 const STATUSES = [
@@ -278,6 +291,7 @@ export function TicketsPage() {
     priority: "medium",
     room_id: "",
     equipment_id: "",
+    for_employee_id: "",
   });
 
   const [history, setHistory] = useState<TicketHistoryItem[]>([]);
@@ -303,6 +317,13 @@ export function TicketsPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("employee");
   const [users, setUsers] = useState<UserOption[]>([]);
+
+  // Новые state для работы с сотрудниками
+  const [createEmployees, setCreateEmployees] = useState<EmployeeOption[]>([]);
+  const [createEmployeeSearch, setCreateEmployeeSearch] = useState("");
+  const [createEmployeesLoading, setCreateEmployeesLoading] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeCard | null>(null);
+  const [createRoomEquipment, setCreateRoomEquipment] = useState<EquipmentItem[]>([]);
 
   // Deep-link: /it/tickets?open=<ticketId>
   const pendingOpenRef = useRef<string | null>(null);
@@ -583,6 +604,19 @@ export function TicketsPage() {
   }, [editForm.room_id, detailId, canEdit]);
 
   useEffect(() => {
+    if (form.for_employee_id && userRole === "it") {
+      const employeeId = parseInt(form.for_employee_id);
+      if (!isNaN(employeeId)) {
+        loadEmployeeCard(employeeId);
+        loadEmployeeEquipment(employeeId);
+      }
+    } else {
+      setSelectedEmployee(null);
+      setCreateRoomEquipment([]);
+    }
+  }, [form.for_employee_id, userRole]);
+
+  useEffect(() => {
     if (editForm.equipment_id && detailId && canEdit) {
       loadConsumables(editForm.equipment_id);
     } else if (detailId && canEdit) {
@@ -739,6 +773,48 @@ export function TicketsPage() {
     }
   };
 
+  const loadCreateEmployees = async (q?: string) => {
+    setCreateEmployeesLoading(true);
+    try {
+      const query = (q ?? createEmployeeSearch).trim();
+      const url = query
+        ? `/hr/employees/?q=${encodeURIComponent(query)}`
+        : "/hr/employees/";
+      const data = await apiGet<EmployeeOption[]>(url);
+      setCreateEmployees(data);
+    } catch (err) {
+      console.error("Ошибка загрузки сотрудников:", err);
+      setCreateEmployees([]);
+    } finally {
+      setCreateEmployeesLoading(false);
+    }
+  };
+
+  const loadEmployeeCard = async (employeeId: number) => {
+    try {
+      const data = await apiGet<EmployeeCard>(`/hr/employees/${employeeId}/card`);
+      setSelectedEmployee(data);
+
+      // Автозаполнение room_id
+      if (data.room_id) {
+        setForm((p) => ({ ...p, room_id: data.room_id! }));
+      }
+    } catch (err) {
+      console.error("Ошибка загрузки карточки:", err);
+      setSelectedEmployee(null);
+    }
+  };
+
+  const loadEmployeeEquipment = async (employeeId: number) => {
+    try {
+      const data = await apiGet<EquipmentItem[]>(`/it/equipment/employee/${employeeId}`);
+      setCreateRoomEquipment(data);
+    } catch (err) {
+      console.error("Ошибка загрузки оборудования:", err);
+      setCreateRoomEquipment([]);
+    }
+  };
+
   const handleSearch = () => {
     setPage(1);
     load();
@@ -752,15 +828,20 @@ export function TicketsPage() {
       priority: "medium",
       room_id: "",
       equipment_id: "",
+      for_employee_id: "",
     });
     setSelectedBuildingId("");
     setSelectedRoomId("");
     setRooms([]);
     setRoomEquipment([]);
+    setSelectedEmployee(null);
+    setCreateRoomEquipment([]);
+    setCreateEmployeeSearch("");
     setModalOpen(true);
 
     if (userRole === "it") {
       await loadBuildings();
+      await loadCreateEmployees();
     } else {
       await loadEmployeeRoom();
     }
@@ -780,6 +861,12 @@ export function TicketsPage() {
         priority: form.priority,
         source: "web",
       };
+
+      // Добавляем for_employee_id если выбран
+      if (userRole === "it" && form.for_employee_id) {
+        payload.for_employee_id = parseInt(form.for_employee_id);
+      }
+
       if (form.room_id) payload.room_id = form.room_id;
       if (form.equipment_id) payload.equipment_id = form.equipment_id;
 
@@ -1288,6 +1375,9 @@ export function TicketsPage() {
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Статус
                 </th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Сотрудник
+                </th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24"></th>
               </tr>
             </thead>
@@ -1323,6 +1413,9 @@ export function TicketsPage() {
                     >
                       {statusLabel[t.status] ?? t.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-4 text-gray-400">
+                    {t.employee_name || "—"}
                   </td>
                   <td className="px-4 py-4">
                     <button
@@ -1369,6 +1462,103 @@ export function TicketsPage() {
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
             />
 
+            {userRole === "it" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">
+                  Сотрудник (необязательно)
+                </label>
+                <div className="relative">
+                  <input
+                    className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+                    placeholder="Поиск сотрудника..."
+                    value={createEmployeeSearch}
+                    onChange={(e) => {
+                      setCreateEmployeeSearch(e.target.value);
+                      loadCreateEmployees(e.target.value);
+                    }}
+                  />
+                  {createEmployeesLoading && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                      Загрузка...
+                    </span>
+                  )}
+                </div>
+
+                {createEmployees.length > 0 && !form.for_employee_id && (
+                  <div className="max-h-48 overflow-y-auto bg-dark-700/50 border border-dark-600/50 rounded-xl">
+                    {createEmployees.map((emp) => (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        className="w-full px-4 py-2.5 text-left text-white hover:bg-dark-600/50 transition-colors"
+                        onClick={() => {
+                          setForm((p) => ({ ...p, for_employee_id: String(emp.id) }));
+                          setCreateEmployeeSearch(emp.full_name);
+                          setCreateEmployees([]);
+                        }}
+                      >
+                        <div className="font-medium">{emp.full_name}</div>
+                        {emp.email && <div className="text-xs text-gray-500">{emp.email}</div>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {form.for_employee_id && (
+                  <button
+                    type="button"
+                    className="text-sm text-accent-purple hover:text-accent-purple/80"
+                    onClick={() => {
+                      setForm((p) => ({ ...p, for_employee_id: "", room_id: "", equipment_id: "" }));
+                      setCreateEmployeeSearch("");
+                      setSelectedEmployee(null);
+                      setCreateRoomEquipment([]);
+                    }}
+                  >
+                    Очистить выбор
+                  </button>
+                )}
+              </div>
+            )}
+
+            {userRole === "it" && selectedEmployee && (
+              <div className="p-4 bg-dark-700/30 border border-dark-600/50 rounded-xl space-y-2">
+                <div className="text-sm font-medium text-white">{selectedEmployee.full_name}</div>
+                {selectedEmployee.position_name && (
+                  <div className="text-xs text-gray-400">{selectedEmployee.position_name}</div>
+                )}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {selectedEmployee.department_name && (
+                    <div>
+                      <span className="text-gray-500">Отдел:</span>{" "}
+                      <span className="text-gray-300">{selectedEmployee.department_name}</span>
+                    </div>
+                  )}
+                  {selectedEmployee.room_name && (
+                    <div>
+                      <span className="text-gray-500">Кабинет:</span>{" "}
+                      <span className="text-gray-300">
+                        {selectedEmployee.room_name}
+                        {selectedEmployee.building_name && ` (${selectedEmployee.building_name})`}
+                      </span>
+                    </div>
+                  )}
+                  {selectedEmployee.internal_phone && (
+                    <div>
+                      <span className="text-gray-500">Телефон:</span>{" "}
+                      <span className="text-gray-300">{selectedEmployee.internal_phone}</span>
+                    </div>
+                  )}
+                  {selectedEmployee.email && (
+                    <div>
+                      <span className="text-gray-500">Email:</span>{" "}
+                      <span className="text-gray-300">{selectedEmployee.email}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <select
                 className="px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
@@ -1395,7 +1585,7 @@ export function TicketsPage() {
               </select>
             </div>
 
-            {userRole === "it" && (
+            {userRole === "it" && !form.for_employee_id && (
               <>
                 <select
                   className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
@@ -1430,14 +1620,14 @@ export function TicketsPage() {
               </>
             )}
 
-            {form.room_id && (
+            {(form.room_id || (userRole === "it" && form.for_employee_id && createRoomEquipment.length > 0)) && (
               <select
                 className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
                 value={form.equipment_id}
                 onChange={(e) => setForm((p) => ({ ...p, equipment_id: e.target.value }))}
               >
                 <option value="" className="bg-dark-800">Выберите оборудование (необязательно)</option>
-                {roomEquipment.map((eq) => (
+                {(userRole === "it" && form.for_employee_id ? createRoomEquipment : roomEquipment).map((eq) => (
                   <option key={eq.id} value={eq.id} className="bg-dark-800">
                     {eq.name} ({eq.inventory_number}){eq.owner_name ? ` — ${eq.owner_name}` : ""}
                   </option>

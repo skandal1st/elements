@@ -112,6 +112,56 @@ def list_equipment(
 
 
 @router.get(
+    "/employee/{employee_id}",
+    response_model=List[EquipmentOut],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist"]))],
+)
+def list_employee_equipment(
+    employee_id: int,
+    db: Session = Depends(get_db),
+) -> List[dict]:
+    """Получить оборудование сотрудника по employee_id"""
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+
+    equipment_list = (
+        db.query(Equipment)
+        .filter(Equipment.current_owner_id == employee_id)
+        .all()
+    )
+
+    # Собираем все room_id для одного запроса
+    room_ids = [eq.room_id for eq in equipment_list if eq.room_id]
+    rooms_map = {}
+    if room_ids:
+        rooms = db.query(Room).filter(Room.id.in_(room_ids)).all()
+        building_ids = [r.building_id for r in rooms if r.building_id]
+        buildings_map = {}
+        if building_ids:
+            buildings = db.query(Building).filter(Building.id.in_(building_ids)).all()
+            buildings_map = {b.id: b.name for b in buildings}
+        rooms_map = {r.id: (r.name, buildings_map.get(r.building_id)) for r in rooms}
+
+    # Формируем результат с обогащенными данными
+    result = []
+    for eq in equipment_list:
+        eq_out = EquipmentOut.model_validate(eq).model_dump()
+
+        if eq.room_id and eq.room_id in rooms_map:
+            room_name, building_name = rooms_map[eq.room_id]
+            eq_out["room_name"] = room_name
+            eq_out["building_name"] = building_name
+
+        eq_out["owner_name"] = employee.full_name
+        eq_out["owner_email"] = employee.email
+
+        result.append(eq_out)
+
+    return result
+
+
+@router.get(
     "/my",
     response_model=List[EquipmentOut],
     dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],

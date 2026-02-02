@@ -21,6 +21,7 @@ class TicketCreate(TicketBase):
     source: str = "web"  # web, email, api, telegram
     email_sender: Optional[str] = None
     email_message_id: Optional[str] = None
+    for_employee_id: Optional[int] = None  # ID сотрудника для заявки (только для IT)
 
 
 class TicketConsumableItem(BaseModel):

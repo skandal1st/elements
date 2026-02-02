@@ -50,3 +50,16 @@ build/
 
 #MD
 *.md
+# Но разрешить важные документы
+!README.md
+!CLAUDE.md
+!ARCHITECTURE.md
+!DEPLOYMENT.md
+!QUICK_DEPLOY.md
+!CHECK_BEFORE_DEPLOY.md
+!DOCKER_HUB_SETUP.md
+!TESTING_CHECKLIST.md
+!STATIC_ANALYSIS_REPORT.md
+
+# Claude Code cache
+.claude/

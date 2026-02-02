@@ -412,11 +412,27 @@ async def create_ticket(
     if not data.get("source"):
         data["source"] = "web"
 
-    # Если room_id не указан, пытаемся получить кабинет сотрудника
-    if not data.get("room_id"):
-        employee = db.query(Employee).filter(Employee.user_id == user.id).first()
-        if employee and employee.room_id:
+    # Обработка for_employee_id
+    for_employee_id = data.pop("for_employee_id", None)
+
+    if for_employee_id:
+        # IT создает заявку для сотрудника
+        employee = db.query(Employee).filter(Employee.id == for_employee_id).first()
+        if not employee:
+            raise HTTPException(status_code=404, detail="Сотрудник не найден")
+
+        data["employee_id"] = employee.id
+
+        # Автозаполнение room_id, если не указан
+        if not data.get("room_id") and employee.room_id:
             data["room_id"] = employee.room_id
+    else:
+        # Обычный пользователь создает для себя
+        employee = db.query(Employee).filter(Employee.user_id == user.id).first()
+        if employee:
+            data["employee_id"] = employee.id
+            if not data.get("room_id") and employee.room_id:
+                data["room_id"] = employee.room_id
 
     t = Ticket(**data)
     db.add(t)
