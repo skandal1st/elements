@@ -795,9 +795,15 @@ export function TicketsPage() {
       const data = await apiGet<EmployeeCard>(`/hr/employees/${employeeId}/card`);
       setSelectedEmployee(data);
 
-      // Автозаполнение room_id
+      // Автозаполнение room_id (заменяет любой предыдущий выбор)
       if (data.room_id) {
-        setForm((p) => ({ ...p, room_id: data.room_id! }));
+        setForm((p) => ({ ...p, room_id: data.room_id!, equipment_id: "" }));
+        // Очищаем ручной выбор здания/кабинета
+        setSelectedBuildingId("");
+        setSelectedRoomId("");
+      } else {
+        // Если у сотрудника нет кабинета, очищаем room_id
+        setForm((p) => ({ ...p, room_id: "", equipment_id: "" }));
       }
     } catch (err) {
       console.error("Ошибка загрузки карточки:", err);
@@ -867,8 +873,9 @@ export function TicketsPage() {
         payload.for_employee_id = parseInt(form.for_employee_id);
       }
 
-      if (form.room_id) payload.room_id = form.room_id;
-      if (form.equipment_id) payload.equipment_id = form.equipment_id;
+      // Добавляем только непустые значения
+      if (form.room_id && form.room_id !== "") payload.room_id = form.room_id;
+      if (form.equipment_id && form.equipment_id !== "") payload.equipment_id = form.equipment_id;
 
       await apiPost("/it/tickets/", payload);
       setModalOpen(false);
@@ -1492,9 +1499,14 @@ export function TicketsPage() {
                         type="button"
                         className="w-full px-4 py-2.5 text-left text-white hover:bg-dark-600/50 transition-colors"
                         onClick={() => {
-                          setForm((p) => ({ ...p, for_employee_id: String(emp.id) }));
+                          // Очищаем предыдущий выбор кабинета/оборудования
+                          setForm((p) => ({ ...p, for_employee_id: String(emp.id), room_id: "", equipment_id: "" }));
                           setCreateEmployeeSearch(emp.full_name);
                           setCreateEmployees([]);
+                          // Очищаем ручной выбор здания/кабинета
+                          setSelectedBuildingId("");
+                          setSelectedRoomId("");
+                          setRoomEquipment([]);
                         }}
                       >
                         <div className="font-medium">{emp.full_name}</div>

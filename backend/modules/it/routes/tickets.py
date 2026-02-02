@@ -423,15 +423,17 @@ async def create_ticket(
 
         data["employee_id"] = employee.id
 
-        # Автозаполнение room_id, если не указан
-        if not data.get("room_id") and employee.room_id:
+        # Автозаполнение room_id, если не указан или пустая строка
+        room_id_value = data.get("room_id")
+        if (not room_id_value or room_id_value == "") and employee.room_id:
             data["room_id"] = employee.room_id
     else:
         # Обычный пользователь создает для себя
         employee = db.query(Employee).filter(Employee.user_id == user.id).first()
         if employee:
             data["employee_id"] = employee.id
-            if not data.get("room_id") and employee.room_id:
+            room_id_value = data.get("room_id")
+            if (not room_id_value or room_id_value == "") and employee.room_id:
                 data["room_id"] = employee.room_id
 
     t = Ticket(**data)
