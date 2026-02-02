@@ -1439,7 +1439,7 @@ export function TicketsPage() {
               ))}
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
                     Заявки не найдены
                   </td>
                 </tr>

@@ -780,12 +780,21 @@ class TelegramService:
         db: Session,
         ticket_id: UUID,
         ticket_title: str,
+        source: str = "web",  # NEW: источник заявки
     ) -> int:
-        """Уведомить IT-специалистов о новой заявке"""
+        """Уведомить IT-специалистов о новой заявке
+
+        Для внешних источников (email, rocketchat): уведомляет всех IT-специалистов
+        Для внутренних источников (web, telegram): уведомления отправляются только при назначении
+        """
         if not self._is_enabled(db):
             return 0
 
-        # Получаем всех IT-специалистов и админов с Telegram
+        # Для внутренних источников уведомления отправляются только через notify_ticket_assigned
+        if source not in ["email", "rocketchat"]:
+            return 0
+
+        # Получаем всех IT-специалистов с Telegram
         users = (
             db.query(User)
             .filter(
@@ -803,7 +812,7 @@ class TelegramService:
             if it_role in ["admin", "it_specialist"] or user.is_superuser:
                 it_users.append(user)
 
-        text = f'*🆕 Новая заявка*\n\nПоступила новая заявка: "{ticket_title}"'
+        text = f'*🆕 Новая заявка*\n\nПоступила новая заявка: "{ticket_title}"\nИсточник: {source}'
         url = self._ticket_url(db, ticket_id)
         if url:
             reply_markup = {
@@ -846,6 +855,58 @@ class TelegramService:
             f'Вам назначена заявка: "{ticket_title}"',
             ticket_id,
         )
+
+    def get_it_specialists(self, db: Session) -> List[User]:
+        """Получить всех IT-специалистов и админов"""
+        users = db.query(User).all()
+
+        it_users = []
+        for user in users:
+            roles = user.roles or {}
+            it_role = roles.get("it", "employee")
+            if it_role in ["admin", "it_specialist"] or user.is_superuser:
+                it_users.append(user)
+
+        return it_users
+
+    def auto_assign_to_it_specialist(self, db: Session, ticket) -> Optional[User]:
+        """Автоматически назначить заявку на наименее загруженного IT-специалиста
+
+        Возвращает назначенного специалиста или None если специалистов нет.
+        """
+        from backend.modules.it.models.ticket import Ticket
+        from sqlalchemy import func
+
+        it_specialists = self.get_it_specialists(db)
+
+        if not it_specialists:
+            print("[Telegram] Нет доступных IT-специалистов для автоназначения")
+            return None
+
+        # Подсчитываем открытые заявки для каждого специалиста
+        workload = {}
+        for specialist in it_specialists:
+            open_count = (
+                db.query(func.count(Ticket.id))
+                .filter(
+                    Ticket.assignee_id == specialist.id,
+                    Ticket.status.in_(["new", "in_progress"])
+                )
+                .scalar()
+            )
+            workload[specialist.id] = open_count or 0
+
+        # Выбираем специалиста с минимальной нагрузкой
+        least_loaded_id = min(workload, key=workload.get)
+        assignee = db.query(User).filter(User.id == least_loaded_id).first()
+
+        if assignee:
+            ticket.assignee_id = assignee.id
+            db.commit()
+            db.refresh(ticket)
+            print(f"[Telegram] Заявка #{str(ticket.id)[:8]} назначена на {assignee.email} (нагрузка: {workload[least_loaded_id]})")
+
+        return assignee
 
     async def notify_ticket_status_changed(
         self,

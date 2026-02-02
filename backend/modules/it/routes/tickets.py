@@ -444,7 +444,7 @@ async def create_ticket(
     # Уведомление IT-специалистов в Telegram
     try:
         from backend.modules.it.services.telegram_service import telegram_service
-        await telegram_service.notify_new_ticket(db, t.id, t.title)
+        await telegram_service.notify_new_ticket(db, t.id, t.title, source="web")
     except Exception:
         pass  # Не блокируем создание заявки при ошибке уведомления
 

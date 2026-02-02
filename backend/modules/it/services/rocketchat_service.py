@@ -314,12 +314,19 @@ class RocketChatService:
 
         short_id = str(ticket.id)[:8]
 
-        # Уведомляем IT-специалистов в Telegram
+        # NEW: Автоназначение на IT-специалиста
         try:
             from backend.modules.it.services.telegram_service import telegram_service
-            await telegram_service.notify_new_ticket(db, ticket.id, ticket.title)
-        except Exception:
-            pass
+            assignee = telegram_service.auto_assign_to_it_specialist(db, ticket)
+
+            # Уведомляем IT-специалистов в Telegram
+            await telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="rocketchat")
+
+            # Уведомляем назначенного специалиста
+            if assignee and assignee.telegram_id:
+                await telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title)
+        except Exception as e:
+            print(f"[RocketChat] Ошибка автоназначения/уведомлений: {e}")
 
         url = self._ticket_url(db, ticket.id)
         if url:

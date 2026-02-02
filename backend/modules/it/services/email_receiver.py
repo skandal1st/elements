@@ -350,6 +350,37 @@ class EmailReceiverService:
         db.flush()
 
         print(f"[Email Receiver] Тикет создан: #{str(ticket.id)[:8]} (статус: {status})")
+
+        # NEW: Автоназначение на IT-специалиста
+        try:
+            from backend.modules.it.services.telegram_service import telegram_service
+            assignee = telegram_service.auto_assign_to_it_specialist(db, ticket)
+
+            # Уведомление IT-специалистов в Telegram
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(
+                    telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="email")
+                )
+            else:
+                loop.run_until_complete(
+                    telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="email")
+                )
+
+            # Уведомление назначенного специалиста
+            if assignee and assignee.telegram_id:
+                if loop.is_running():
+                    asyncio.create_task(
+                        telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title)
+                    )
+                else:
+                    loop.run_until_complete(
+                        telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title)
+                    )
+        except Exception as e:
+            print(f"[Email Receiver] Ошибка отправки уведомлений: {e}")
+
         return ticket
 
     def _create_comment_from_email(
