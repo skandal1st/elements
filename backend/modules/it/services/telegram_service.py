@@ -878,7 +878,6 @@ class TelegramService:
 
         Возвращает назначенного специалиста или None если специалистов нет.
         """
-        from backend.modules.it.models.ticket import Ticket
         from sqlalchemy import func
 
         print(f"[Telegram] 🔄 Автораспределение для тикета #{str(ticket.id)[:8]} (source={ticket.source})")
