@@ -859,14 +859,18 @@ class TelegramService:
     def get_it_specialists(self, db: Session) -> List[User]:
         """Получить всех IT-специалистов и админов"""
         users = db.query(User).all()
+        print(f"[Telegram] Всего пользователей в системе: {len(users)}")
 
         it_users = []
         for user in users:
             roles = user.roles or {}
             it_role = roles.get("it", "employee")
+            print(f"[Telegram] Проверка пользователя {user.email}: роль IT={it_role}, суперпользователь={user.is_superuser}")
             if it_role in ["admin", "it_specialist"] or user.is_superuser:
                 it_users.append(user)
+                print(f"[Telegram] ✅ {user.email} добавлен как IT-специалист")
 
+        print(f"[Telegram] Найдено IT-специалистов: {len(it_users)}")
         return it_users
 
     def auto_assign_to_it_specialist(self, db: Session, ticket) -> Optional[User]:
@@ -876,6 +880,8 @@ class TelegramService:
         """
         from backend.modules.it.models.ticket import Ticket
         from sqlalchemy import func
+
+        print(f"[Telegram] 🔄 Автораспределение для тикета #{str(ticket.id)[:8]} (source={ticket.source})")
 
         it_specialists = self.get_it_specialists(db)
 

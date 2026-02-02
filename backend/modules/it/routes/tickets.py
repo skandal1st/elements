@@ -441,11 +441,19 @@ async def create_ticket(
     db.commit()
     db.refresh(t)
 
-    # Уведомление IT-специалистов в Telegram
+    # Автораспределение на IT-специалиста (для всех тикетов)
     try:
         from backend.modules.it.services.telegram_service import telegram_service
+        assignee = telegram_service.auto_assign_to_it_specialist(db, t)
+
+        # Уведомление IT-специалистов в Telegram
         await telegram_service.notify_new_ticket(db, t.id, t.title, source="web")
-    except Exception:
+
+        # Уведомление назначенного специалиста
+        if assignee and assignee.telegram_id:
+            await telegram_service.notify_ticket_assigned(db, assignee.id, t.id, t.title)
+    except Exception as e:
+        print(f"[Tickets] Ошибка автораспределения/уведомлений: {e}")
         pass  # Не блокируем создание заявки при ошибке уведомления
 
     # Уведомление в RocketChat (только если тикет не из RocketChat)
