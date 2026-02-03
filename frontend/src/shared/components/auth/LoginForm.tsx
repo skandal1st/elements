@@ -74,7 +74,7 @@ export function LoginForm() {
                   autoComplete="email"
                   required
                   className="w-full pl-12 pr-4 py-3 bg-dark-700/50 border border-dark-500/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 focus:ring-1 focus:ring-accent-purple/30 transition-all"
-                  placeholder="admin@elements.local"
+                  placeholder="Введите email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -154,33 +154,11 @@ export function LoginForm() {
               )}
             </button>
           </form>
-
-          {/* Divider */}
-          <div className="my-6 flex items-center gap-4">
-            <div className="flex-1 h-px bg-dark-600"></div>
-            <span className="text-sm text-gray-500">или</span>
-            <div className="flex-1 h-px bg-dark-600"></div>
-          </div>
-
-          {/* Demo credentials */}
-          <div className="p-4 rounded-xl bg-dark-700/30 border border-dark-600/50">
-            <p className="text-xs text-gray-500 mb-2">Демо данные для входа:</p>
-            <div className="space-y-1 text-sm">
-              <p className="text-gray-400">
-                <span className="text-gray-500">Email:</span>{" "}
-                <code className="text-accent-purple">admin@elements.local</code>
-              </p>
-              <p className="text-gray-400">
-                <span className="text-gray-500">Пароль:</span>{" "}
-                <code className="text-accent-purple">admin123</code>
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-8">
-          Elements Platform v1.0 &copy; 2024
+          Elements Platform v0.84b &copy; 2026
         </p>
       </div>
     </div>
