@@ -191,15 +191,15 @@ class TelegramService:
         keyboard_rows = []
         for t in tickets:
             short_id = str(t.id)[:8]
-            lines.append(f"• #{short_id} [{t.status}] {t.title}")
+            title_display = (t.title or "").strip() or f"Заявка #{short_id}"
+            lines.append(f"• {title_display} [#{short_id}]")
 
+            btn_text = f"📋 {title_display[:40]}{'…' if len(title_display) > 40 else ''}"
             url = self._ticket_url(db, t.id)
             if url:
-                keyboard_rows.append([{"text": f"📋 Открыть #{short_id}", "url": url}])
+                keyboard_rows.append([{"text": btn_text, "url": url}])
             else:
-                keyboard_rows.append([{"text": f"📋 Открыть #{short_id}", "callback_data": f"ticket_view_{t.id}"}])
-
-            keyboard_rows.append([{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{t.id}"}])
+                keyboard_rows.append([{"text": btn_text, "callback_data": f"ticket_view_{t.id}"}])
 
         nav = []
         if page > 0:
@@ -520,7 +520,6 @@ class TelegramService:
                         text,
                         reply_markup={
                             "inline_keyboard": [
-                                [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
                                 [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
                             ]
                         },
@@ -758,7 +757,6 @@ class TelegramService:
                 reply_markup = {
                     "inline_keyboard": [
                         [{"text": "📋 Открыть заявку", "url": url}],
-                        [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
                         [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
                     ]
                 }
@@ -766,7 +764,6 @@ class TelegramService:
                 reply_markup = {
                     "inline_keyboard": [
                         [{"text": "📋 Открыть заявку", "callback_data": f"ticket_view_{ticket_id}"}],
-                        [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
                         [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
                     ]
                 }
@@ -818,7 +815,6 @@ class TelegramService:
             reply_markup = {
                 "inline_keyboard": [
                     [{"text": "📋 Открыть заявку", "url": url}],
-                    [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
                     [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
                 ]
             }
@@ -826,7 +822,6 @@ class TelegramService:
             reply_markup = {
                 "inline_keyboard": [
                     [{"text": "📋 Открыть заявку", "callback_data": f"ticket_view_{ticket_id}"}],
-                    [{"text": "➕ Добавить задачу", "callback_data": f"ticket_task_{ticket_id}"}],
                     [{"text": "📌 Все активные тикеты", "callback_data": "tickets_active_0"}],
                 ]
             }
