@@ -41,7 +41,7 @@ router = APIRouter(prefix="/equipment", tags=["equipment"])
 @router.get(
     "/",
     response_model=List[EquipmentOut],
-    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee", "auditor"]))],
 )
 def list_equipment(
     db: Session = Depends(get_db),
@@ -348,7 +348,7 @@ def sync_equipment_from_scan(
 @router.get(
     "/{equipment_id}",
     response_model=EquipmentOut,
-    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee", "auditor"]))],
 )
 def get_equipment(
     equipment_id: UUID,

@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const links = [
   { to: "/it/equipment", label: "Оборудование" },
@@ -13,10 +14,40 @@ const links = [
 ];
 
 export function ITLayout() {
+  const [itRole, setItRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1] || ""));
+      const roles = payload.roles || {};
+      setItRole(roles.it || null);
+    } catch {
+      // ignore token parse errors
+    }
+  }, []);
+
+  const visibleLinks = links.filter(({ to }) => {
+    if (itRole === "auditor") {
+      // Аудитор видит только оборудование, заявки, заявки на оборудование и отчёты
+      if (
+        to === "/it/knowledge" ||
+        to === "/it/consumables" ||
+        to === "/it/licenses" ||
+        to === "/it/dictionaries" ||
+        to === "/it/telegram"
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-4">
       <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
-        {links.map(({ to, label }) => (
+        {visibleLinks.map(({ to, label }) => (
           <NavLink
             key={to}
             to={to}
