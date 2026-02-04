@@ -99,7 +99,7 @@ function SearchableSelect<T>({
   const [loading, setLoading] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState<string>("");
   const containerRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchOptions = useCallback(
     async (q: string) => {
