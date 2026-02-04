@@ -39,7 +39,8 @@ class SoftwareLicenseUpdate(BaseModel):
 
 class LicenseAssignmentBase(BaseModel):
     license_id: UUID
-    user_id: Optional[UUID] = None
+    employee_id: Optional[int] = None
+    user_id: Optional[UUID] = None  # legacy
     equipment_id: Optional[UUID] = None
     is_saas: bool = False  # SaaS/облачный сервис - без привязки к оборудованию
 
@@ -54,6 +55,8 @@ class LicenseAssignmentOut(LicenseAssignmentBase):
     released_at: Optional[datetime] = None
     
     # Дополнительные поля из JOIN
+    employee_name: Optional[str] = None
+    employee_email: Optional[str] = None
     user_name: Optional[str] = None
     user_email: Optional[str] = None
     equipment_name: Optional[str] = None

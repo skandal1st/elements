@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Search, User, Monitor, AlertCircle, Cloud } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { Plus, Search, User, Monitor, AlertCircle, Cloud, ChevronDown } from "lucide-react";
 import {
   apiGet,
   apiPost,
@@ -28,10 +28,13 @@ type SoftwareLicense = {
 type LicenseAssignment = {
   id: string;
   license_id: string;
+  employee_id?: number;
   user_id?: string;
   equipment_id?: string;
   assigned_at: string;
   released_at?: string;
+  employee_name?: string;
+  employee_email?: string;
   user_name?: string;
   user_email?: string;
   equipment_name?: string;
@@ -46,10 +49,10 @@ type Equipment = {
   category: string;
 };
 
-type UserItem = {
-  id: string;
+type EmployeeItem = {
+  id: number;
   full_name: string;
-  email: string;
+  email?: string | null;
 };
 
 const LICENSE_TYPES = [
@@ -67,6 +70,130 @@ const LICENSE_TYPE_LABELS: Record<string, string> = {
   academic: "Академическая",
   other: "Другое",
 };
+
+/** Выпадающий список с поиском прямо внутри */
+function SearchableSelect<T>({
+  label,
+  placeholder,
+  value,
+  onChange,
+  loadOptions,
+  renderOption,
+  getOptionValue,
+  getOptionLabel,
+  emptyMessage,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  loadOptions: (search: string) => Promise<T[]>;
+  renderOption: (item: T) => React.ReactNode;
+  getOptionValue: (item: T) => string;
+  getOptionLabel: (item: T) => string;
+  emptyMessage: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [options, setOptions] = useState<T[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedLabel, setSelectedLabel] = useState<string>("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const fetchOptions = useCallback(
+    async (q: string) => {
+      setLoading(true);
+      try {
+        const data = await loadOptions(q);
+        setOptions(data);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadOptions]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => fetchOptions(search), search ? 300 : 0);
+    debounceRef.current = t;
+    return () => clearTimeout(debounceRef.current);
+  }, [open, search, fetchOptions]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (item: T) => {
+    const v = getOptionValue(item);
+    onChange(v);
+    setSelectedLabel(getOptionLabel(item));
+    setOpen(false);
+    setSearch("");
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-left text-gray-300 hover:border-dark-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+      >
+        <span className={value ? "text-white" : "text-gray-500"}>
+          {value ? selectedLabel || "Выбрано" : placeholder}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-dark-800 border border-dark-600 rounded-xl shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-dark-600">
+            <input
+              type="text"
+              autoFocus
+              placeholder="Поиск..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {loading ? (
+              <div className="py-6 flex justify-center">
+                <div className="w-6 h-6 border-2 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
+              </div>
+            ) : options.length === 0 ? (
+              <p className="py-4 px-4 text-sm text-gray-500 text-center">{emptyMessage}</p>
+            ) : (
+              options.map((item) => {
+                const v = getOptionValue(item);
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => handleSelect(item)}
+                    className={`w-full px-4 py-2.5 text-left text-sm hover:bg-dark-700/80 transition-colors ${
+                      value === v ? "bg-accent-purple/20 text-accent-purple" : "text-gray-300"
+                    }`}
+                  >
+                    {renderOption(item)}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function LicensesPage() {
   const [items, setItems] = useState<SoftwareLicense[]>([]);
@@ -94,37 +221,40 @@ export function LicensesPage() {
     notes: "",
   });
   const [assignForm, setAssignForm] = useState({
-    user_id: "",
+    employee_id: "" as string | number,
     equipment_id: "",
     is_saas: false,
   });
-  const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
-  const [usersList, setUsersList] = useState<UserItem[]>([]);
-  const [assignType, setAssignType] = useState<"equipment" | "user" | "saas">("equipment");
+  const [assignType, setAssignType] = useState<"equipment" | "employee" | "saas">("equipment");
 
-  // Загрузка оборудования (только компьютеры и серверы)
-  const loadEquipment = async () => {
+  // Поиск оборудования (с поиском по имени, инв. номеру)
+  const loadEquipment = useCallback(async (searchQuery = "") => {
     try {
-      const data = await apiGet<Equipment[]>("/it/equipment/");
-      // Фильтруем только компьютеры и серверы
-      const filtered = data.filter(
+      const params = new URLSearchParams();
+      params.set("page_size", "100");
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      const data = await apiGet<Equipment[]>(`/it/equipment/?${params}`);
+      return data.filter(
         (e) => e.category === "computer" || e.category === "server"
       );
-      setEquipmentList(filtered);
     } catch (err) {
       console.error("Ошибка загрузки оборудования:", err);
+      return [];
     }
-  };
+  }, []);
 
-  // Загрузка пользователей
-  const loadUsers = async () => {
+  // Поиск сотрудников
+  const loadEmployees = useCallback(async (searchQuery = "") => {
     try {
-      const data = await apiGet<UserItem[]>("/hr/users/");
-      setUsersList(data);
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      const data = await apiGet<EmployeeItem[]>(`/hr/employees/?${params}`);
+      return data;
     } catch (err) {
-      console.error("Ошибка загрузки пользователей:", err);
+      console.error("Ошибка загрузки сотрудников:", err);
+      return [];
     }
-  };
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -204,7 +334,7 @@ export function LicensesPage() {
   const openAssign = async (lic: SoftwareLicense) => {
     setSelectedLicense(lic);
     setAssignForm({
-      user_id: "",
+      employee_id: "",
       equipment_id: "",
       is_saas: false,
     });
@@ -215,8 +345,6 @@ export function LicensesPage() {
       setAssignType("equipment");
     }
     setAssignModalOpen(true);
-    // Загружаем списки
-    await Promise.all([loadEquipment(), loadUsers()]);
   };
 
   const handleSubmit = async () => {
@@ -255,9 +383,9 @@ export function LicensesPage() {
   const handleAssign = async () => {
     if (!selectedLicense) return;
     
-    // Для SaaS не нужно указывать пользователя или оборудование
-    if (assignType !== "saas" && !assignForm.user_id && !assignForm.equipment_id) {
-      setError("Укажите пользователя или оборудование");
+    // Для SaaS не нужно указывать сотрудника или оборудование
+    if (assignType !== "saas" && !assignForm.employee_id && !assignForm.equipment_id) {
+      setError("Укажите сотрудника или оборудование");
       return;
     }
 
@@ -269,8 +397,8 @@ export function LicensesPage() {
       
       if (assignType === "equipment" && assignForm.equipment_id) {
         payload.equipment_id = assignForm.equipment_id;
-      } else if (assignType === "user" && assignForm.user_id) {
-        payload.user_id = assignForm.user_id;
+      } else if (assignType === "employee" && assignForm.employee_id) {
+        payload.employee_id = Number(assignForm.employee_id);
       } else if (assignType === "saas") {
         // Для SaaS передаём специальный флаг
         payload.is_saas = true;
@@ -697,13 +825,13 @@ export function LicensesPage() {
                       className="bg-dark-700/30 rounded-xl p-3 flex justify-between items-center"
                     >
                       <div className="text-sm">
-                        {assignment.user_name && (
+                        {(assignment.employee_name || assignment.user_name) && (
                           <div className="flex items-center gap-2">
                             <User className="w-4 h-4 text-gray-500" />
-                            <span>{assignment.user_name}</span>
-                            {assignment.user_email && (
+                            <span>{assignment.employee_name || assignment.user_name}</span>
+                            {(assignment.employee_email || assignment.user_email) && (
                               <span className="text-gray-500">
-                                ({assignment.user_email})
+                                ({(assignment.employee_email || assignment.user_email)})
                               </span>
                             )}
                           </div>
@@ -719,8 +847,8 @@ export function LicensesPage() {
                             )}
                           </div>
                         )}
-                        {/* SaaS - без привязки к оборудованию или пользователю */}
-                        {!assignment.user_name && !assignment.equipment_name && (
+                        {/* SaaS - без привязки к оборудованию или сотруднику */}
+                        {!assignment.employee_name && !assignment.user_name && !assignment.equipment_name && (
                           <div className="flex items-center gap-2">
                             <Cloud className="w-4 h-4 text-purple-500" />
                             <span className="text-accent-purple">SaaS / Облачный сервис</span>
@@ -769,7 +897,7 @@ export function LicensesPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => { setAssignType("equipment"); setAssignForm((p) => ({ ...p, user_id: "", is_saas: false })); }}
+                  onClick={() => { setAssignType("equipment"); setAssignForm((p) => ({ ...p, employee_id: "", is_saas: false })); }}
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
                     assignType === "equipment"
                       ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
@@ -781,19 +909,19 @@ export function LicensesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAssignType("user"); setAssignForm((p) => ({ ...p, equipment_id: "", is_saas: false })); }}
+                  onClick={() => { setAssignType("employee"); setAssignForm((p) => ({ ...p, equipment_id: "", is_saas: false })); }}
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
-                    assignType === "user"
+                    assignType === "employee"
                       ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
                       : "bg-dark-700/50 border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500"
                   }`}
                 >
                   <User className="w-4 h-4" />
-                  Пользователь
+                  Сотрудник
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAssignType("saas"); setAssignForm((p) => ({ ...p, user_id: "", equipment_id: "", is_saas: true })); }}
+                  onClick={() => { setAssignType("saas"); setAssignForm((p) => ({ ...p, employee_id: "", equipment_id: "", is_saas: true })); }}
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
                     assignType === "saas"
                       ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
@@ -806,55 +934,40 @@ export function LicensesPage() {
               </div>
             </div>
 
-            {/* Выбор оборудования */}
+            {/* Выбор оборудования с поиском в выпадающем */}
             {assignType === "equipment" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Оборудование (компьютер / сервер)
-                </label>
-                <select
-                  className="glass-input w-full px-4 py-3 text-sm"
-                  value={assignForm.equipment_id}
-                  onChange={(e) =>
-                    setAssignForm((p) => ({ ...p, equipment_id: e.target.value }))
-                  }
-                >
-                  <option value="" className="bg-dark-800">Выберите оборудование</option>
-                  {equipmentList.map((eq) => (
-                    <option key={eq.id} value={eq.id} className="bg-dark-800">
-                      {eq.category === "computer" ? "💻" : "🖥️"} {eq.name} ({eq.inventory_number})
-                    </option>
-                  ))}
-                </select>
-                {equipmentList.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Нет доступного оборудования (компьютеры и серверы)
-                  </p>
+              <SearchableSelect
+                label="Оборудование (компьютер / сервер)"
+                placeholder="Начните вводить для поиска..."
+                value={assignForm.equipment_id}
+                onChange={(id) => setAssignForm((p) => ({ ...p, equipment_id: id }))}
+                loadOptions={loadEquipment}
+                renderOption={(eq) => (
+                  <span>
+                    {eq.category === "computer" ? "💻" : "🖥️"} {eq.name} ({eq.inventory_number})
+                  </span>
                 )}
-              </div>
+                getOptionValue={(eq) => eq.id}
+                getOptionLabel={(eq) => `${eq.category === "computer" ? "💻" : "🖥️"} ${eq.name} (${eq.inventory_number})`}
+                emptyMessage="Нет доступного оборудования (компьютеры и серверы)"
+              />
             )}
 
-            {/* Выбор пользователя */}
-            {assignType === "user" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Пользователь
-                </label>
-                <select
-                  className="glass-input w-full px-4 py-3 text-sm"
-                  value={assignForm.user_id}
-                  onChange={(e) =>
-                    setAssignForm((p) => ({ ...p, user_id: e.target.value }))
-                  }
-                >
-                  <option value="" className="bg-dark-800">Выберите пользователя</option>
-                  {usersList.map((user) => (
-                    <option key={user.id} value={user.id} className="bg-dark-800">
-                      {user.full_name} ({user.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Выбор сотрудника с поиском в выпадающем */}
+            {assignType === "employee" && (
+              <SearchableSelect
+                label="Сотрудник"
+                placeholder="Начните вводить для поиска..."
+                value={String(assignForm.employee_id)}
+                onChange={(id) => setAssignForm((p) => ({ ...p, employee_id: id ? Number(id) : "" }))}
+                loadOptions={loadEmployees}
+                renderOption={(emp) => (
+                  <span>{emp.full_name}{emp.email ? ` (${emp.email})` : ""}</span>
+                )}
+                getOptionValue={(emp) => String(emp.id)}
+                getOptionLabel={(emp) => `${emp.full_name}${emp.email ? ` (${emp.email})` : ""}`}
+                emptyMessage="Сотрудники не найдены"
+              />
             )}
 
             {assignType === "saas" && (
@@ -885,7 +998,7 @@ export function LicensesPage() {
                 onClick={handleAssign}
                 disabled={
                   assignType === "equipment" && !assignForm.equipment_id ||
-                  assignType === "user" && !assignForm.user_id
+                  assignType === "employee" && !assignForm.employee_id
                 }
                 className="px-4 py-2 text-sm font-medium text-green-400 bg-green-500/20 border border-green-500/30 rounded-xl hover:bg-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >

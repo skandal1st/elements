@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from backend.modules.it.dependencies import get_db, get_current_user, require_it_roles
 from backend.modules.it.models import SoftwareLicense, LicenseAssignment
+from backend.modules.hr.models.employee import Employee
 from backend.modules.it.schemas.license import (
     SoftwareLicenseCreate,
     SoftwareLicenseOut,
@@ -118,13 +119,17 @@ def get_license(
         assignment_dict = {
             "id": assignment.id,
             "license_id": assignment.license_id,
+            "employee_id": getattr(assignment, "employee_id", None),
             "user_id": assignment.user_id,
             "equipment_id": assignment.equipment_id,
             "assigned_at": assignment.assigned_at,
             "released_at": assignment.released_at,
         }
         
-        if assignment.user:
+        if assignment.employee:
+            assignment_dict["employee_name"] = assignment.employee.full_name
+            assignment_dict["employee_email"] = assignment.employee.email
+        elif assignment.user:
             assignment_dict["user_name"] = assignment.user.full_name
             assignment_dict["user_email"] = assignment.user.email
         
@@ -246,10 +251,10 @@ def assign_license(
     payload: LicenseAssignmentCreate,
     db: Session = Depends(get_db),
 ) -> LicenseAssignmentOut:
-    """Назначить лицензию пользователю, оборудованию или как SaaS"""
-    # Для SaaS не требуется user_id или equipment_id
-    if not payload.is_saas and not payload.user_id and not payload.equipment_id:
-        raise HTTPException(status_code=400, detail="Укажите пользователя, оборудование или отметьте как SaaS")
+    """Назначить лицензию сотруднику, оборудованию или как SaaS"""
+    # Для SaaS не требуется employee_id или equipment_id
+    if not payload.is_saas and not payload.employee_id and not payload.equipment_id:
+        raise HTTPException(status_code=400, detail="Укажите сотрудника, оборудование или отметьте как SaaS")
     
     # Проверяем лицензию
     lic = db.query(SoftwareLicense).filter(SoftwareLicense.id == license_id).first()
@@ -261,10 +266,10 @@ def assign_license(
         raise HTTPException(status_code=400, detail="Нет доступных лицензий")
     
     # Создаем привязку
-    # Для SaaS - user_id и equipment_id будут None
+    # Для SaaS - employee_id и equipment_id будут None
     assignment = LicenseAssignment(
         license_id=license_id,
-        user_id=payload.user_id if not payload.is_saas else None,
+        employee_id=payload.employee_id if not payload.is_saas else None,
         equipment_id=payload.equipment_id if not payload.is_saas else None,
     )
     db.add(assignment)
@@ -280,13 +285,17 @@ def assign_license(
     assignment_dict = {
         "id": assignment.id,
         "license_id": assignment.license_id,
+        "employee_id": assignment.employee_id,
         "user_id": assignment.user_id,
         "equipment_id": assignment.equipment_id,
         "assigned_at": assignment.assigned_at,
         "released_at": assignment.released_at,
     }
     
-    if assignment.user:
+    if assignment.employee:
+        assignment_dict["employee_name"] = assignment.employee.full_name
+        assignment_dict["employee_email"] = assignment.employee.email
+    elif assignment.user:
         assignment_dict["user_name"] = assignment.user.full_name
         assignment_dict["user_email"] = assignment.user.email
     

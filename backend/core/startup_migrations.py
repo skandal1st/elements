@@ -212,6 +212,22 @@ def ensure_rustdesk_column() -> None:
         _exec_best_effort(sql)
 
 
+def ensure_license_assignments_employee_id() -> None:
+    """Добавить employee_id в license_assignments для привязки к сотрудникам."""
+    _exec_best_effort("""
+        ALTER TABLE license_assignments ADD COLUMN IF NOT EXISTS employee_id INTEGER
+    """)
+    _exec_best_effort("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'license_assignments_employee_id_fkey') THEN
+                ALTER TABLE license_assignments ADD CONSTRAINT license_assignments_employee_id_fkey
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+    """)
+
+
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
     try:
@@ -222,6 +238,7 @@ def apply_startup_migrations() -> None:
         ensure_equipment_category_network()
         ensure_rocketchat_columns()
         ensure_rustdesk_column()
+        ensure_license_assignments_employee_id()
         logger.info(
             "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat и rustdesk колонки готовы"
         )

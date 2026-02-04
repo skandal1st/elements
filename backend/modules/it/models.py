@@ -454,7 +454,7 @@ class SoftwareLicense(Base):
 
 
 class LicenseAssignment(Base):
-    """Привязка лицензии к пользователю или оборудованию"""
+    """Привязка лицензии к сотруднику или оборудованию"""
 
     __tablename__ = "license_assignments"
 
@@ -464,9 +464,12 @@ class LicenseAssignment(Base):
         ForeignKey("software_licenses.id", ondelete="CASCADE"),
         nullable=False,
     )
+    employee_id = Column(
+        Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True
+    )
     user_id = Column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    )  # legacy, для обратной совместимости
     equipment_id = Column(
         PGUUID(as_uuid=True),
         ForeignKey("equipment.id", ondelete="SET NULL"),
@@ -477,6 +480,7 @@ class LicenseAssignment(Base):
 
     # Relationships
     license = relationship("SoftwareLicense", foreign_keys=[license_id])
+    employee = relationship("Employee", foreign_keys=[employee_id])
     user = relationship("User", foreign_keys=[user_id])
     equipment = relationship("Equipment", foreign_keys=[equipment_id])
 
