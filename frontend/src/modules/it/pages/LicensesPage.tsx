@@ -118,7 +118,7 @@ function SearchableSelect<T>({
     if (!open) return;
     const t = setTimeout(() => fetchOptions(search), search ? 300 : 0);
     debounceRef.current = t;
-    return () => clearTimeout(debounceRef.current);
+    return () => clearTimeout(t);
   }, [open, search, fetchOptions]);
 
   useEffect(() => {
