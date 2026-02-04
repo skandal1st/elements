@@ -96,6 +96,7 @@ type UserOption = {
   id: string;
   full_name: string;
   email: string;
+  roles?: Record<string, string>;
 };
 
 type EmployeeOption = {
@@ -1882,11 +1883,13 @@ export function TicketsPage() {
                       <option value="" className="bg-dark-800">
                         Не назначен
                       </option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id} className="bg-dark-800">
-                          {u.full_name} ({u.email})
-                        </option>
-                      ))}
+                      {users
+                        .filter((u) => u.roles?.it !== "auditor")
+                        .map((u) => (
+                          <option key={u.id} value={u.id} className="bg-dark-800">
+                            {u.full_name} ({u.email})
+                          </option>
+                        ))}
                     </select>
                   ) : (
                     <span className="text-gray-300">

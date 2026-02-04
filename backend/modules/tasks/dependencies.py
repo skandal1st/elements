@@ -48,7 +48,7 @@ def get_current_user(
     return user
 
 
-def require_tasks_access(allowed_roles: Sequence[str] = ("user", "manager", "admin")):
+def require_tasks_access(allowed_roles: Sequence[str] = ("user", "manager", "admin", "employee")):
     """
     Проверяет доступ к модулю Tasks.
     По умолчанию разрешает всем авторизованным пользователям.

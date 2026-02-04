@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, case, extract, and_
 from sqlalchemy.orm import Session, aliased
 
-from backend.modules.it.dependencies import get_db, get_current_user
+from backend.modules.it.dependencies import get_db, get_current_user, require_it_roles
 from backend.modules.it.models import Ticket
 from backend.modules.hr.models.user import User
 
@@ -16,7 +16,10 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 UTC = timezone.utc
 
 
-@router.get("/tickets")
+@router.get(
+    "/tickets",
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "auditor"]))],
+)
 def get_tickets_report(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -25,9 +28,9 @@ def get_tickets_report(
     category: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
 ) -> dict:
-    """Отчет по заявкам (только для admin/it_specialist)"""
+    """Отчет по заявкам (admin, it_specialist, auditor)"""
     role = user.get_role("it") if not user.is_superuser else "admin"
-    if role not in ("admin", "it_specialist"):
+    if role not in ("admin", "it_specialist", "auditor"):
         raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
 
     try:

@@ -84,7 +84,7 @@ class TicketSuggestionsResponse(BaseModel):
 @router.post(
     "/{ticket_id}/suggestions",
     response_model=TicketSuggestionsResponse,
-    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee", "auditor"]))],
 )
 async def suggest_solutions_for_ticket(
     ticket_id: UUID,
@@ -96,6 +96,7 @@ async def suggest_solutions_for_ticket(
         raise HTTPException(status_code=404, detail="Заявка не найдена")
 
     role = _user_it_role(user)
+    # employee — только свои заявки; auditor — все
     if role == "employee" and t.creator_id != user.id:
         raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
 
@@ -267,7 +268,7 @@ async def suggest_solutions_for_ticket(
 @router.get(
     "/",
     response_model=List[TicketOut],
-    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee", "auditor"]))],
 )
 def list_tickets(
     db: Session = Depends(get_db),
@@ -285,6 +286,7 @@ def list_tickets(
     from backend.modules.hr.models.employee import Employee
 
     q = db.query(Ticket, Employee.full_name).outerjoin(Employee, Ticket.employee_id == Employee.id)
+    # employee видит только свои заявки; auditor — все (как admin/it_specialist)
     if role == "employee":
         q = q.filter(Ticket.creator_id == user.id)
     if hide_closed:
@@ -316,7 +318,7 @@ def list_tickets(
 @router.get(
     "/{ticket_id}",
     response_model=TicketOut,
-    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee", "auditor"]))],
 )
 def get_ticket(
     ticket_id: UUID,
@@ -335,6 +337,7 @@ def get_ticket(
     if not t:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
     role = _user_it_role(user)
+    # employee видит только свои; auditor — все
     if role == "employee" and t.creator_id != user.id:
         raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
     employee_name = row[1] if row else None
@@ -350,7 +353,7 @@ class TicketAssignEmployee(BaseModel):
 @router.get(
     "/{ticket_id}/history",
     response_model=List[TicketHistoryOut],
-    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee", "auditor"]))],
 )
 def get_ticket_history(
     ticket_id: UUID,
@@ -845,6 +848,13 @@ async def assign_executor_to_ticket(
     if not target:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
+    # Аудитор не может быть назначен исполнителем
+    if target.get_role("it") == "auditor":
+        raise HTTPException(
+            status_code=400,
+            detail="На пользователя с ролью «Аудитор» нельзя назначить заявку",
+        )
+
     t.assignee_id = new_assignee_id
     log_ticket_changes(
         db=db,
@@ -913,7 +923,7 @@ def delete_ticket(
 @router.get(
     "/{ticket_id}/consumables",
     response_model=List[TicketConsumableOut],
-    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee", "auditor"]))],
 )
 def get_ticket_consumables(
     ticket_id: UUID,

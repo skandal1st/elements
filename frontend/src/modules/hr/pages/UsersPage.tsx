@@ -22,6 +22,7 @@ const ROLE_LABELS: Record<string, string> = {
   viewer: 'Просмотр',
   it_specialist: 'ИТ-специалист',
   employee: 'Сотрудник',
+  auditor: 'Аудитор',
 }
 
 const MODULE_LABELS: Record<string, string> = {
@@ -34,7 +35,7 @@ const MODULE_LABELS: Record<string, string> = {
 // Роли для каждого модуля
 const MODULE_ROLES: Record<string, string[]> = {
   hr: ['admin', 'hr', 'employee'],
-  it: ['admin', 'it_specialist', 'employee'],
+  it: ['admin', 'it_specialist', 'employee', 'auditor'],
   tasks: ['admin', 'employee'],
   portal: ['admin', 'user'],
 }

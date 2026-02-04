@@ -37,7 +37,11 @@ def _user_it_role(user: User) -> str:
     return user.get_role("it") or "employee"
 
 
-@router.get("/", response_model=List[TicketCommentOut])
+@router.get(
+    "/",
+    response_model=List[TicketCommentOut],
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee", "auditor"]))],
+)
 def list_comments(
     ticket_id: UUID,
     db: Session = Depends(get_db),
@@ -49,7 +53,7 @@ def list_comments(
     if not ticket:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
     
-    # Проверяем доступ: employee может видеть только свои заявки
+    # Проверяем доступ: employee — только свои; auditor — все
     role = _user_it_role(user)
     if role == "employee" and ticket.creator_id != user.id:
         raise HTTPException(status_code=403, detail="Недостаточно прав доступа")
@@ -84,7 +88,12 @@ def list_comments(
     return result
 
 
-@router.post("/", response_model=TicketCommentOut, status_code=201)
+@router.post(
+    "/",
+    response_model=TicketCommentOut,
+    status_code=201,
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+)
 def create_comment(
     ticket_id: UUID,
     payload: TicketCommentCreate,
@@ -126,7 +135,11 @@ def create_comment(
     )
 
 
-@router.patch("/{comment_id}", response_model=TicketCommentOut)
+@router.patch(
+    "/{comment_id}",
+    response_model=TicketCommentOut,
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+)
 def update_comment(
     ticket_id: UUID,
     comment_id: UUID,
@@ -164,7 +177,11 @@ def update_comment(
     )
 
 
-@router.delete("/{comment_id}", status_code=200)
+@router.delete(
+    "/{comment_id}",
+    status_code=200,
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "employee"]))],
+)
 def delete_comment(
     ticket_id: UUID,
     comment_id: UUID,
