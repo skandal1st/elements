@@ -21,6 +21,9 @@ import {
   Users,
   Sparkles,
   Rocket,
+  Bell,
+  Shuffle,
+  X,
 } from "lucide-react";
 import { apiGet, apiPost } from "../../../shared/api/client";
 import { useUIStore } from "../../../shared/store/ui.store";
@@ -41,8 +44,19 @@ type RocketChatSettings = {
   rocketchat_bot_user_id?: string;
 };
 
+type TicketSettings = {
+  ticket_notifications_enabled?: boolean;
+  ticket_notification_channels?: string;
+  ticket_notification_recipients?: string;
+  ticket_notification_custom_users?: string;
+  auto_assign_tickets?: boolean;
+  ticket_distribution_method?: string;
+  ticket_distribution_specialists?: string;
+};
+
 type AllSettings = {
   general: GeneralSettings;
+  tickets: TicketSettings;
   email: EmailSettings;
   imap: ImapSettings;
   telegram: TelegramSettings;
@@ -123,6 +137,15 @@ type LlmSettings = {
   qdrant_collection?: string;
 };
 
+type SettingsUser = {
+  id: string;
+  email: string;
+  full_name: string;
+  it_role: string;
+  is_superuser?: boolean;
+  telegram_connected: boolean;
+};
+
 type ADUser = {
   dn?: string | null;
   sAMAccountName: string;
@@ -137,6 +160,7 @@ type ADUser = {
 
 const TABS = [
   { id: "general", label: "Общие", icon: Settings },
+  { id: "tickets", label: "Заявки", icon: Bell },
   { id: "sync", label: "Синхронизации", icon: RefreshCw },
   { id: "buildings", label: "Здания", icon: Building2 },
   { id: "rooms", label: "Кабинеты", icon: DoorOpen },
@@ -166,6 +190,7 @@ export function SettingsPage() {
 
   const [settings, setSettings] = useState<AllSettings>({
     general: {},
+    tickets: {},
     email: {},
     imap: {},
     telegram: {},
@@ -230,6 +255,31 @@ export function SettingsPage() {
   const [adClearing, setAdClearing] = useState(false);
   const [adSyncing, setAdSyncing] = useState(false);
 
+  // Состояния для вкладки «Заявки»
+  const [ticketSpecialists, setTicketSpecialists] = useState<SettingsUser[]>([]);
+  const [ticketAllUsers, setTicketAllUsers] = useState<SettingsUser[]>([]);
+  const [ticketUsersLoading, setTicketUsersLoading] = useState(false);
+  const [ticketUserSearch, setTicketUserSearch] = useState("");
+  const [ticketSpecialistSearch, setTicketSpecialistSearch] = useState("");
+  const [showNotifUserPicker, setShowNotifUserPicker] = useState(false);
+  const [showDistribSpecialistPicker, setShowDistribSpecialistPicker] = useState(false);
+
+  const loadTicketUsers = async () => {
+    setTicketUsersLoading(true);
+    try {
+      const [specialists, allUsers] = await Promise.all([
+        apiGet<SettingsUser[]>("/it/settings/specialists/list"),
+        apiGet<SettingsUser[]>("/it/settings/users/all"),
+      ]);
+      setTicketSpecialists(specialists);
+      setTicketAllUsers(allUsers);
+    } catch (err) {
+      console.error("Failed to load ticket users:", err);
+    } finally {
+      setTicketUsersLoading(false);
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -260,13 +310,16 @@ export function SettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adPickerOpen]);
 
-  // Загрузка зданий при переключении на вкладку
+  // Загрузка данных при переключении на вкладку
   useEffect(() => {
     if (activeTab === "buildings" || activeTab === "rooms") {
       loadBuildings();
     }
     if (activeTab === "rooms") {
       loadRooms();
+    }
+    if (activeTab === "tickets") {
+      loadTicketUsers();
     }
   }, [activeTab]);
 
@@ -867,6 +920,405 @@ export function SettingsPage() {
                     "ticket_notifications_enabled",
                     "checkbox",
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Заявки: уведомления и распределение */}
+            {activeTab === "tickets" && (
+              <div className="space-y-6 max-w-2xl">
+                {/* ── Уведомления ── */}
+                <div className="glass-card p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-accent-blue" />
+                    <h3 className="text-lg font-semibold text-white">Уведомления о новых заявках</h3>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.tickets?.ticket_notifications_enabled ?? true}
+                      onChange={(e) => updateSetting("tickets", "ticket_notifications_enabled", e.target.checked)}
+                      className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
+                    />
+                    <span className="text-sm text-gray-400">Включить уведомления о новых заявках</span>
+                  </label>
+
+                  {settings.tickets?.ticket_notifications_enabled !== false && (
+                    <>
+                      {/* Каналы */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Каналы уведомлений</label>
+                        <div className="flex flex-wrap gap-3">
+                          {[
+                            { key: "in_app", label: "В системе", icon: Bell },
+                            { key: "telegram", label: "Telegram", icon: MessageCircle },
+                            { key: "email", label: "Email", icon: Mail },
+                          ].map((ch) => {
+                            const channels = (settings.tickets?.ticket_notification_channels || "in_app,telegram").split(",");
+                            const active = channels.includes(ch.key);
+                            const Icon = ch.icon;
+                            return (
+                              <button
+                                key={ch.key}
+                                type="button"
+                                onClick={() => {
+                                  const next = active
+                                    ? channels.filter((c) => c !== ch.key)
+                                    : [...channels, ch.key];
+                                  updateSetting("tickets", "ticket_notification_channels", next.filter(Boolean).join(","));
+                                }}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
+                                  active
+                                    ? "border-accent-purple bg-accent-purple/10 text-accent-purple"
+                                    : "border-dark-500 bg-dark-700 text-gray-400 hover:border-dark-400"
+                                }`}
+                              >
+                                <Icon className="w-4 h-4" />
+                                {ch.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Кому уведомлять */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Кому отправлять</label>
+                        <div className="space-y-2">
+                          {[
+                            { value: "all_it", label: "Всем IT-специалистам" },
+                            { value: "assigned_only", label: "Только назначенному исполнителю" },
+                            { value: "custom", label: "Выбранным сотрудникам" },
+                          ].map((opt) => (
+                            <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="ticket_notification_recipients"
+                                value={opt.value}
+                                checked={(settings.tickets?.ticket_notification_recipients || "all_it") === opt.value}
+                                onChange={() => updateSetting("tickets", "ticket_notification_recipients", opt.value)}
+                                className="w-4 h-4 border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
+                              />
+                              <span className="text-sm text-gray-300">{opt.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Выбор пользователей для custom */}
+                      {settings.tickets?.ticket_notification_recipients === "custom" && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-400 mb-2">Получатели уведомлений</label>
+                          {(() => {
+                            let selectedIds: string[] = [];
+                            try {
+                              selectedIds = JSON.parse(settings.tickets?.ticket_notification_custom_users || "[]");
+                            } catch {}
+                            const selectedUsers = ticketAllUsers.filter((u) => selectedIds.includes(u.id));
+                            return (
+                              <div className="space-y-2">
+                                {selectedUsers.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {selectedUsers.map((u) => (
+                                      <span
+                                        key={u.id}
+                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-accent-purple/10 text-accent-purple border border-accent-purple/20"
+                                      >
+                                        {u.full_name}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const next = selectedIds.filter((id) => id !== u.id);
+                                            updateSetting("tickets", "ticket_notification_custom_users", JSON.stringify(next));
+                                          }}
+                                          className="ml-1 hover:text-red-400"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setShowNotifUserPicker(true)}
+                                  className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-dark-500 bg-dark-700 text-gray-400 hover:border-accent-purple/50 transition-colors"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  Добавить получателя
+                                </button>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* ── Распределение ── */}
+                <div className="glass-card p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Shuffle className="w-4 h-4 text-green-400" />
+                    <h3 className="text-lg font-semibold text-white">Автоматическое распределение заявок</h3>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.tickets?.auto_assign_tickets ?? false}
+                      onChange={(e) => updateSetting("tickets", "auto_assign_tickets", e.target.checked)}
+                      className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
+                    />
+                    <span className="text-sm text-gray-400">Автоматически назначать исполнителя при создании заявки</span>
+                  </label>
+
+                  {settings.tickets?.auto_assign_tickets && (
+                    <>
+                      {/* Метод */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Метод распределения</label>
+                        <select
+                          value={settings.tickets?.ticket_distribution_method || "least_loaded"}
+                          onChange={(e) => updateSetting("tickets", "ticket_distribution_method", e.target.value)}
+                          className="glass-input w-full px-4 py-3 text-sm"
+                        >
+                          <option value="least_loaded" className="bg-dark-800">По наименьшей загрузке</option>
+                          <option value="round_robin" className="bg-dark-800">По очереди (round-robin)</option>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {settings.tickets?.ticket_distribution_method === "round_robin"
+                            ? "Заявки назначаются по очереди — каждый специалист получает следующую заявку"
+                            : "Заявки назначаются на специалиста с наименьшим числом открытых заявок"}
+                        </p>
+                      </div>
+
+                      {/* Участники распределения */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">
+                          Участники распределения
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Если никто не выбран — распределение среди всех IT-специалистов
+                        </p>
+                        {(() => {
+                          let selectedIds: string[] = [];
+                          try {
+                            selectedIds = JSON.parse(settings.tickets?.ticket_distribution_specialists || "[]");
+                          } catch {}
+                          const selectedUsers = ticketSpecialists.filter((u) => selectedIds.includes(u.id));
+                          return (
+                            <div className="space-y-2">
+                              {selectedUsers.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedUsers.map((u) => (
+                                    <span
+                                      key={u.id}
+                                      className="inline-flex items-center gap-2 px-2 py-1 text-xs font-medium rounded-full bg-green-500/10 text-green-400 border border-green-500/20"
+                                    >
+                                      {u.full_name}
+                                      {u.telegram_connected && (
+                                        <MessageCircle className="w-3 h-3 text-blue-400" title="Telegram подключён" />
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const next = selectedIds.filter((id) => id !== u.id);
+                                          updateSetting("tickets", "ticket_distribution_specialists", JSON.stringify(next));
+                                        }}
+                                        className="ml-1 hover:text-red-400"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setShowDistribSpecialistPicker(true)}
+                                className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-dark-500 bg-dark-700 text-gray-400 hover:border-green-500/50 transition-colors"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Выбрать специалистов
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Информация о специалистах */}
+                      {ticketSpecialists.length > 0 && (
+                        <div className="bg-dark-700/50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-2">
+                            Все IT-специалисты ({ticketSpecialists.length}):
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {ticketSpecialists.map((s) => (
+                              <span
+                                key={s.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-dark-600 text-gray-300"
+                              >
+                                {s.full_name}
+                                {s.telegram_connected && (
+                                  <MessageCircle className="w-3 h-3 text-blue-400" />
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Модалка: выбор получателей уведомлений */}
+            {showNotifUserPicker && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div className="glass-card p-6 w-full max-w-lg max-h-[80vh] flex flex-col">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Выбрать получателей</h3>
+                    <button type="button" onClick={() => setShowNotifUserPicker(false)} className="text-gray-400 hover:text-white">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <input
+                      type="text"
+                      placeholder="Поиск по имени или email..."
+                      value={ticketUserSearch}
+                      onChange={(e) => setTicketUserSearch(e.target.value)}
+                      className="glass-input w-full pl-10 pr-4 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-1">
+                    {ticketAllUsers
+                      .filter((u) => {
+                        if (!ticketUserSearch) return true;
+                        const q = ticketUserSearch.toLowerCase();
+                        return u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+                      })
+                      .map((u) => {
+                        let selectedIds: string[] = [];
+                        try {
+                          selectedIds = JSON.parse(settings.tickets?.ticket_notification_custom_users || "[]");
+                        } catch {}
+                        const isSelected = selectedIds.includes(u.id);
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => {
+                              const next = isSelected
+                                ? selectedIds.filter((id) => id !== u.id)
+                                : [...selectedIds, u.id];
+                              updateSetting("tickets", "ticket_notification_custom_users", JSON.stringify(next));
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                              isSelected
+                                ? "bg-accent-purple/10 border border-accent-purple/30 text-white"
+                                : "hover:bg-dark-600 text-gray-300"
+                            }`}
+                          >
+                            <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded" />
+                            <div>
+                              <div className="font-medium">{u.full_name}</div>
+                              <div className="text-xs text-gray-500">{u.email}</div>
+                            </div>
+                            {u.telegram_connected && (
+                              <MessageCircle className="w-3.5 h-3.5 text-blue-400 ml-auto" title="Telegram" />
+                            )}
+                          </button>
+                        );
+                      })}
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => { setShowNotifUserPicker(false); setTicketUserSearch(""); }}
+                      className="px-4 py-2 bg-accent-purple text-white rounded-lg text-sm hover:bg-accent-purple/80"
+                    >
+                      Готово
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Модалка: выбор специалистов для распределения */}
+            {showDistribSpecialistPicker && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div className="glass-card p-6 w-full max-w-lg max-h-[80vh] flex flex-col">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Выбрать специалистов для распределения</h3>
+                    <button type="button" onClick={() => setShowDistribSpecialistPicker(false)} className="text-gray-400 hover:text-white">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      value={ticketSpecialistSearch}
+                      onChange={(e) => setTicketSpecialistSearch(e.target.value)}
+                      className="glass-input w-full pl-10 pr-4 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-1">
+                    {ticketSpecialists
+                      .filter((u) => {
+                        if (!ticketSpecialistSearch) return true;
+                        const q = ticketSpecialistSearch.toLowerCase();
+                        return u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+                      })
+                      .map((u) => {
+                        let selectedIds: string[] = [];
+                        try {
+                          selectedIds = JSON.parse(settings.tickets?.ticket_distribution_specialists || "[]");
+                        } catch {}
+                        const isSelected = selectedIds.includes(u.id);
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => {
+                              const next = isSelected
+                                ? selectedIds.filter((id) => id !== u.id)
+                                : [...selectedIds, u.id];
+                              updateSetting("tickets", "ticket_distribution_specialists", JSON.stringify(next));
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                              isSelected
+                                ? "bg-green-500/10 border border-green-500/30 text-white"
+                                : "hover:bg-dark-600 text-gray-300"
+                            }`}
+                          >
+                            <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded" />
+                            <div>
+                              <div className="font-medium">{u.full_name}</div>
+                              <div className="text-xs text-gray-500">{u.email} — {u.it_role}</div>
+                            </div>
+                            {u.telegram_connected && (
+                              <MessageCircle className="w-3.5 h-3.5 text-blue-400 ml-auto" title="Telegram" />
+                            )}
+                          </button>
+                        );
+                      })}
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => { setShowDistribSpecialistPicker(false); setTicketSpecialistSearch(""); }}
+                      className="px-4 py-2 bg-accent-purple text-white rounded-lg text-sm hover:bg-accent-purple/80"
+                    >
+                      Готово
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

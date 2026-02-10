@@ -75,6 +75,58 @@ def _bool(val: str | None, default: bool = False) -> bool:
     return default
 
 
+def _send_new_ticket_notifications(
+    db: Session,
+    ticket,
+    assignee,
+    channels: list[str],
+    recipients_mode: str,
+    custom_users_json: str | None,
+    source: str,
+):
+    """Создать in-app уведомления о новой заявке для нужных получателей."""
+    import json as _json
+
+    if "in_app" not in channels:
+        return
+
+    # Определяем получателей
+    recipient_ids: list[UUID] = []
+
+    if recipients_mode == "assigned_only":
+        if assignee:
+            recipient_ids = [assignee.id]
+    elif recipients_mode == "custom" and custom_users_json:
+        try:
+            recipient_ids = [UUID(uid) for uid in _json.loads(custom_users_json)]
+        except Exception:
+            pass
+    else:
+        # all_it — все IT-специалисты
+        users = db.query(User).filter(User.is_active == True).all()
+        for u in users:
+            roles = u.roles or {}
+            it_role = roles.get("it", "")
+            if it_role in ("admin", "it_specialist") or u.is_superuser:
+                recipient_ids.append(u.id)
+
+    # Не уведомляем создателя
+    recipient_ids = [uid for uid in recipient_ids if uid != ticket.creator_id]
+
+    for uid in recipient_ids:
+        notif = Notification(
+            user_id=uid,
+            title="Новая заявка",
+            message=f'Создана заявка: "{ticket.title}"',
+            type="info",
+            related_type="ticket",
+            related_id=str(ticket.id),
+        )
+        db.add(notif)
+    if recipient_ids:
+        db.commit()
+
+
 class TicketSuggestionsResponse(BaseModel):
     raw_response: str
     suggestions: list[dict]
@@ -444,20 +496,56 @@ async def create_ticket(
     db.commit()
     db.refresh(t)
 
-    # Автораспределение на IT-специалиста (для всех тикетов)
-    try:
-        from backend.modules.it.services.telegram_service import telegram_service
-        assignee = telegram_service.auto_assign_to_it_specialist(db, t)
+    # --- Читаем настройки уведомлений и распределения ---
+    cfg = _get_settings_map(db, [
+        "auto_assign_tickets",
+        "ticket_notifications_enabled",
+        "ticket_notification_channels",
+        "ticket_notification_recipients",
+        "ticket_notification_custom_users",
+        "ticket_distribution_method",
+        "ticket_distribution_specialists",
+    ])
 
-        # Уведомление IT-специалистов в Telegram
-        await telegram_service.notify_new_ticket(db, t.id, t.title, source="web")
+    # 1) Автораспределение (если включено)
+    assignee = None
+    if _bool(cfg.get("auto_assign_tickets"), False):
+        try:
+            from backend.modules.it.services.telegram_service import telegram_service
+            assignee = telegram_service.auto_assign_to_it_specialist(
+                db, t,
+                method=cfg.get("ticket_distribution_method", "least_loaded"),
+                specialist_ids_json=cfg.get("ticket_distribution_specialists"),
+            )
+        except Exception as e:
+            print(f"[Tickets] Ошибка автораспределения: {e}")
 
-        # Уведомление назначенного специалиста
-        if assignee and assignee.telegram_id:
-            await telegram_service.notify_ticket_assigned(db, assignee.id, t.id, t.title)
-    except Exception as e:
-        print(f"[Tickets] Ошибка автораспределения/уведомлений: {e}")
-        pass  # Не блокируем создание заявки при ошибке уведомления
+    # 2) Уведомления (если включены)
+    if _bool(cfg.get("ticket_notifications_enabled"), True):
+        channels = (cfg.get("ticket_notification_channels") or "in_app,telegram").split(",")
+        recipients_mode = cfg.get("ticket_notification_recipients") or "all_it"
+        custom_users_json = cfg.get("ticket_notification_custom_users")
+
+        try:
+            _send_new_ticket_notifications(
+                db, t, assignee,
+                channels=channels,
+                recipients_mode=recipients_mode,
+                custom_users_json=custom_users_json,
+                source="web",
+            )
+        except Exception as e:
+            print(f"[Tickets] Ошибка уведомлений: {e}")
+
+        # Telegram уведомления
+        if "telegram" in channels:
+            try:
+                from backend.modules.it.services.telegram_service import telegram_service
+                await telegram_service.notify_new_ticket(db, t.id, t.title, source="web")
+                if assignee and assignee.telegram_id:
+                    await telegram_service.notify_ticket_assigned(db, assignee.id, t.id, t.title)
+            except Exception as e:
+                print(f"[Tickets] Ошибка Telegram-уведомлений: {e}")
 
     # Уведомление в RocketChat (только если тикет не из RocketChat)
     if t.source != "rocketchat":

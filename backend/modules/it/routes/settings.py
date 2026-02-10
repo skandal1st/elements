@@ -22,6 +22,7 @@ from backend.modules.it.schemas.settings import (
     SettingsBulkUpdate,
     SettingUpdate,
     TelegramSettings,
+    TicketSettingsSchema,
     ZabbixSettings,
 )
 
@@ -37,6 +38,15 @@ SETTING_TYPE_MAP = {
         "default_ticket_priority",
         "auto_assign_tickets",
         "ticket_notifications_enabled",
+    ],
+    "tickets": [
+        "ticket_notifications_enabled",
+        "ticket_notification_channels",
+        "ticket_notification_recipients",
+        "ticket_notification_custom_users",
+        "auto_assign_tickets",
+        "ticket_distribution_method",
+        "ticket_distribution_specialists",
     ],
     "email": [
         "smtp_host",
@@ -184,6 +194,15 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
             default_ticket_priority=get_val("default_ticket_priority", "medium"),
             auto_assign_tickets=get_val("auto_assign_tickets", False),
             ticket_notifications_enabled=get_val("ticket_notifications_enabled", True),
+        ),
+        tickets=TicketSettingsSchema(
+            ticket_notifications_enabled=get_val("ticket_notifications_enabled", True),
+            ticket_notification_channels=get_val("ticket_notification_channels", "in_app,telegram"),
+            ticket_notification_recipients=get_val("ticket_notification_recipients", "all_it"),
+            ticket_notification_custom_users=get_val("ticket_notification_custom_users"),
+            auto_assign_tickets=get_val("auto_assign_tickets", False),
+            ticket_distribution_method=get_val("ticket_distribution_method", "least_loaded"),
+            ticket_distribution_specialists=get_val("ticket_distribution_specialists"),
         ),
         email=EmailSettings(
             email_enabled=get_val("email_enabled", False),
@@ -435,6 +454,54 @@ def delete_setting(
     db.delete(setting)
     db.commit()
     return {"message": "Настройка удалена"}
+
+
+@router.get(
+    "/specialists/list",
+    dependencies=[Depends(require_superuser)],
+)
+def list_it_specialists(db: Session = Depends(get_db)) -> list:
+    """Получить список IT-специалистов (admin, it_specialist) для выбора в настройках."""
+    from backend.modules.hr.models.user import User
+
+    users = db.query(User).filter(User.is_active == True).order_by(User.full_name).all()
+    result = []
+    for u in users:
+        roles = u.roles or {}
+        it_role = roles.get("it", "")
+        if it_role in ("admin", "it_specialist") or u.is_superuser:
+            result.append({
+                "id": str(u.id),
+                "email": u.email,
+                "full_name": u.full_name or u.email,
+                "it_role": "admin" if u.is_superuser else it_role,
+                "telegram_connected": bool(u.telegram_id),
+            })
+    return result
+
+
+@router.get(
+    "/users/all",
+    dependencies=[Depends(require_superuser)],
+)
+def list_all_active_users(db: Session = Depends(get_db)) -> list:
+    """Получить список всех активных пользователей (для выбора получателей уведомлений)."""
+    from backend.modules.hr.models.user import User
+
+    users = db.query(User).filter(User.is_active == True).order_by(User.full_name).all()
+    result = []
+    for u in users:
+        roles = u.roles or {}
+        it_role = roles.get("it", "")
+        result.append({
+            "id": str(u.id),
+            "email": u.email,
+            "full_name": u.full_name or u.email,
+            "it_role": it_role,
+            "is_superuser": u.is_superuser,
+            "telegram_connected": bool(u.telegram_id),
+        })
+    return result
 
 
 @router.post("/test/smtp", dependencies=[Depends(require_superuser)])

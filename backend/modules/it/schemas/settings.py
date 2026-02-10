@@ -133,6 +133,21 @@ class LlmSettings(BaseModel):
     qdrant_collection: Optional[str] = "knowledge_articles_v1"
 
 
+class TicketSettingsSchema(BaseModel):
+    """Настройки уведомлений и распределения заявок."""
+
+    # Уведомления
+    ticket_notifications_enabled: Optional[bool] = True
+    ticket_notification_channels: Optional[str] = "in_app,telegram"  # in_app,email,telegram — через запятую
+    ticket_notification_recipients: Optional[str] = "all_it"  # all_it | assigned_only | custom
+    ticket_notification_custom_users: Optional[str] = None  # JSON массив UUID пользователей
+
+    # Распределение
+    auto_assign_tickets: Optional[bool] = False
+    ticket_distribution_method: Optional[str] = "least_loaded"  # least_loaded | round_robin | manual
+    ticket_distribution_specialists: Optional[str] = None  # JSON массив UUID — кто участвует в распределении
+
+
 class GeneralSettings(BaseModel):
     """Общие настройки системы."""
 
@@ -150,6 +165,7 @@ class AllSettings(BaseModel):
     """Все настройки системы."""
 
     general: GeneralSettings = GeneralSettings()
+    tickets: TicketSettingsSchema = TicketSettingsSchema()
     email: EmailSettings = EmailSettings()
     imap: ImapSettings = ImapSettings()
     telegram: TelegramSettings = TelegramSettings()

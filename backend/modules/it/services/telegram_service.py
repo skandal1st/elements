@@ -868,43 +868,88 @@ class TelegramService:
         print(f"[Telegram] Найдено IT-специалистов: {len(it_users)}")
         return it_users
 
-    def auto_assign_to_it_specialist(self, db: Session, ticket) -> Optional[User]:
-        """Автоматически назначить заявку на наименее загруженного IT-специалиста
+    def auto_assign_to_it_specialist(
+        self,
+        db: Session,
+        ticket,
+        method: str = "least_loaded",
+        specialist_ids_json: str | None = None,
+    ) -> Optional[User]:
+        """Автоматически назначить заявку на IT-специалиста.
 
-        Возвращает назначенного специалиста или None если специалистов нет.
+        method: least_loaded | round_robin
+        specialist_ids_json: JSON-строка со списком UUID — ограничить распределение этими пользователями.
+        Возвращает назначенного специалиста или None.
         """
+        import json as _json
         from sqlalchemy import func
 
-        print(f"[Telegram] 🔄 Автораспределение для тикета #{str(ticket.id)[:8]} (source={ticket.source})")
+        print(f"[Telegram] 🔄 Автораспределение для тикета #{str(ticket.id)[:8]} (source={ticket.source}, method={method})")
 
-        it_specialists = self.get_it_specialists(db)
+        # Определяем пул специалистов
+        if specialist_ids_json:
+            try:
+                allowed_ids = [UUID(uid) for uid in _json.loads(specialist_ids_json)]
+                it_specialists = (
+                    db.query(User)
+                    .filter(User.id.in_(allowed_ids), User.is_active == True)
+                    .all()
+                )
+            except Exception:
+                it_specialists = self.get_it_specialists(db)
+        else:
+            it_specialists = self.get_it_specialists(db)
 
         if not it_specialists:
             print("[Telegram] Нет доступных IT-специалистов для автоназначения")
             return None
 
-        # Подсчитываем открытые заявки для каждого специалиста
-        workload = {}
-        for specialist in it_specialists:
-            open_count = (
-                db.query(func.count(Ticket.id))
-                .filter(
-                    Ticket.assignee_id == specialist.id,
-                    Ticket.status.in_(["new", "in_progress"])
-                )
-                .scalar()
-            )
-            workload[specialist.id] = open_count or 0
+        assignee = None
 
-        # Выбираем специалиста с минимальной нагрузкой
-        least_loaded_id = min(workload, key=workload.get)
-        assignee = db.query(User).filter(User.id == least_loaded_id).first()
+        if method == "round_robin":
+            # Round-robin: выбираем специалиста, которому давно не назначали
+            from sqlalchemy import case, func as sa_func
+            specialist_ids = [s.id for s in it_specialists]
+            # Последнее назначение для каждого
+            last_assigned = {}
+            for s in it_specialists:
+                last_ticket = (
+                    db.query(Ticket.updated_at)
+                    .filter(Ticket.assignee_id == s.id)
+                    .order_by(Ticket.updated_at.desc())
+                    .first()
+                )
+                last_assigned[s.id] = last_ticket[0] if last_ticket else None
+
+            # Специалист без назначений — первый в очереди
+            no_tickets = [sid for sid, dt in last_assigned.items() if dt is None]
+            if no_tickets:
+                assignee = db.query(User).filter(User.id == no_tickets[0]).first()
+            else:
+                oldest_id = min(last_assigned, key=last_assigned.get)
+                assignee = db.query(User).filter(User.id == oldest_id).first()
+        else:
+            # least_loaded (по умолчанию)
+            workload = {}
+            for specialist in it_specialists:
+                open_count = (
+                    db.query(func.count(Ticket.id))
+                    .filter(
+                        Ticket.assignee_id == specialist.id,
+                        Ticket.status.in_(["new", "in_progress"])
+                    )
+                    .scalar()
+                )
+                workload[specialist.id] = open_count or 0
+
+            least_loaded_id = min(workload, key=workload.get)
+            assignee = db.query(User).filter(User.id == least_loaded_id).first()
 
         if assignee:
             ticket.assignee_id = assignee.id
             db.commit()
             db.refresh(ticket)
-            print(f"[Telegram] Заявка #{str(ticket.id)[:8]} назначена на {assignee.email} (нагрузка: {workload[least_loaded_id]})")
+            print(f"[Telegram] Заявка #{str(ticket.id)[:8]} назначена на {assignee.email} (метод: {method})")
 
         return assignee
 

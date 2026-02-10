@@ -314,17 +314,34 @@ class RocketChatService:
 
         short_id = str(ticket.id)[:8]
 
-        # NEW: Автоназначение на IT-специалиста
+        # Автоназначение на IT-специалиста (с учётом настроек)
         try:
-            from backend.modules.it.services.telegram_service import telegram_service
-            assignee = telegram_service.auto_assign_to_it_specialist(db, ticket)
+            from backend.modules.hr.models.system_settings import SystemSettings
+            _cfg_rows = (
+                db.query(SystemSettings.setting_key, SystemSettings.setting_value)
+                .filter(SystemSettings.setting_key.in_([
+                    "auto_assign_tickets", "ticket_distribution_method", "ticket_distribution_specialists",
+                ]))
+                .all()
+            )
+            _cfg = {k: (v or "") for k, v in _cfg_rows}
+            _auto = str(_cfg.get("auto_assign_tickets", "false")).lower() in ("true", "1", "yes")
 
-            # Уведомляем IT-специалистов в Telegram
-            await telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="rocketchat")
+            assignee = None
+            if _auto:
+                from backend.modules.it.services.telegram_service import telegram_service
+                assignee = telegram_service.auto_assign_to_it_specialist(
+                    db, ticket,
+                    method=_cfg.get("ticket_distribution_method", "least_loaded"),
+                    specialist_ids_json=_cfg.get("ticket_distribution_specialists") or None,
+                )
 
-            # Уведомляем назначенного специалиста
-            if assignee and assignee.telegram_id:
-                await telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title)
+                # Уведомляем IT-специалистов в Telegram
+                await telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="rocketchat")
+
+                # Уведомляем назначенного специалиста
+                if assignee and assignee.telegram_id:
+                    await telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title)
         except Exception as e:
             print(f"[RocketChat] Ошибка автоназначения/уведомлений: {e}")
 
