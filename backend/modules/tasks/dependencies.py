@@ -10,8 +10,19 @@ from sqlalchemy.orm import Session
 
 from backend.core.auth import get_token_payload
 from backend.core.database import get_db as core_get_db
+from backend.modules.hr.models.employee import Employee
 from backend.modules.hr.models.user import User
 from backend.modules.tasks.models import Project, ProjectShare, Task
+
+
+def department_id_to_uuid(department_id: int) -> UUID:
+    """Конвертирует integer ID отдела в детерминистичный UUID."""
+    return PyUUID(int=department_id)
+
+
+def uuid_to_department_id(target_uuid: UUID) -> int:
+    """Конвертирует UUID обратно в integer ID отдела."""
+    return target_uuid.int
 
 get_db = core_get_db
 
@@ -125,8 +136,20 @@ def get_project_permission(
         return user_share.permission
 
     # Проверяем шаринг на отдел
-    # TODO: Получить department_id пользователя из HR модуля
-    # Пока возвращаем None если нет прямого доступа
+    employee = db.query(Employee).filter(Employee.user_id == user.id).first()
+    if employee and employee.department_id:
+        dept_uuid = department_id_to_uuid(employee.department_id)
+        dept_share = (
+            db.query(ProjectShare)
+            .filter(
+                ProjectShare.project_id == project_id,
+                ProjectShare.share_type == "department",
+                ProjectShare.target_id == dept_uuid,
+            )
+            .first()
+        )
+        if dept_share:
+            return dept_share.permission
 
     return None
 

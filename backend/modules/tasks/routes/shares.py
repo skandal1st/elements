@@ -6,12 +6,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from backend.modules.hr.models.department import Department
 from backend.modules.hr.models.user import User
 from backend.modules.tasks.dependencies import (
     get_current_user,
     get_db,
     get_project_permission,
     require_tasks_access,
+    uuid_to_department_id,
 )
 from backend.modules.tasks.models import Project, ProjectShare
 from backend.modules.tasks.schemas.share import (
@@ -60,8 +62,9 @@ def list_project_shares(
                 target_name = target_user.full_name
                 target_email = target_user.email
         elif share.share_type == "department":
-            # TODO: Получить название отдела из HR
-            target_name = f"Отдел {share.target_id}"
+            dept_id = uuid_to_department_id(share.target_id)
+            dept = db.query(Department).filter(Department.id == dept_id).first()
+            target_name = dept.name if dept else f"Отдел {dept_id}"
 
         results.append(
             {
@@ -108,11 +111,16 @@ def create_project_share(
             detail="Нельзя поделиться проектом с его владельцем",
         )
 
-    # Проверяем что пользователь существует
+    # Проверяем что получатель существует
     if payload.share_type == "user":
         target_user = db.query(User).filter(User.id == payload.target_id).first()
         if not target_user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
+    elif payload.share_type == "department":
+        dept_id = uuid_to_department_id(payload.target_id)
+        dept = db.query(Department).filter(Department.id == dept_id).first()
+        if not dept:
+            raise HTTPException(status_code=404, detail="Отдел не найден")
 
     # Проверяем дубликаты
     existing = (
@@ -148,6 +156,10 @@ def create_project_share(
         if target_user:
             target_name = target_user.full_name
             target_email = target_user.email
+    elif payload.share_type == "department":
+        dept_id = uuid_to_department_id(payload.target_id)
+        dept = db.query(Department).filter(Department.id == dept_id).first()
+        target_name = dept.name if dept else f"Отдел {dept_id}"
 
     return {
         "id": share.id,
@@ -201,6 +213,10 @@ def update_project_share(
         if target_user:
             target_name = target_user.full_name
             target_email = target_user.email
+    elif share.share_type == "department":
+        dept_id = uuid_to_department_id(share.target_id)
+        dept = db.query(Department).filter(Department.id == dept_id).first()
+        target_name = dept.name if dept else f"Отдел {dept_id}"
 
     return {
         "id": share.id,

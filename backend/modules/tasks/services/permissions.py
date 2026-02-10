@@ -7,7 +7,9 @@ from uuid import UUID
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from backend.modules.hr.models.employee import Employee
 from backend.modules.hr.models.user import User
+from backend.modules.tasks.dependencies import department_id_to_uuid
 from backend.modules.tasks.models import Project, ProjectShare
 
 
@@ -104,7 +106,25 @@ def get_accessible_projects(
     for p, permission in shared_projects:
         results.append((p, permission))
 
-    # TODO: Добавить проекты, расшаренные на отдел пользователя
+    # Проекты, расшаренные на отдел пользователя
+    employee = db.query(Employee).filter(Employee.user_id == user.id).first()
+    if employee and employee.department_id:
+        already_added_ids = {p.id for p, _ in results}
+        dept_uuid = department_id_to_uuid(employee.department_id)
+        dept_shared = (
+            db.query(Project, ProjectShare.permission)
+            .join(ProjectShare, Project.id == ProjectShare.project_id)
+            .filter(
+                ProjectShare.share_type == "department",
+                ProjectShare.target_id == dept_uuid,
+                Project.is_personal == False,
+                archive_filter,
+                ~Project.id.in_(already_added_ids) if already_added_ids else True,
+            )
+            .all()
+        )
+        for p, perm in dept_shared:
+            results.append((p, perm))
 
     # Сортируем по дате обновления
     results.sort(key=lambda x: x[0].updated_at or x[0].created_at, reverse=True)
@@ -176,6 +196,23 @@ def can_access_project(
         user_level = permission_levels.get(share.permission, 0)
         return user_level >= required_level
 
+    # Проверяем шаринг на отдел
+    employee = db.query(Employee).filter(Employee.user_id == user.id).first()
+    if employee and employee.department_id:
+        dept_uuid = department_id_to_uuid(employee.department_id)
+        dept_share = (
+            db.query(ProjectShare)
+            .filter(
+                ProjectShare.project_id == project_id,
+                ProjectShare.share_type == "department",
+                ProjectShare.target_id == dept_uuid,
+            )
+            .first()
+        )
+        if dept_share:
+            user_level = permission_levels.get(dept_share.permission, 0)
+            return user_level >= required_level
+
     return False
 
 
@@ -225,5 +262,21 @@ def get_user_permission_for_project(
 
     if share:
         return share.permission
+
+    # Проверяем шаринг на отдел
+    employee = db.query(Employee).filter(Employee.user_id == user.id).first()
+    if employee and employee.department_id:
+        dept_uuid = department_id_to_uuid(employee.department_id)
+        dept_share = (
+            db.query(ProjectShare)
+            .filter(
+                ProjectShare.project_id == project_id,
+                ProjectShare.share_type == "department",
+                ProjectShare.target_id == dept_uuid,
+            )
+            .first()
+        )
+        if dept_share:
+            return dept_share.permission
 
     return None
