@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   DragDropContext,
@@ -14,8 +14,12 @@ import {
   X,
   Check,
   Archive,
+  Tag,
 } from "lucide-react";
-import { useTasksStore, Task } from "../../../shared/store/tasks.store";
+import { useTasksStore, Task, Label } from "../../../shared/store/tasks.store";
+import { apiGet } from "../../../shared/api/client";
+
+type UserOption = { id: string; full_name: string; email?: string | null };
 
 const DEFAULT_COLUMNS = [
   { id: "todo", title: "К выполнению", color: "bg-gray-500" },
@@ -49,8 +53,11 @@ export function TaskBoardPage() {
     kanbanColumnDefs,
     tasksLoading,
     tasksError,
+    labels,
     loadProjects,
     loadKanban,
+    loadLabels,
+    createLabel,
     createTask,
     updateTask,
     moveTask,
@@ -70,11 +77,15 @@ export function TaskBoardPage() {
     description: string;
     priority: Task["priority"];
     due_date: string;
+    assignee_id: string;
+    selectedLabels: string[];
   }>({
     title: "",
     description: "",
     priority: "medium",
     due_date: "",
+    assignee_id: "",
+    selectedLabels: [],
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
@@ -82,6 +93,19 @@ export function TaskBoardPage() {
   const [showAddStage, setShowAddStage] = useState(false);
   const [newStageTitle, setNewStageTitle] = useState("");
   const [newStageColor, setNewStageColor] = useState("bg-gray-500");
+
+  // Users for assignee picker
+  const [usersList, setUsersList] = useState<UserOption[]>([]);
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+
+  // Label filter
+  const [filterLabelId, setFilterLabelId] = useState<string>("");
+
+  // New label inline create
+  const [showNewLabel, setShowNewLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState("");
+  const [newLabelColor, setNewLabelColor] = useState("#6B7280");
 
   const columns = (kanbanColumnDefs && kanbanColumnDefs.length > 0
     ? kanbanColumnDefs.map((c) => ({
@@ -112,12 +136,36 @@ export function TaskBoardPage() {
     }
   }, [projectId, projects, setCurrentProject, selectedProjectId]);
 
-  // Load kanban when project changes
+  // Load kanban + labels when project changes
   useEffect(() => {
     if (selectedProjectId) {
       loadKanban(selectedProjectId);
+      loadLabels(selectedProjectId);
     }
-  }, [selectedProjectId, loadKanban]);
+  }, [selectedProjectId, loadKanban, loadLabels]);
+
+  // Load users for assignee picker
+  useEffect(() => {
+    apiGet<UserOption[]>("/hr/users/").then(setUsersList).catch(() => {});
+  }, []);
+
+  const filteredAssigneeUsers = useMemo(() => {
+    const q = assigneeSearch.trim().toLowerCase();
+    if (!q) return usersList.slice(0, 20);
+    return usersList
+      .filter((u) => {
+        const hay = `${u.full_name ?? ""} ${u.email ?? ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 20);
+  }, [assigneeSearch, usersList]);
+
+  // Labels lookup map
+  const labelsMap = useMemo(() => {
+    const map: Record<string, Label> = {};
+    labels.forEach((l) => (map[l.id] = l));
+    return map;
+  }, [labels]);
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
@@ -150,9 +198,12 @@ export function TaskBoardPage() {
         priority: newTask.priority,
         status: createInColumn,
         due_date: newTask.due_date ? new Date(newTask.due_date).toISOString() : undefined,
+        assignee_id: newTask.assignee_id || undefined,
+        labels: newTask.selectedLabels.length > 0 ? newTask.selectedLabels : undefined,
       });
       setShowCreateModal(false);
-      setNewTask({ title: "", description: "", priority: "medium", due_date: "" });
+      setNewTask({ title: "", description: "", priority: "medium", due_date: "", assignee_id: "", selectedLabels: [] });
+      setAssigneeSearch("");
       // Reload kanban to get updated order
       loadKanban(selectedProjectId);
     } catch (error) {
@@ -223,6 +274,20 @@ export function TaskBoardPage() {
                 </option>
               ))}
           </select>
+          {labels.length > 0 && (
+            <select
+              value={filterLabelId}
+              onChange={(e) => setFilterLabelId(e.target.value)}
+              className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Все метки</option>
+              {labels.map((label) => (
+                <option key={label.id} value={label.id}>
+                  {label.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -256,7 +321,10 @@ export function TaskBoardPage() {
                     {column.title}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {kanbanColumns[column.id]?.length || 0}
+                    {(filterLabelId
+                      ? kanbanColumns[column.id]?.filter((t) => t.labels?.includes(filterLabelId))
+                      : kanbanColumns[column.id]
+                    )?.length || 0}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -300,7 +368,10 @@ export function TaskBoardPage() {
                         Загрузка...
                       </div>
                     )}
-                    {kanbanColumns[column.id]?.map((task, index) => (
+                    {(filterLabelId
+                      ? kanbanColumns[column.id]?.filter((t) => t.labels?.includes(filterLabelId))
+                      : kanbanColumns[column.id]
+                    )?.map((task, index) => (
                       <Draggable
                         key={task.id}
                         draggableId={task.id}
@@ -414,6 +485,21 @@ export function TaskBoardPage() {
                                     {task.subtasks_completed}/{task.subtasks_count}
                                   </span>
                                 )}
+
+                              {/* Labels */}
+                              {task.labels && task.labels.length > 0 && task.labels.map((labelId) => {
+                                const label = labelsMap[labelId];
+                                if (!label) return null;
+                                return (
+                                  <span
+                                    key={labelId}
+                                    className="px-1.5 py-0.5 text-xs rounded text-white"
+                                    style={{ backgroundColor: label.color }}
+                                  >
+                                    {label.name}
+                                  </span>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -513,6 +599,152 @@ export function TaskBoardPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              {/* Assignee picker */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Исполнитель
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={
+                      newTask.assignee_id
+                        ? usersList.find((u) => u.id === newTask.assignee_id)?.full_name || assigneeSearch
+                        : assigneeSearch
+                    }
+                    onChange={(e) => {
+                      setAssigneeSearch(e.target.value);
+                      setNewTask({ ...newTask, assignee_id: "" });
+                      setShowAssigneeDropdown(true);
+                    }}
+                    onFocus={() => setShowAssigneeDropdown(true)}
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    placeholder="Поиск по имени..."
+                  />
+                  {newTask.assignee_id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewTask({ ...newTask, assignee_id: "" });
+                        setAssigneeSearch("");
+                      }}
+                      className="px-2 py-2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                {showAssigneeDropdown && !newTask.assignee_id && (
+                  <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+                    {filteredAssigneeUsers.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => {
+                          setNewTask({ ...newTask, assignee_id: u.id });
+                          setAssigneeSearch(u.full_name);
+                          setShowAssigneeDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
+                      >
+                        {u.full_name}
+                        {u.email && (
+                          <span className="ml-2 text-xs text-gray-400">{u.email}</span>
+                        )}
+                      </button>
+                    ))}
+                    {filteredAssigneeUsers.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-400">Не найдено</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Labels multi-select */}
+              {labels.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Метки
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {labels.map((label) => {
+                      const selected = newTask.selectedLabels.includes(label.id);
+                      return (
+                        <button
+                          key={label.id}
+                          type="button"
+                          onClick={() => {
+                            setNewTask({
+                              ...newTask,
+                              selectedLabels: selected
+                                ? newTask.selectedLabels.filter((id) => id !== label.id)
+                                : [...newTask.selectedLabels, label.id],
+                            });
+                          }}
+                          className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                            selected
+                              ? "text-white border-transparent"
+                              : "text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600"
+                          }`}
+                          style={selected ? { backgroundColor: label.color } : {}}
+                        >
+                          {label.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Inline label creation */}
+              <div>
+                {!showNewLabel ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewLabel(true)}
+                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <Tag className="w-3 h-3" /> Создать метку
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newLabelName}
+                      onChange={(e) => setNewLabelName(e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Название метки"
+                    />
+                    <input
+                      type="color"
+                      value={newLabelColor}
+                      onChange={(e) => setNewLabelColor(e.target.value)}
+                      className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!newLabelName.trim() || !selectedProjectId) return;
+                        await createLabel(selectedProjectId, { name: newLabelName.trim(), color: newLabelColor });
+                        setNewLabelName("");
+                        setNewLabelColor("#6B7280");
+                        setShowNewLabel(false);
+                      }}
+                      className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      <Check className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowNewLabel(false); setNewLabelName(""); }}
+                      className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
@@ -545,6 +777,11 @@ export function TaskBoardPage() {
             if (selectedProjectId) loadKanban(selectedProjectId);
           }}
           columns={columns}
+          usersList={usersList}
+          labels={labels}
+          labelsMap={labelsMap}
+          selectedProjectId={selectedProjectId}
+          onCreateLabel={createLabel}
         />
       )}
 
@@ -558,6 +795,7 @@ export function TaskBoardPage() {
             setViewingTask(null);
           }}
           columns={columns}
+          labelsMap={labelsMap}
         />
       )}
 
@@ -642,11 +880,13 @@ function TaskViewModal({
   onClose,
   onEdit,
   columns,
+  labelsMap,
 }: {
   task: Task;
   onClose: () => void;
   onEdit: () => void;
   columns: Array<{ id: string; title: string; color?: string }>;
+  labelsMap: Record<string, Label>;
 }) {
   const statusTitle =
     columns.find((c) => c.id === task.status)?.title ?? task.status;
@@ -666,6 +906,12 @@ function TaskViewModal({
               · Приоритет:{" "}
               <span className="text-gray-700 dark:text-gray-200">{task.priority}</span>{" "}
               · Срок: <span className="text-gray-700 dark:text-gray-200">{due}</span>
+              {task.assignee_name && (
+                <>
+                  {" "}· Исполнитель:{" "}
+                  <span className="text-gray-700 dark:text-gray-200">{task.assignee_name}</span>
+                </>
+              )}
             </p>
           </div>
           <button
@@ -677,7 +923,26 @@ function TaskViewModal({
           </button>
         </div>
 
-        <div className="p-4">
+        <div className="p-4 space-y-4">
+          {/* Labels */}
+          {task.labels && task.labels.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {task.labels.map((labelId) => {
+                const label = labelsMap[labelId];
+                if (!label) return null;
+                return (
+                  <span
+                    key={labelId}
+                    className="px-2 py-1 text-xs rounded-full text-white"
+                    style={{ backgroundColor: label.color }}
+                  >
+                    {label.name}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
           <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
               Описание
@@ -713,11 +978,21 @@ function TaskEditModal({
   onClose,
   onSave,
   columns,
+  usersList,
+  labels,
+  labelsMap,
+  selectedProjectId,
+  onCreateLabel,
 }: {
   task: Task;
   onClose: () => void;
   onSave: (data: Partial<Task>) => Promise<void>;
   columns: Array<{ id: string; title: string; color?: string }>;
+  usersList: UserOption[];
+  labels: Label[];
+  labelsMap: Record<string, Label>;
+  selectedProjectId: string | null;
+  onCreateLabel: (projectId: string, data: Partial<Label>) => Promise<Label>;
 }) {
   const [formData, setFormData] = useState<{
     title: string;
@@ -725,6 +1000,8 @@ function TaskEditModal({
     priority: Task["priority"];
     status: string;
     due_date: string;
+    assignee_id: string;
+    selectedLabels: string[];
   }>({
     title: task.title,
     description: task.description || "",
@@ -733,8 +1010,28 @@ function TaskEditModal({
     due_date: task.due_date
       ? new Date(task.due_date).toISOString().split("T")[0]
       : "",
+    assignee_id: task.assignee_id || "",
+    selectedLabels: task.labels || [],
   });
   const [saving, setSaving] = useState(false);
+  const [editAssigneeSearch, setEditAssigneeSearch] = useState(
+    task.assignee_name || (task.assignee_id ? usersList.find((u) => u.id === task.assignee_id)?.full_name || "" : "")
+  );
+  const [showEditAssigneeDropdown, setShowEditAssigneeDropdown] = useState(false);
+  const [showEditNewLabel, setShowEditNewLabel] = useState(false);
+  const [editNewLabelName, setEditNewLabelName] = useState("");
+  const [editNewLabelColor, setEditNewLabelColor] = useState("#6B7280");
+
+  const filteredUsers = useMemo(() => {
+    const q = editAssigneeSearch.trim().toLowerCase();
+    if (!q) return usersList.slice(0, 20);
+    return usersList
+      .filter((u) => {
+        const hay = `${u.full_name ?? ""} ${u.email ?? ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 20);
+  }, [editAssigneeSearch, usersList]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -747,6 +1044,8 @@ function TaskEditModal({
         due_date: formData.due_date
           ? new Date(formData.due_date).toISOString()
           : undefined,
+        assignee_id: formData.assignee_id || undefined,
+        labels: formData.selectedLabels,
       });
     } catch (error) {
       console.error("Failed to save task:", error);
@@ -757,7 +1056,7 @@ function TaskEditModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Редактирование задачи
@@ -856,6 +1155,152 @@ function TaskEditModal({
               }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Assignee picker */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Исполнитель
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={
+                  formData.assignee_id
+                    ? usersList.find((u) => u.id === formData.assignee_id)?.full_name || editAssigneeSearch
+                    : editAssigneeSearch
+                }
+                onChange={(e) => {
+                  setEditAssigneeSearch(e.target.value);
+                  setFormData({ ...formData, assignee_id: "" });
+                  setShowEditAssigneeDropdown(true);
+                }}
+                onFocus={() => setShowEditAssigneeDropdown(true)}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="Поиск по имени..."
+              />
+              {formData.assignee_id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, assignee_id: "" });
+                    setEditAssigneeSearch("");
+                  }}
+                  className="px-2 py-2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {showEditAssigneeDropdown && !formData.assignee_id && (
+              <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+                {filteredUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => {
+                      setFormData({ ...formData, assignee_id: u.id });
+                      setEditAssigneeSearch(u.full_name);
+                      setShowEditAssigneeDropdown(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    {u.full_name}
+                    {u.email && (
+                      <span className="ml-2 text-xs text-gray-400">{u.email}</span>
+                    )}
+                  </button>
+                ))}
+                {filteredUsers.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-gray-400">Не найдено</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Labels multi-select */}
+          {labels.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Метки
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {labels.map((label) => {
+                  const selected = formData.selectedLabels.includes(label.id);
+                  return (
+                    <button
+                      key={label.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          selectedLabels: selected
+                            ? formData.selectedLabels.filter((id) => id !== label.id)
+                            : [...formData.selectedLabels, label.id],
+                        });
+                      }}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selected
+                          ? "text-white border-transparent"
+                          : "text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600"
+                      }`}
+                      style={selected ? { backgroundColor: label.color } : {}}
+                    >
+                      {label.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Inline label creation */}
+          <div>
+            {!showEditNewLabel ? (
+              <button
+                type="button"
+                onClick={() => setShowEditNewLabel(true)}
+                className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              >
+                <Tag className="w-3 h-3" /> Создать метку
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editNewLabelName}
+                  onChange={(e) => setEditNewLabelName(e.target.value)}
+                  className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Название метки"
+                />
+                <input
+                  type="color"
+                  value={editNewLabelColor}
+                  onChange={(e) => setEditNewLabelColor(e.target.value)}
+                  className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!editNewLabelName.trim() || !selectedProjectId) return;
+                    await onCreateLabel(selectedProjectId, { name: editNewLabelName.trim(), color: editNewLabelColor });
+                    setEditNewLabelName("");
+                    setEditNewLabelColor("#6B7280");
+                    setShowEditNewLabel(false);
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowEditNewLabel(false); setEditNewLabelName(""); }}
+                  className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

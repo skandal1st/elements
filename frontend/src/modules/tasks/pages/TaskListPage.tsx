@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   Circle,
@@ -7,8 +7,14 @@ import {
   ChevronRight,
   Plus,
   Filter,
+  X,
+  Check,
+  Tag,
 } from "lucide-react";
-import { useTasksStore, Task } from "../../../shared/store/tasks.store";
+import { useTasksStore, Task, Label } from "../../../shared/store/tasks.store";
+import { apiGet } from "../../../shared/api/client";
+
+type UserOption = { id: string; full_name: string; email?: string | null };
 
 const PRIORITY_COLORS: Record<string, string> = {
   low: "text-gray-400",
@@ -43,6 +49,9 @@ export function TaskListPage() {
     kanbanColumnDefs,
     projects,
     loadProjects,
+    labels,
+    loadLabels,
+    createLabel,
   } = useTasksStore();
 
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -56,12 +65,31 @@ export function TaskListPage() {
   const [quickAddDueDate, setQuickAddDueDate] = useState<string>("");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
+  // Users for assignee picker
+  const [usersList, setUsersList] = useState<UserOption[]>([]);
+
+  // Labels lookup map
+  const labelsMap = useMemo(() => {
+    const map: Record<string, Label> = {};
+    labels.forEach((l) => (map[l.id] = l));
+    return map;
+  }, [labels]);
+
   useEffect(() => {
     loadTasks({ my_tasks: true });
     if (projects.length === 0) {
       loadProjects();
     }
+    apiGet<UserOption[]>("/hr/users/").then(setUsersList).catch(() => {});
   }, [loadTasks, loadProjects, projects.length]);
+
+  // Load labels for each unique project in the tasks
+  useEffect(() => {
+    const projectIds = [...new Set(tasks.map((t) => t.project_id))];
+    projectIds.forEach((pid) => {
+      if (pid) loadLabels(pid);
+    });
+  }, [tasks, loadLabels]);
 
   const handleToggleComplete = async (task: Task) => {
     const newStatus = task.status === "done" ? "todo" : "done";
@@ -376,7 +404,7 @@ export function TaskListPage() {
                         >
                           {task.title}
                         </p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                           <span className="truncate max-w-[150px]">
                             {projects.find((p) => p.id === task.project_id)?.title}
                           </span>
@@ -384,6 +412,19 @@ export function TaskListPage() {
                             {PRIORITY_LABELS[task.priority]}
                           </span>
                           <span>{STATUS_LABELS[task.status]}</span>
+                          {task.labels && task.labels.length > 0 && task.labels.map((labelId) => {
+                            const label = labelsMap[labelId];
+                            if (!label) return null;
+                            return (
+                              <span
+                                key={labelId}
+                                className="px-1.5 py-0.5 rounded text-white"
+                                style={{ backgroundColor: label.color }}
+                              >
+                                {label.name}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -442,6 +483,9 @@ export function TaskListPage() {
                   { id: "cancelled", title: "Отменено" },
                 ]
           }
+          usersList={usersList}
+          labels={labels}
+          onCreateLabel={createLabel}
         />
       )}
     </div>
@@ -453,11 +497,17 @@ function TaskEditModal({
   onClose,
   onSave,
   columns,
+  usersList,
+  labels,
+  onCreateLabel,
 }: {
   task: Task;
   onClose: () => void;
   onSave: (data: Partial<Task>) => Promise<void>;
   columns: Array<{ id: string; title: string }>;
+  usersList: UserOption[];
+  labels: Label[];
+  onCreateLabel: (projectId: string, data: Partial<Label>) => Promise<Label>;
 }) {
   const [formData, setFormData] = useState<{
     title: string;
@@ -465,14 +515,41 @@ function TaskEditModal({
     priority: Task["priority"];
     status: string;
     due_date: string;
+    assignee_id: string;
+    selectedLabels: string[];
   }>({
     title: task.title,
     description: task.description || "",
     priority: task.priority,
     status: task.status,
     due_date: task.due_date ? new Date(task.due_date).toISOString().split("T")[0] : "",
+    assignee_id: task.assignee_id || "",
+    selectedLabels: task.labels || [],
   });
   const [saving, setSaving] = useState(false);
+  const [assigneeSearch, setAssigneeSearch] = useState(
+    task.assignee_name || (task.assignee_id ? usersList.find((u) => u.id === task.assignee_id)?.full_name || "" : "")
+  );
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [showNewLabel, setShowNewLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState("");
+  const [newLabelColor, setNewLabelColor] = useState("#6B7280");
+
+  const filteredUsers = useMemo(() => {
+    const q = assigneeSearch.trim().toLowerCase();
+    if (!q) return usersList.slice(0, 20);
+    return usersList
+      .filter((u) => {
+        const hay = `${u.full_name ?? ""} ${u.email ?? ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 20);
+  }, [assigneeSearch, usersList]);
+
+  // Filter labels for this task's project
+  const projectLabels = useMemo(() => {
+    return labels.filter((l) => l.project_id === task.project_id);
+  }, [labels, task.project_id]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -483,6 +560,8 @@ function TaskEditModal({
         priority: formData.priority,
         status: formData.status,
         due_date: formData.due_date ? new Date(formData.due_date).toISOString() : undefined,
+        assignee_id: formData.assignee_id || undefined,
+        labels: formData.selectedLabels,
       });
     } finally {
       setSaving(false);
@@ -491,7 +570,7 @@ function TaskEditModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Задача
@@ -571,6 +650,152 @@ function TaskEditModal({
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
+          </div>
+
+          {/* Assignee picker */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Исполнитель
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={
+                  formData.assignee_id
+                    ? usersList.find((u) => u.id === formData.assignee_id)?.full_name || assigneeSearch
+                    : assigneeSearch
+                }
+                onChange={(e) => {
+                  setAssigneeSearch(e.target.value);
+                  setFormData({ ...formData, assignee_id: "" });
+                  setShowAssigneeDropdown(true);
+                }}
+                onFocus={() => setShowAssigneeDropdown(true)}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Поиск по имени..."
+              />
+              {formData.assignee_id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, assignee_id: "" });
+                    setAssigneeSearch("");
+                  }}
+                  className="px-2 py-2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {showAssigneeDropdown && !formData.assignee_id && (
+              <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+                {filteredUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => {
+                      setFormData({ ...formData, assignee_id: u.id });
+                      setAssigneeSearch(u.full_name);
+                      setShowAssigneeDropdown(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    {u.full_name}
+                    {u.email && (
+                      <span className="ml-2 text-xs text-gray-400">{u.email}</span>
+                    )}
+                  </button>
+                ))}
+                {filteredUsers.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-gray-400">Не найдено</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Labels multi-select */}
+          {projectLabels.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Метки
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {projectLabels.map((label) => {
+                  const selected = formData.selectedLabels.includes(label.id);
+                  return (
+                    <button
+                      key={label.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          selectedLabels: selected
+                            ? formData.selectedLabels.filter((id) => id !== label.id)
+                            : [...formData.selectedLabels, label.id],
+                        });
+                      }}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selected
+                          ? "text-white border-transparent"
+                          : "text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600"
+                      }`}
+                      style={selected ? { backgroundColor: label.color } : {}}
+                    >
+                      {label.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Inline label creation */}
+          <div>
+            {!showNewLabel ? (
+              <button
+                type="button"
+                onClick={() => setShowNewLabel(true)}
+                className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              >
+                <Tag className="w-3 h-3" /> Создать метку
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newLabelName}
+                  onChange={(e) => setNewLabelName(e.target.value)}
+                  className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Название метки"
+                />
+                <input
+                  type="color"
+                  value={newLabelColor}
+                  onChange={(e) => setNewLabelColor(e.target.value)}
+                  className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!newLabelName.trim() || !task.project_id) return;
+                    await onCreateLabel(task.project_id, { name: newLabelName.trim(), color: newLabelColor });
+                    setNewLabelName("");
+                    setNewLabelColor("#6B7280");
+                    setShowNewLabel(false);
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowNewLabel(false); setNewLabelName(""); }}
+                  className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700">

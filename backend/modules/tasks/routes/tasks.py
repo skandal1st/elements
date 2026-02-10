@@ -55,6 +55,7 @@ def list_tasks(
     status: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
     assignee_id: Optional[UUID] = Query(None),
+    label_id: Optional[UUID] = Query(None),
     my_tasks: bool = Query(False),
     search: Optional[str] = Query(None),
     include_archived: bool = Query(False),
@@ -87,6 +88,8 @@ def list_tasks(
         q = q.filter(Task.priority == priority)
     if assignee_id:
         q = q.filter(Task.assignee_id == assignee_id)
+    if label_id:
+        q = q.filter(Task.labels.any(label_id))
     if my_tasks:
         q = q.filter(
             or_(
@@ -186,7 +189,12 @@ def get_kanban_board(
             column_defs.append(
                 {"id": task.status, "title": task.status, "color": "bg-gray-500"}
             )
-        columns[task.status].append(TaskOut.model_validate(task).model_dump())
+        task_dict = TaskOut.model_validate(task).model_dump()
+        if task.assignee:
+            task_dict["assignee_name"] = task.assignee.full_name
+        if task.creator:
+            task_dict["creator_name"] = task.creator.full_name
+        columns[task.status].append(task_dict)
 
     return {
         "project_id": str(project_id),
