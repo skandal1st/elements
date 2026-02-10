@@ -258,7 +258,7 @@ export function SettingsPage() {
   // Состояния для вкладки «Заявки»
   const [ticketSpecialists, setTicketSpecialists] = useState<SettingsUser[]>([]);
   const [ticketAllUsers, setTicketAllUsers] = useState<SettingsUser[]>([]);
-  const [ticketUsersLoading, setTicketUsersLoading] = useState(false);
+  const [, setTicketUsersLoading] = useState(false);
   const [ticketUserSearch, setTicketUserSearch] = useState("");
   const [ticketSpecialistSearch, setTicketSpecialistSearch] = useState("");
   const [showNotifUserPicker, setShowNotifUserPicker] = useState(false);
@@ -1119,7 +1119,7 @@ export function SettingsPage() {
                                     >
                                       {u.full_name}
                                       {u.telegram_connected && (
-                                        <MessageCircle className="w-3 h-3 text-blue-400" title="Telegram подключён" />
+                                        <span title="Telegram подключён"><MessageCircle className="w-3 h-3 text-blue-400" /></span>
                                       )}
                                       <button
                                         type="button"
@@ -1230,7 +1230,7 @@ export function SettingsPage() {
                               <div className="text-xs text-gray-500">{u.email}</div>
                             </div>
                             {u.telegram_connected && (
-                              <MessageCircle className="w-3.5 h-3.5 text-blue-400 ml-auto" title="Telegram" />
+                              <span title="Telegram"><MessageCircle className="w-3.5 h-3.5 text-blue-400 ml-auto" /></span>
                             )}
                           </button>
                         );
@@ -1304,7 +1304,7 @@ export function SettingsPage() {
                               <div className="text-xs text-gray-500">{u.email} — {u.it_role}</div>
                             </div>
                             {u.telegram_connected && (
-                              <MessageCircle className="w-3.5 h-3.5 text-blue-400 ml-auto" title="Telegram" />
+                              <span title="Telegram"><MessageCircle className="w-3.5 h-3.5 text-blue-400 ml-auto" /></span>
                             )}
                           </button>
                         );
