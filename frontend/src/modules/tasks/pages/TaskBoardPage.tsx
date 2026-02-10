@@ -779,7 +779,6 @@ export function TaskBoardPage() {
           columns={columns}
           usersList={usersList}
           labels={labels}
-          labelsMap={labelsMap}
           selectedProjectId={selectedProjectId}
           onCreateLabel={createLabel}
         />
@@ -980,7 +979,6 @@ function TaskEditModal({
   columns,
   usersList,
   labels,
-  labelsMap,
   selectedProjectId,
   onCreateLabel,
 }: {
@@ -990,7 +988,6 @@ function TaskEditModal({
   columns: Array<{ id: string; title: string; color?: string }>;
   usersList: UserOption[];
   labels: Label[];
-  labelsMap: Record<string, Label>;
   selectedProjectId: string | null;
   onCreateLabel: (projectId: string, data: Partial<Label>) => Promise<Label>;
 }) {
