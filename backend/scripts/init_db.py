@@ -54,15 +54,20 @@ from backend.modules.it.models import (
 
 # Knowledge Core модели (регистрация в Base для create_all)
 from backend.modules.knowledge_core.models import (  # noqa: F401
+    ArticleKeyword,
     Credential,
     CredentialAccessLog,
     KnowledgeArticle,
     KnowledgeArticleFeedback,
     KnowledgeArticleIndex,
+    KnowledgeArticleTag,
+    KnowledgeCategory,
+    KnowledgeTag,
     LLMRequestLog,
     KnowledgeTicketSuggestionLog,
     NetworkDevice,
     PhysicalServer,
+    SearchQuery,
     Service as KnowledgeService,
     VirtualServer,
 )

@@ -106,15 +106,20 @@ def ensure_knowledge_core_tables() -> None:
     """
     try:
         from backend.modules.knowledge_core.models import (  # noqa: WPS433
+            ArticleKeyword,
             Credential,
             CredentialAccessLog,
             KnowledgeArticle,
             KnowledgeArticleFeedback,
             KnowledgeArticleIndex,
+            KnowledgeArticleTag,
+            KnowledgeCategory,
+            KnowledgeTag,
             LLMRequestLog,
             KnowledgeTicketSuggestionLog,
             NetworkDevice,
             PhysicalServer,
+            SearchQuery,
             Service,
             VirtualServer,
         )
@@ -123,11 +128,16 @@ def ensure_knowledge_core_tables() -> None:
         return
 
     tables = [
+        KnowledgeCategory.__table__,
+        KnowledgeTag.__table__,
         NetworkDevice.__table__,
         PhysicalServer.__table__,
         VirtualServer.__table__,
         Service.__table__,
         KnowledgeArticle.__table__,
+        KnowledgeArticleTag.__table__,
+        ArticleKeyword.__table__,
+        SearchQuery.__table__,
         Credential.__table__,
         CredentialAccessLog.__table__,
         LLMRequestLog.__table__,
@@ -141,6 +151,102 @@ def ensure_knowledge_core_tables() -> None:
             t.create(bind=engine, checkfirst=True)
         except Exception as e:
             logger.warning("startup table create skipped (%s): %s", t.name, e)
+
+
+def ensure_knowledge_core_article_extensions() -> None:
+    """
+    Добавляет новые колонки Phase 1 в knowledge_articles,
+    создаёт search_vector, GIN-индекс и триггер tsvector.
+    """
+    columns = [
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS article_type VARCHAR(32)",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS category_id UUID",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS summary TEXT",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS difficulty_level VARCHAR(16)",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS author_id UUID",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS last_editor_id UUID",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS reading_time_minutes INTEGER",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS views_count INTEGER DEFAULT 0 NOT NULL",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS helpful_count INTEGER DEFAULT 0 NOT NULL",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS not_helpful_count INTEGER DEFAULT 0 NOT NULL",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE NOT NULL",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE NOT NULL",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ",
+        "ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS search_vector tsvector",
+    ]
+    for sql in columns:
+        _exec_best_effort(sql)
+
+    # Foreign keys (best-effort)
+    _exec_best_effort("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ka_category_id_fkey') THEN
+                ALTER TABLE knowledge_articles ADD CONSTRAINT ka_category_id_fkey
+                FOREIGN KEY (category_id) REFERENCES knowledge_categories(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+    """)
+    _exec_best_effort("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ka_author_id_fkey') THEN
+                ALTER TABLE knowledge_articles ADD CONSTRAINT ka_author_id_fkey
+                FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+    """)
+    _exec_best_effort("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ka_last_editor_id_fkey') THEN
+                ALTER TABLE knowledge_articles ADD CONSTRAINT ka_last_editor_id_fkey
+                FOREIGN KEY (last_editor_id) REFERENCES users(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+    """)
+
+    # Indices
+    _exec_best_effort("CREATE INDEX IF NOT EXISTS idx_ka_search_vector ON knowledge_articles USING GIN (search_vector)")
+    _exec_best_effort("CREATE INDEX IF NOT EXISTS idx_ka_category_id ON knowledge_articles (category_id)")
+    _exec_best_effort("CREATE INDEX IF NOT EXISTS idx_ka_article_type ON knowledge_articles (article_type)")
+    _exec_best_effort("CREATE INDEX IF NOT EXISTS idx_ka_published_at ON knowledge_articles (published_at)")
+    _exec_best_effort("CREATE INDEX IF NOT EXISTS idx_ka_keywords_article ON knowledge_article_keywords (article_id)")
+    _exec_best_effort("CREATE INDEX IF NOT EXISTS idx_ka_keywords_keyword ON knowledge_article_keywords (keyword)")
+
+    # tsvector auto-update trigger (Russian config, weights A/B/C for title/summary/content)
+    _exec_best_effort("""
+        CREATE OR REPLACE FUNCTION knowledge_articles_search_vector_update() RETURNS trigger AS $$
+        BEGIN
+            NEW.search_vector :=
+                setweight(to_tsvector('russian', coalesce(NEW.title, '')), 'A') ||
+                setweight(to_tsvector('russian', coalesce(NEW.summary, '')), 'B') ||
+                setweight(to_tsvector('russian', coalesce(NEW.raw_content, '')), 'C') ||
+                setweight(to_tsvector('russian', coalesce(NEW.normalized_content, '')), 'C');
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """)
+    _exec_best_effort("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_ka_search_vector') THEN
+                CREATE TRIGGER trg_ka_search_vector
+                BEFORE INSERT OR UPDATE ON knowledge_articles
+                FOR EACH ROW EXECUTE FUNCTION knowledge_articles_search_vector_update();
+            END IF;
+        END $$;
+    """)
+
+    # Backfill search_vector for existing rows
+    _exec_best_effort("""
+        UPDATE knowledge_articles SET search_vector =
+            setweight(to_tsvector('russian', coalesce(title, '')), 'A') ||
+            setweight(to_tsvector('russian', coalesce(summary, '')), 'B') ||
+            setweight(to_tsvector('russian', coalesce(raw_content, '')), 'C') ||
+            setweight(to_tsvector('russian', coalesce(normalized_content, '')), 'C')
+        WHERE search_vector IS NULL
+    """)
 
 
 def ensure_zabbix_integration_columns() -> None:
@@ -234,6 +340,7 @@ def apply_startup_migrations() -> None:
         ensure_users_telegram_columns()
         ensure_tickets_columns()
         ensure_knowledge_core_tables()
+        ensure_knowledge_core_article_extensions()
         ensure_zabbix_integration_columns()
         ensure_equipment_category_network()
         ensure_rocketchat_columns()

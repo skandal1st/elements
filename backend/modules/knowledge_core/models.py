@@ -5,6 +5,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -17,6 +18,71 @@ from sqlalchemy.orm import relationship
 from backend.core.database import Base
 
 
+# ---------------------------------------------------------------------------
+# Categories & Tags
+# ---------------------------------------------------------------------------
+
+class KnowledgeCategory(Base):
+    """Иерархическая категория статей базы знаний."""
+
+    __tablename__ = "knowledge_categories"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    name = Column(String(255), nullable=False)
+    slug = Column(String(255), nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    icon = Column(String(64), nullable=True)
+    color = Column(String(32), nullable=True)
+    parent_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("knowledge_categories.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    sort_order = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    parent = relationship("KnowledgeCategory", remote_side="KnowledgeCategory.id", backref="children")
+
+
+class KnowledgeTag(Base):
+    """Тег для статей базы знаний."""
+
+    __tablename__ = "knowledge_tags"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    name = Column(String(128), nullable=False, unique=True)
+    color = Column(String(32), nullable=True)
+    usage_count = Column(Integer, nullable=False, default=0)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class KnowledgeArticleTag(Base):
+    """Связь статья — тег (M2M)."""
+
+    __tablename__ = "knowledge_article_tags"
+
+    article_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("knowledge_articles.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    tag_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("knowledge_tags.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Articles
+# ---------------------------------------------------------------------------
+
 class KnowledgeArticle(Base):
     """
     Статья базы знаний (Knowledge Core).
@@ -25,6 +91,7 @@ class KnowledgeArticle(Base):
     - draft: черновик (ручное создание)
     - unprocessed: создано из тикета / не нормализовано
     - normalized: подтверждено пользователем
+    - published: опубликовано
     - archived: архив
     """
 
@@ -57,13 +124,76 @@ class KnowledgeArticle(Base):
     # Полезное расширение под UI "Типовое решение" из тикета
     is_typical = Column(Boolean, nullable=False, default=False)
 
+    # --- Phase 1 extensions ---
+    article_type = Column(String(32), nullable=True)  # instruction | solution | faq | guide | note
+    category_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("knowledge_categories.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    summary = Column(Text, nullable=True)
+    difficulty_level = Column(String(16), nullable=True)  # beginner | intermediate | advanced
+    author_id = Column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    last_editor_id = Column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reading_time_minutes = Column(Integer, nullable=True)
+    views_count = Column(Integer, nullable=False, default=0)
+    helpful_count = Column(Integer, nullable=False, default=0)
+    not_helpful_count = Column(Integer, nullable=False, default=0)
+    is_pinned = Column(Boolean, nullable=False, default=False)
+    is_featured = Column(Boolean, nullable=False, default=False)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+    # relationships
     created_from_ticket = relationship("Ticket", foreign_keys=[created_from_ticket_id])
+    category = relationship("KnowledgeCategory", foreign_keys=[category_id])
+    author = relationship("User", foreign_keys=[author_id])
+    last_editor = relationship("User", foreign_keys=[last_editor_id])
+    tags = relationship("KnowledgeTag", secondary="knowledge_article_tags", lazy="selectin")
+    keywords = relationship("ArticleKeyword", back_populates="article", cascade="all, delete-orphan")
 
+
+# ---------------------------------------------------------------------------
+# Keywords & Search
+# ---------------------------------------------------------------------------
+
+class ArticleKeyword(Base):
+    """Автоматически извлечённые ключевые слова статьи."""
+
+    __tablename__ = "knowledge_article_keywords"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    article_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("knowledge_articles.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    keyword = Column(String(255), nullable=False)
+    relevance = Column(Float, nullable=False, default=1.0)
+
+    article = relationship("KnowledgeArticle", foreign_keys=[article_id], overlaps="keywords")
+
+
+class SearchQuery(Base):
+    """Лог поисковых запросов для аналитики."""
+
+    __tablename__ = "knowledge_search_queries"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    query_text = Column(String(500), nullable=False)
+    results_count = Column(Integer, nullable=False, default=0)
+    user_id = Column(PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    search_type = Column(String(32), nullable=False, default="hybrid")  # fulltext | keyword | hybrid
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ---------------------------------------------------------------------------
+# Infrastructure
+# ---------------------------------------------------------------------------
 
 class NetworkDevice(Base):
     __tablename__ = "knowledge_network_devices"
@@ -145,6 +275,10 @@ class Service(Base):
     virtual_server = relationship("VirtualServer", foreign_keys=[virtual_server_id])
 
 
+# ---------------------------------------------------------------------------
+# Credentials
+# ---------------------------------------------------------------------------
+
 class Credential(Base):
     """
     Учетные данные (secret зашифрован AES-256-GCM).
@@ -202,6 +336,10 @@ class CredentialAccessLog(Base):
 
     credential = relationship("Credential", foreign_keys=[credential_id])
 
+
+# ---------------------------------------------------------------------------
+# LLM & Indexing Logs
+# ---------------------------------------------------------------------------
 
 class LLMRequestLog(Base):
     """Логирование всех LLM-запросов (Этап 1: только нормализация)."""
@@ -272,4 +410,3 @@ class KnowledgeTicketSuggestionLog(Base):
     success = Column(Boolean, nullable=False, default=False)
     duration_ms = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
