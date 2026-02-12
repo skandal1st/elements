@@ -46,7 +46,7 @@ class KnowledgeCategory(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    parent = relationship("KnowledgeCategory", remote_side="KnowledgeCategory.id", backref="children")
+    parent = relationship("KnowledgeCategory", remote_side=[id], backref="children")
 
 
 class KnowledgeTag(Base):

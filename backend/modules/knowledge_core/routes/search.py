@@ -29,7 +29,7 @@ router = APIRouter(prefix="/search", tags=["knowledge-search"])
 )
 def search_articles(
     q: str = Query(..., min_length=1),
-    type: str = Query("hybrid", regex="^(fulltext|keyword|hybrid)$"),
+    type: str = Query("hybrid", pattern="^(fulltext|keyword|hybrid)$"),
     category_id: Optional[UUID] = Query(None),
     tag_ids: Optional[str] = Query(None, description="Comma-separated tag UUIDs"),
     status: Optional[str] = Query(None),
