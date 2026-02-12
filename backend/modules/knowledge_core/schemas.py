@@ -55,6 +55,9 @@ class KnowledgeCategoryTreeOut(KnowledgeCategoryOut):
     children: list["KnowledgeCategoryTreeOut"] = Field(default_factory=list)
 
 
+KnowledgeCategoryTreeOut.model_rebuild()
+
+
 # ---------------------------------------------------------------------------
 # Tags
 # ---------------------------------------------------------------------------

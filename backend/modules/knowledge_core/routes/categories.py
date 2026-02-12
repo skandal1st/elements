@@ -17,11 +17,18 @@ from backend.modules.knowledge_core.schemas import (
 
 router = APIRouter(prefix="/categories", tags=["knowledge-categories"])
 
-# Transliteration map for Cyrillic → Latin slug
-_TRANSLIT = str.maketrans(
-    "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
-    "abvgdeezziiklmnoprstufhcchshshieua",
-)
+# Transliteration map for Cyrillic → Latin slug (dict supports multi-char mappings)
+_TRANSLIT = {
+    ord('а'): 'a', ord('б'): 'b', ord('в'): 'v', ord('г'): 'g',
+    ord('д'): 'd', ord('е'): 'e', ord('ё'): 'e', ord('ж'): 'zh',
+    ord('з'): 'z', ord('и'): 'i', ord('й'): 'y', ord('к'): 'k',
+    ord('л'): 'l', ord('м'): 'm', ord('н'): 'n', ord('о'): 'o',
+    ord('п'): 'p', ord('р'): 'r', ord('с'): 's', ord('т'): 't',
+    ord('у'): 'u', ord('ф'): 'f', ord('х'): 'kh', ord('ц'): 'ts',
+    ord('ч'): 'ch', ord('ш'): 'sh', ord('щ'): 'shch', ord('ъ'): '',
+    ord('ы'): 'y', ord('ь'): '', ord('э'): 'e', ord('ю'): 'yu',
+    ord('я'): 'ya',
+}
 
 
 def _slugify(name: str) -> str:
