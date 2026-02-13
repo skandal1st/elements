@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
@@ -9,6 +10,11 @@ from sqlalchemy.orm import Session
 from backend.modules.it.dependencies import get_db, require_it_roles
 import hashlib
 import logging
+
+
+def _strip_html(text: str) -> str:
+    """Remove HTML tags from text, replacing them with spaces."""
+    return re.sub(r'<[^>]+>', ' ', text) if text else ''
 
 from backend.modules.it.models import Ticket
 from backend.modules.hr.models.system_settings import SystemSettings
@@ -91,9 +97,9 @@ def _sync_keywords(db: Session, article: KnowledgeArticle) -> None:
     if article.summary:
         text_parts.append(article.summary)
     if article.raw_content:
-        text_parts.append(article.raw_content)
+        text_parts.append(_strip_html(article.raw_content))
     if article.normalized_content:
-        text_parts.append(article.normalized_content)
+        text_parts.append(_strip_html(article.normalized_content))
 
     combined_text = " ".join(text_parts)
     kw_list = extract_keywords(combined_text)
@@ -181,7 +187,7 @@ def create_article(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> KnowledgeArticle:
-    reading_time = estimate_reading_time(payload.raw_content or "")
+    reading_time = estimate_reading_time(_strip_html(payload.raw_content or ""))
 
     a = KnowledgeArticle(
         title=payload.title.strip(),
@@ -242,7 +248,7 @@ def update_article(
     if "raw_content" in data:
         a.raw_content = data["raw_content"]
         content_changed = True
-        a.reading_time_minutes = estimate_reading_time(data["raw_content"] or "")
+        a.reading_time_minutes = estimate_reading_time(_strip_html(data["raw_content"] or ""))
     if "equipment_ids" in data and data["equipment_ids"] is not None:
         a.equipment_ids = list(data["equipment_ids"])
     if "linked_article_ids" in data and data["linked_article_ids"] is not None:
@@ -334,7 +340,7 @@ def create_article_from_ticket(
         is_typical=payload.is_typical,
         article_type="solution",
         author_id=user.id,
-        reading_time_minutes=estimate_reading_time(raw),
+        reading_time_minutes=estimate_reading_time(_strip_html(raw)),
     )
     db.add(a)
     db.flush()
@@ -399,7 +405,7 @@ async def normalize_preview(
         model = cfg.get("openrouter_model") or settings.openrouter_model
 
         normalized, meta = await normalize_article_text(
-            a.raw_content,
+            _strip_html(a.raw_content),
             enabled=enabled if enabled_raw is not None else settings.llm_normalization_enabled,
             api_key=api_key,
             base_url=base_url,

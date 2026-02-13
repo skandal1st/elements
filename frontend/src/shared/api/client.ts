@@ -83,3 +83,19 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
 export async function apiDelete(path: string): Promise<void> {
   return apiFetch<void>(path, { method: 'DELETE' })
 }
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const token = getToken()
+  if (!token) throw new Error('Требуется авторизация')
+
+  const headers = new Headers()
+  headers.set('Authorization', `Bearer ${token}`)
+  // Do NOT set Content-Type — browser will set multipart/form-data with boundary
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+  return handleResponse<T>(response)
+}

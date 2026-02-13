@@ -5,12 +5,13 @@ API роуты Knowledge Core.
 
 from fastapi import APIRouter
 
-from .routes import articles, categories, credentials, indexing, infra, search, tags
+from .routes import articles, categories, credentials, images, indexing, infra, search, tags
 
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
 router.include_router(articles.router)
+router.include_router(images.router)
 router.include_router(categories.router)
 router.include_router(tags.router)
 router.include_router(search.router)

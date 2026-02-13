@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from '../api/client'
+import { apiGet, apiPost, apiPatch, apiDelete, apiUpload } from '../api/client'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -237,5 +237,12 @@ export const knowledgeService = {
 
   async popularQueries(days = 30, limit = 10): Promise<Array<{ query: string; count: number }>> {
     return apiGet(`/it/knowledge/search/popular?days=${days}&limit=${limit}`)
+  },
+
+  // Images
+  async uploadArticleImage(file: File): Promise<{ url: string; filename: string }> {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiUpload<{ url: string; filename: string }>('/it/knowledge/articles/images/upload', formData)
   },
 }

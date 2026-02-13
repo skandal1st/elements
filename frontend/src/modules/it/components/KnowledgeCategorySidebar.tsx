@@ -1,4 +1,4 @@
-import { ChevronRight, Folder, FolderOpen } from 'lucide-react'
+import { ChevronRight, Folder, FolderOpen, Settings } from 'lucide-react'
 import { useState } from 'react'
 import type { KnowledgeCategory } from '@/shared/services/knowledge.service'
 
@@ -6,6 +6,7 @@ interface Props {
   categories: KnowledgeCategory[]
   selectedId: string | null
   onSelect: (id: string | null) => void
+  onManageClick?: () => void
 }
 
 function CategoryNode({
@@ -74,20 +75,31 @@ function CategoryNode({
   )
 }
 
-export function KnowledgeCategorySidebar({ categories, selectedId, onSelect }: Props) {
+export function KnowledgeCategorySidebar({ categories, selectedId, onSelect, onManageClick }: Props) {
   return (
     <div className="space-y-1">
-      <button
-        className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${
-          selectedId === null
-            ? 'bg-accent-purple/20 text-white'
-            : 'text-gray-400 hover:bg-dark-700/50 hover:text-white'
-        }`}
-        onClick={() => onSelect(null)}
-      >
-        <Folder className="w-4 h-4" />
-        <span>Все категории</span>
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${
+            selectedId === null
+              ? 'bg-accent-purple/20 text-white'
+              : 'text-gray-400 hover:bg-dark-700/50 hover:text-white'
+          }`}
+          onClick={() => onSelect(null)}
+        >
+          <Folder className="w-4 h-4" />
+          <span>Все категории</span>
+        </button>
+        {onManageClick && (
+          <button
+            onClick={onManageClick}
+            className="p-1.5 text-gray-500 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+            title="Управление категориями"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
       {categories.map((cat) => (
         <CategoryNode

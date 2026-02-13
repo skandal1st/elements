@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Archive,
@@ -23,6 +23,8 @@ import {
 import { KnowledgeSearchBar } from "../components/KnowledgeSearchBar";
 import { KnowledgeCategorySidebar } from "../components/KnowledgeCategorySidebar";
 import { KnowledgeTagFilter } from "../components/KnowledgeTagFilter";
+import { RichTextEditor } from "@/shared/components/RichTextEditor";
+import { KnowledgeCategoryManager } from "../components/KnowledgeCategoryManager";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                          */
@@ -111,6 +113,9 @@ export function KnowledgeBasePage() {
   const [editCategoryId, setEditCategoryId] = useState("");
   const [editDifficulty, setEditDifficulty] = useState("");
   const [editTagIds, setEditTagIds] = useState<string[]>([]);
+
+  // Category manager modal
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -346,6 +351,15 @@ export function KnowledgeBasePage() {
   };
 
   /* ---------------------------------------------------------------- */
+  /* Image upload handler                                             */
+  /* ---------------------------------------------------------------- */
+
+  const handleImageUpload = useCallback(async (file: File): Promise<string> => {
+    const res = await knowledgeService.uploadArticleImage(file);
+    return res.url;
+  }, []);
+
+  /* ---------------------------------------------------------------- */
   /* Flat categories for selects                                      */
   /* ---------------------------------------------------------------- */
 
@@ -471,6 +485,7 @@ export function KnowledgeBasePage() {
                 categories={categories}
                 selectedId={selectedCategoryId}
                 onSelect={setSelectedCategoryId}
+                onManageClick={() => setCategoryManagerOpen(true)}
               />
             </div>
           </div>
@@ -649,12 +664,16 @@ export function KnowledgeBasePage() {
               onChange={(e) => setCreateForm((p) => ({ ...p, summary: e.target.value }))}
             />
 
-            <textarea
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[140px] resize-none"
-              placeholder="Текст статьи (raw_content)…"
-              value={createForm.raw_content}
-              onChange={(e) => setCreateForm((p) => ({ ...p, raw_content: e.target.value }))}
-            />
+            <div>
+              <div className="text-xs text-gray-500 mb-1">Текст статьи</div>
+              <RichTextEditor
+                key="create-editor"
+                value={createForm.raw_content}
+                onChange={(html) => setCreateForm((p) => ({ ...p, raw_content: html }))}
+                onImageUpload={handleImageUpload}
+                placeholder="Текст статьи (raw_content)…"
+              />
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select
@@ -897,10 +916,11 @@ export function KnowledgeBasePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="text-xs font-medium text-gray-500">raw_content</div>
-                <textarea
-                  className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[260px] resize-none"
+                <RichTextEditor
+                  key={`edit-raw-${detailId}`}
                   value={editRaw}
-                  onChange={(e) => setEditRaw(e.target.value)}
+                  onChange={setEditRaw}
+                  onImageUpload={handleImageUpload}
                   placeholder="Свободный текст статьи…"
                 />
               </div>
@@ -961,6 +981,16 @@ export function KnowledgeBasePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* Category Manager modal                                       */}
+      {/* ============================================================ */}
+      {categoryManagerOpen && (
+        <KnowledgeCategoryManager
+          onClose={() => setCategoryManagerOpen(false)}
+          onCategoriesChanged={() => void loadMeta()}
+        />
       )}
     </section>
   );
