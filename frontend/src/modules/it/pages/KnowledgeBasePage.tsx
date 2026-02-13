@@ -475,21 +475,19 @@ export function KnowledgeBasePage() {
       {/* Main layout: sidebar + content */}
       <div className="flex gap-4">
         {/* Category sidebar */}
-        {categories.length > 0 && (
-          <div className="hidden lg:block w-56 flex-shrink-0">
-            <div className="glass-card p-3 sticky top-4">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 px-3">
-                Категории
-              </h3>
-              <KnowledgeCategorySidebar
-                categories={categories}
-                selectedId={selectedCategoryId}
-                onSelect={setSelectedCategoryId}
-                onManageClick={() => setCategoryManagerOpen(true)}
-              />
-            </div>
+        <div className="hidden lg:block w-56 flex-shrink-0">
+          <div className="glass-card p-3 sticky top-4">
+            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 px-3">
+              Категории
+            </h3>
+            <KnowledgeCategorySidebar
+              categories={categories}
+              selectedId={selectedCategoryId}
+              onSelect={setSelectedCategoryId}
+              onManageClick={() => setCategoryManagerOpen(true)}
+            />
           </div>
-        )}
+        </div>
 
         {/* Article list / search results */}
         <div className="flex-1 min-w-0">
