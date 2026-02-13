@@ -11,7 +11,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Устанавливаем зависимости (включая devDependencies для сборки)
-RUN npm ci
+RUN npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 60000 && npm ci
 
 # Копируем исходный код
 COPY . .
