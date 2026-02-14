@@ -316,6 +316,94 @@ def _update_system_setting(db: Session, key: str, value: str, setting_type: str 
         db.add(setting)
 
 
+@router.get(
+    "/zup/debug",
+    dependencies=[Depends(require_roles(["hr", "admin"]))],
+)
+def zup_debug(db: Session = Depends(get_db)) -> dict:
+    """Диагностика подключения к 1С ЗУП: показывает что возвращает API."""
+    import httpx
+
+    url = _get_system_setting(db, "zup_api_url")
+    username = _get_system_setting(db, "zup_username")
+    password = _get_system_setting(db, "zup_password")
+
+    if not url or not username or not password:
+        return {"error": "ЗУП не настроен"}
+
+    base_url = url.rstrip("/")
+    result = {"base_url": base_url, "catalogs": {}, "metadata": None}
+
+    try:
+        client = httpx.Client(timeout=30, auth=(username, password), headers={"Accept": "application/json"})
+
+        # 1. Корневой запрос — список доступных сущностей
+        try:
+            resp = client.get(f"{base_url}/")
+            result["root_status"] = resp.status_code
+            if resp.status_code == 200:
+                try:
+                    root_data = resp.json()
+                    # OData обычно возвращает {"value": [{"name": "...", "url": "..."}]}
+                    entities = root_data.get("value", [])
+                    result["available_entities"] = [
+                        e.get("name") or e.get("Name") or str(e)
+                        for e in entities[:100]
+                    ] if isinstance(entities, list) else "unexpected format"
+                    result["root_keys"] = list(root_data.keys()) if isinstance(root_data, dict) else type(root_data).__name__
+                except Exception:
+                    # Может быть XML
+                    result["root_content_type"] = resp.headers.get("content-type", "")
+                    result["root_text_preview"] = resp.text[:2000]
+        except Exception as e:
+            result["root_error"] = str(e)
+
+        # 2. Пробуем основные варианты имён каталогов
+        catalog_variants = {
+            "departments": [
+                "Catalog_ПодразделенияОрганизаций",
+                "Catalog_Подразделения",
+                "Catalog_СтруктураПредприятия",
+            ],
+            "positions": [
+                "Catalog_Должности",
+                "Catalog_ДолжностиОрганизаций",
+            ],
+            "employees": [
+                "Catalog_Сотрудники",
+                "Catalog_СотрудникиОрганизаций",
+                "Catalog_ФизическиеЛица",
+            ],
+        }
+
+        for group, variants in catalog_variants.items():
+            result["catalogs"][group] = {}
+            for catalog_name in variants:
+                try:
+                    resp = client.get(f"{base_url}/{catalog_name}?$format=json&$top=2")
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        items = data.get("value", [])
+                        result["catalogs"][group][catalog_name] = {
+                            "status": resp.status_code,
+                            "count": len(items),
+                            "keys": list(items[0].keys()) if items else [],
+                            "sample": items[0] if items else None,
+                        }
+                    else:
+                        result["catalogs"][group][catalog_name] = {
+                            "status": resp.status_code,
+                        }
+                except Exception as e:
+                    result["catalogs"][group][catalog_name] = {"error": str(e)}
+
+        client.close()
+    except Exception as e:
+        result["connection_error"] = str(e)
+
+    return result
+
+
 @router.post(
     "/zup/sync",
     dependencies=[Depends(require_roles(["hr", "admin"]))],
