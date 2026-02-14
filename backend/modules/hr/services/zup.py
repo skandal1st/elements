@@ -326,6 +326,28 @@ def fetch_zup_persons(db: Session) -> list[dict]:
     return _fetch_odata_catalog(db, "Catalog_ФизическиеЛица")
 
 
+def fetch_zup_hr_history(db: Session) -> list[dict]:
+    """Получает текущие кадровые данные (должность/отдел) из регистра 1С ЗУП.
+
+    Использует InformationRegister_КадроваяИсторияСотрудников_RecordType/SliceLast()
+    для получения актуальных должности и подразделения каждого сотрудника.
+    """
+    # SliceLast() — виртуальная таблица среза последних записей
+    data = _fetch_odata_catalog(
+        db,
+        "InformationRegister_КадроваяИсторияСотрудников_RecordType/SliceLast()",
+    )
+    if data:
+        return data
+
+    # Фоллбэк: без SliceLast
+    data = _fetch_odata_catalog(
+        db,
+        "InformationRegister_КадроваяИсторияСотрудников_RecordType",
+    )
+    return data
+
+
 def sync_departments_from_zup(db: Session) -> ZupSyncResult:
     """Синхронизирует подразделения из 1С ЗУП"""
     result = ZupSyncResult()
@@ -493,6 +515,19 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
             )
     logger.info(f"ЗУП: загружено {len(person_birthday_map)} физ. лиц для дат рождения")
 
+    # Загружаем кадровую историю (должности/отделы) из регистра
+    hr_history = fetch_zup_hr_history(db)
+    # Маппинг: Сотрудник_Key → {Должность_Key, Подразделение_Key}
+    hr_history_map: dict[str, dict] = {}
+    for record in hr_history:
+        emp_key = record.get("Сотрудник_Key")
+        if emp_key:
+            hr_history_map[emp_key] = {
+                "Должность_Key": record.get("Должность_Key"),
+                "Подразделение_Key": record.get("Подразделение_Key"),
+            }
+    logger.info(f"ЗУП: загружено {len(hr_history_map)} записей кадровой истории (должности/отделы)")
+
     skipped_dismissed = 0
 
     for emp_data in employees_data:
@@ -554,15 +589,28 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                     if not phone:
                         phone = person_data.get("Телефон") or person_data.get("phone")
 
-            # Отдел и должность — в Catalog_Сотрудники ЗУП 3.x их нет,
-            # они хранятся в регистрах. Пробуем все возможные имена полей на случай
-            # если в конкретной конфигурации они есть.
+            # Отдел и должность — из каталога сотрудников или из регистра кадровой истории
             dept_ext_id = (
                 emp_data.get("Подразделение_Key") or
                 emp_data.get("ТекущееПодразделение_Key") or
                 emp_data.get("ТекущееПодразделениеОрганизации_Key") or
                 emp_data.get("ПодразделениеОрганизации_Key")
             )
+            pos_ext_id = (
+                emp_data.get("Должность_Key") or
+                emp_data.get("ТекущаяДолжность_Key") or
+                emp_data.get("ТекущаяДолжностьОрганизации_Key") or
+                emp_data.get("ДолжностьОрганизации_Key")
+            )
+
+            # Если в каталоге нет — берём из регистра кадровой истории
+            if external_id and external_id in hr_history_map:
+                hr_rec = hr_history_map[external_id]
+                if not dept_ext_id:
+                    dept_ext_id = hr_rec.get("Подразделение_Key")
+                if not pos_ext_id:
+                    pos_ext_id = hr_rec.get("Должность_Key")
+
             department_id = None
             if dept_ext_id:
                 dept = db.query(Department).filter(
@@ -571,12 +619,6 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 if dept:
                     department_id = dept.id
 
-            pos_ext_id = (
-                emp_data.get("Должность_Key") or
-                emp_data.get("ТекущаяДолжность_Key") or
-                emp_data.get("ТекущаяДолжностьОрганизации_Key") or
-                emp_data.get("ДолжностьОрганизации_Key")
-            )
             position_id = None
             if pos_ext_id:
                 pos = db.query(Position).filter(
