@@ -231,21 +231,9 @@ def mailcow_disable_mailbox(email: str) -> bool:
         return False
 
 
-def fetch_zup_employees() -> list[dict]:
-    if (
-        not settings.zup_api_url
-        or not settings.zup_username
-        or not settings.zup_password
-    ):
+def fetch_zup_employees(db: Session | None = None) -> list[dict]:
+    """Получить сотрудников из ЗУП. Используйте zup.fetch_zup_employees(db) напрямую."""
+    if db is None:
         return []
-    base_url = settings.zup_api_url.rstrip("/")
-    try:
-        with httpx.Client(timeout=settings.supporit_timeout_seconds) as client:
-            response = client.get(
-                base_url, auth=(settings.zup_username, settings.zup_password)
-            )
-            response.raise_for_status()
-            payload = response.json()
-            return payload.get("value", payload.get("data", []))
-    except httpx.HTTPError:
-        return []
+    from backend.modules.hr.services.zup import fetch_zup_employees as _fetch
+    return _fetch(db)

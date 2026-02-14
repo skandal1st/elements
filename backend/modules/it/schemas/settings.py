@@ -118,6 +118,16 @@ class LdapSettings(BaseModel):
     scan_gateway_username: Optional[str] = None
 
 
+class ZupSettings(BaseModel):
+    """Настройки интеграции с 1С ЗУП."""
+
+    zup_enabled: Optional[bool] = False
+    zup_api_url: Optional[str] = None
+    zup_username: Optional[str] = None
+    zup_password: Optional[str] = None
+    zup_sync_interval_minutes: Optional[int] = 60
+
+
 class LlmSettings(BaseModel):
     """Настройки LLM / OpenRouter."""
 
@@ -172,4 +182,5 @@ class AllSettings(BaseModel):
     rocketchat: RocketChatSettings = RocketChatSettings()
     zabbix: ZabbixSettings = ZabbixSettings()
     ldap: LdapSettings = LdapSettings()
+    zup: ZupSettings = ZupSettings()
     llm: LlmSettings = LlmSettings()

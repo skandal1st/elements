@@ -93,9 +93,6 @@ class Settings(BaseSettings):
     ad_use_ssl: bool = os.getenv("AD_USE_SSL", "true").lower() == "true"
     mailcow_api_url: str = os.getenv("MAILCOW_API_URL", "")
     mailcow_api_key: str = os.getenv("MAILCOW_API_KEY", "")
-    zup_api_url: str = os.getenv("ZUP_API_URL", "")
-    zup_username: str = os.getenv("ZUP_USERNAME", "")
-    zup_password: str = ""
 
 
 # Глобальный экземпляр настроек

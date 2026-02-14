@@ -24,6 +24,7 @@ import {
   Bell,
   Shuffle,
   X,
+  Database,
 } from "lucide-react";
 import { apiGet, apiPost } from "../../../shared/api/client";
 import { useUIStore } from "../../../shared/store/ui.store";
@@ -54,6 +55,14 @@ type TicketSettings = {
   ticket_distribution_specialists?: string;
 };
 
+type ZupSettings = {
+  zup_enabled?: boolean;
+  zup_api_url?: string;
+  zup_username?: string;
+  zup_password?: string;
+  zup_sync_interval_minutes?: number;
+};
+
 type AllSettings = {
   general: GeneralSettings;
   tickets: TicketSettings;
@@ -63,6 +72,7 @@ type AllSettings = {
   rocketchat: RocketChatSettings;
   zabbix: ZabbixSettings;
   ldap: LdapSettings;
+  zup: ZupSettings;
   llm: LlmSettings;
 };
 
@@ -171,6 +181,7 @@ const TABS = [
   { id: "zabbix", label: "Zabbix", icon: Server },
   { id: "llm", label: "LLM / OpenRouter", icon: Sparkles },
   { id: "ldap", label: "Active Directory", icon: Shield },
+  { id: "zup", label: "1\u0421 \u0417\u0423\u041F", icon: Database },
 ];
 
 const PRIORITIES = ["low", "medium", "high", "critical"];
@@ -197,6 +208,7 @@ export function SettingsPage() {
     rocketchat: {},
     zabbix: {},
     ldap: {},
+    zup: {},
     llm: {},
   });
 
@@ -508,7 +520,7 @@ export function SettingsPage() {
     }
   };
 
-  const testConnection = async (type: "smtp" | "imap" | "ldap" | "telegram" | "rocketchat" | "zabbix") => {
+  const testConnection = async (type: "smtp" | "imap" | "ldap" | "telegram" | "rocketchat" | "zabbix" | "zup") => {
     setError(null);
     try {
       if (type === "zabbix") {
@@ -2052,6 +2064,59 @@ export function SettingsPage() {
                     Если шлюз отклоняет учётные данные (Bind DN в формате LDAP), укажите здесь имя в формате домена.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {activeTab === "zup" && (
+              <div className="space-y-4 max-w-xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-white">
+                    Настройки 1С ЗУП
+                  </h3>
+                  <button
+                    onClick={() => testConnection("zup")}
+                    className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
+                  >
+                    <TestTube className="w-4 h-4" />
+                    Тест подключения
+                  </button>
+                </div>
+                {renderInput(
+                  "Включить интеграцию с 1С ЗУП",
+                  "zup",
+                  "zup_enabled",
+                  "checkbox",
+                )}
+                {renderInput(
+                  "URL OData API",
+                  "zup",
+                  "zup_api_url",
+                  "text",
+                  "http://server/zup/odata/standard.odata",
+                )}
+                {renderInput(
+                  "Имя пользователя",
+                  "zup",
+                  "zup_username",
+                  "text",
+                  "Администратор",
+                )}
+                {renderInput(
+                  "Пароль",
+                  "zup",
+                  "zup_password",
+                  "password",
+                )}
+                {renderInput(
+                  "Интервал синхронизации (минуты)",
+                  "zup",
+                  "zup_sync_interval_minutes",
+                  "number",
+                  "60",
+                )}
+                <p className="text-xs text-gray-500">
+                  После сохранения настроек и включения интеграции фоновая синхронизация начнётся автоматически при следующем перезапуске бэкенда. Ручную синхронизацию можно запустить на странице HR &rarr; Синхронизация ЗУП.
+                </p>
               </div>
             )}
 

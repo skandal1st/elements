@@ -24,6 +24,7 @@ from backend.modules.it.schemas.settings import (
     TelegramSettings,
     TicketSettingsSchema,
     ZabbixSettings,
+    ZupSettings,
 )
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -90,6 +91,13 @@ SETTING_TYPE_MAP = {
         "scan_gateway_use_ssl",
         "scan_gateway_username",
     ],
+    "zup": [
+        "zup_enabled",
+        "zup_api_url",
+        "zup_username",
+        "zup_password",
+        "zup_sync_interval_minutes",
+    ],
     "llm": [
         "llm_normalization_enabled",
         "llm_suggestions_enabled",
@@ -111,6 +119,7 @@ SENSITIVE_KEYS = [
     "rocketchat_webhook_token",
     "zabbix_api_token",
     "ldap_bind_password",
+    "zup_password",
     "openrouter_api_key",
 ]
 
@@ -265,6 +274,13 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
             scan_gateway_port=get_val("scan_gateway_port", 5985),
             scan_gateway_use_ssl=get_val("scan_gateway_use_ssl", False),
             scan_gateway_username=get_val("scan_gateway_username"),
+        ),
+        zup=ZupSettings(
+            zup_enabled=get_val("zup_enabled", False),
+            zup_api_url=get_val("zup_api_url"),
+            zup_username=get_val("zup_username"),
+            zup_password=_mask_sensitive(get_val("zup_password"), "zup_password"),
+            zup_sync_interval_minutes=get_val("zup_sync_interval_minutes", 60),
         ),
         llm=LlmSettings(
             llm_normalization_enabled=get_val("llm_normalization_enabled", False),
@@ -816,6 +832,47 @@ async def test_rocketchat_connection(db: Session = Depends(get_db)) -> dict:
         "status": "error",
         "message": "Не удалось подключиться к RocketChat. Проверьте URL, User ID и Auth Token.",
     }
+
+
+@router.post("/test/zup", dependencies=[Depends(require_superuser)])
+def test_zup_connection(db: Session = Depends(get_db)) -> dict:
+    """Тестировать подключение к 1С ЗУП OData API."""
+    import httpx
+
+    settings_rows = (
+        db.query(SystemSettings)
+        .filter(
+            SystemSettings.setting_key.in_(
+                ["zup_api_url", "zup_username", "zup_password"]
+            )
+        )
+        .all()
+    )
+    settings_dict = {s.setting_key: s.setting_value for s in settings_rows}
+
+    url = settings_dict.get("zup_api_url")
+    username = settings_dict.get("zup_username")
+    password = settings_dict.get("zup_password")
+
+    if not url:
+        return {"status": "error", "message": "URL OData API не настроен"}
+    if not username or not password:
+        return {"status": "error", "message": "Логин или пароль ЗУП не заданы"}
+
+    base_url = url.rstrip("/")
+    try:
+        with httpx.Client(timeout=15, auth=(username, password), headers={"Accept": "application/json"}) as client:
+            response = client.get(f"{base_url}/")
+            response.raise_for_status()
+        return {"status": "success", "message": f"1С ЗУП подключён: {base_url}"}
+    except httpx.HTTPStatusError as e:
+        return {"status": "error", "message": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+    except httpx.ConnectError as e:
+        return {"status": "error", "message": f"Не удалось подключиться: {str(e)}"}
+    except httpx.TimeoutException:
+        return {"status": "error", "message": "Таймаут подключения к 1С ЗУП"}
+    except Exception as e:
+        return {"status": "error", "message": f"Ошибка: {type(e).__name__}: {str(e)}"}
 
 
 @router.post("/ldap/sync-employees", dependencies=[Depends(require_superuser)])

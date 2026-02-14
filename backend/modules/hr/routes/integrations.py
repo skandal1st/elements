@@ -1,6 +1,9 @@
 """
-Роуты интеграций HR-модуля: SupportIT API и AD provisioning.
+Роуты интеграций HR-модуля: SupportIT API, AD provisioning и 1С ЗУП.
 """
+
+import json
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -11,6 +14,7 @@ from backend.modules.hr.dependencies import get_db, get_current_user, require_ro
 from backend.modules.hr.models.department import Department
 from backend.modules.hr.models.employee import Employee
 from backend.modules.hr.models.position import Position
+from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.hr.models.user import User
 from backend.modules.hr.services.audit import log_action
 from backend.modules.hr.services.integrations import (
@@ -280,4 +284,108 @@ def provision_accounts(full_name: str) -> dict:
         "ad_account": accounts.ad_account,
         "mailcow_account": accounts.mailcow_account,
         "messenger_account": accounts.messenger_account,
+    }
+
+
+# --- 1С ЗУП ---
+
+
+def _get_system_setting(db: Session, key: str) -> str | None:
+    setting = (
+        db.query(SystemSettings)
+        .filter(SystemSettings.setting_key == key)
+        .first()
+    )
+    return setting.setting_value if setting else None
+
+
+def _update_system_setting(db: Session, key: str, value: str, setting_type: str = "zup") -> None:
+    setting = (
+        db.query(SystemSettings)
+        .filter(SystemSettings.setting_key == key)
+        .first()
+    )
+    if setting:
+        setting.setting_value = value
+    else:
+        setting = SystemSettings(
+            setting_key=key,
+            setting_value=value,
+            setting_type=setting_type,
+        )
+        db.add(setting)
+
+
+@router.post(
+    "/zup/sync",
+    dependencies=[Depends(require_roles(["hr", "admin"]))],
+)
+def zup_sync(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
+    """Запустить полную синхронизацию с 1С ЗУП."""
+    from backend.modules.hr.services.zup import sync_all_from_zup
+
+    # Проверяем настроенность
+    enabled = _get_system_setting(db, "zup_enabled")
+    url = _get_system_setting(db, "zup_api_url")
+    username = _get_system_setting(db, "zup_username")
+    password = _get_system_setting(db, "zup_password")
+
+    if not url or not username or not password:
+        raise HTTPException(status_code=400, detail="1С ЗУП не настроен. Заполните настройки в разделе Настройки → 1С ЗУП.")
+
+    if enabled and enabled.lower() != "true":
+        raise HTTPException(status_code=400, detail="Интеграция с 1С ЗУП отключена.")
+
+    result = sync_all_from_zup(db)
+
+    # Сохраняем результат последней синхронизации
+    _update_system_setting(db, "zup_last_sync", datetime.utcnow().isoformat())
+    _update_system_setting(db, "zup_last_sync_result", json.dumps(result, ensure_ascii=False, default=str))
+    db.commit()
+
+    log_action(
+        db,
+        current_user.email,
+        "zup_sync",
+        "integration",
+        f"Синхронизация ЗУП: отделы={result['departments']['created']}/{result['departments']['updated']}, "
+        f"должности={result['positions']['created']}/{result['positions']['updated']}, "
+        f"сотрудники={result['employees']['created']}/{result['employees']['updated']}, "
+        f"приём={result['employees']['hired']}, увольнение={result['employees']['fired']}, "
+        f"смена должности={result['employees']['position_changed']}",
+    )
+
+    return result
+
+
+@router.get(
+    "/zup/status",
+    dependencies=[Depends(require_roles(["hr", "admin"]))],
+)
+def zup_status(db: Session = Depends(get_db)) -> dict:
+    """Получить статус интеграции с 1С ЗУП."""
+    url = _get_system_setting(db, "zup_api_url")
+    username = _get_system_setting(db, "zup_username")
+    password = _get_system_setting(db, "zup_password")
+    enabled_val = _get_system_setting(db, "zup_enabled")
+    interval = _get_system_setting(db, "zup_sync_interval_minutes")
+    last_sync = _get_system_setting(db, "zup_last_sync")
+    last_sync_result_str = _get_system_setting(db, "zup_last_sync_result")
+
+    configured = bool(url and username and password)
+    enabled = bool(enabled_val and enabled_val.lower() == "true")
+
+    last_sync_result = None
+    if last_sync_result_str:
+        try:
+            last_sync_result = json.loads(last_sync_result_str)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return {
+        "configured": configured,
+        "enabled": enabled,
+        "last_sync": last_sync,
+        "last_sync_result": last_sync_result,
+        "sync_interval_minutes": int(interval) if interval else 60,
     }

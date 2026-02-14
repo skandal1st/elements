@@ -121,6 +121,13 @@ async def on_startup():
     except Exception as e:
         logger.warning(f"Не удалось запустить RocketChat polling: {e}")
 
+    # Запускаем ЗУП синхронизацию
+    try:
+        from backend.modules.hr.services.zup_sync_service import zup_sync_service
+        await zup_sync_service.start_polling()
+    except Exception as e:
+        logger.warning(f"Не удалось запустить ZUP sync: {e}")
+
     logger.info("Elements Platform запущен успешно")
 
 
@@ -135,6 +142,11 @@ async def on_shutdown():
     try:
         from backend.modules.it.services.rocketchat_service import rocketchat_service
         await rocketchat_service.stop_polling()
+    except Exception:
+        pass
+    try:
+        from backend.modules.hr.services.zup_sync_service import zup_sync_service
+        await zup_sync_service.stop_polling()
     except Exception:
         pass
 

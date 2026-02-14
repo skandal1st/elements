@@ -35,6 +35,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { ProjectsPage } from "./modules/tasks/pages/ProjectsPage";
 import { TaskBoardPage } from "./modules/tasks/pages/TaskBoardPage";
 import { TaskListPage } from "./modules/tasks/pages/TaskListPage";
+import { ZupSyncPage } from "./modules/hr/pages/ZupSyncPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token);
@@ -223,6 +224,7 @@ function AppRoutes() {
           <Route path="birthdays" element={<Birthdays />} />
           <Route path="org" element={<OrgChart />} />
           <Route path="requests" element={<HRPanel />} />
+          <Route path="zup-sync" element={<ZupSyncPage />} />
         </Route>
         <Route
           path="/it"
