@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, CheckCircle, XCircle, AlertCircle, Clock, Database, Search } from "lucide-react";
+import { RefreshCw, CheckCircle, XCircle, AlertCircle, Clock, Database, Search, Trash2 } from "lucide-react";
 import { apiGet, apiPost } from "../../../shared/api/client";
 
 type ZupStatus = {
@@ -58,6 +58,13 @@ export function ZupSyncPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [debugResult, setDebugResult] = useState<DebugResult | null>(null);
   const [debugging, setDebugging] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{
+    merged_duplicates: number;
+    deleted_dismissed: number;
+    deleted_hr_requests: number;
+    deleted_tickets: number;
+  } | null>(null);
 
   const loadStatus = async () => {
     setLoading(true);
@@ -106,6 +113,23 @@ export function ZupSyncPage() {
     }
   };
 
+  const runCleanup = async () => {
+    if (!confirm("Будут удалены дубли сотрудников, уволенные из ЗУП, HR-заявки на приём и тикеты онбординга, созданные сегодня. Продолжить?")) return;
+    setCleaning(true);
+    setError(null);
+    setCleanupResult(null);
+    try {
+      const data = await apiPost<typeof cleanupResult>("/hr/integrations/zup/cleanup", {});
+      setCleanupResult(data);
+      setSuccess("Очистка завершена");
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setCleaning(false);
+    }
+  };
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "Никогда";
     try {
@@ -140,6 +164,22 @@ export function ZupSyncPage() {
       {success && (
         <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
           <p className="text-sm text-green-400">{success}</p>
+        </div>
+      )}
+
+      {cleanupResult && (
+        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+          <p className="text-sm text-blue-300 font-medium mb-2">Результат очистки:</p>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <span className="text-gray-400">Объединено дублей:</span>
+            <span className="text-white">{cleanupResult.merged_duplicates}</span>
+            <span className="text-gray-400">Удалено уволенных:</span>
+            <span className="text-white">{cleanupResult.deleted_dismissed}</span>
+            <span className="text-gray-400">Удалено HR-заявок:</span>
+            <span className="text-white">{cleanupResult.deleted_hr_requests}</span>
+            <span className="text-gray-400">Удалено тикетов онбординга:</span>
+            <span className="text-white">{cleanupResult.deleted_tickets}</span>
+          </div>
         </div>
       )}
 
@@ -203,7 +243,24 @@ export function ZupSyncPage() {
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">Последняя синхронизация</h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={runCleanup}
+                  disabled={cleaning}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                >
+                  {cleaning ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
+                      Очистка...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Очистка дублей
+                    </>
+                  )}
+                </button>
                 <button
                   onClick={runDebug}
                   disabled={debugging || !status?.configured}

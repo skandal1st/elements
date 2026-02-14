@@ -3,9 +3,10 @@
 """
 
 import json
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from backend.core.auth import get_password_hash
@@ -13,6 +14,7 @@ from backend.core.config import settings
 from backend.modules.hr.dependencies import get_db, get_current_user, require_roles
 from backend.modules.hr.models.department import Department
 from backend.modules.hr.models.employee import Employee
+from backend.modules.hr.models.hr_request import HRRequest
 from backend.modules.hr.models.position import Position
 from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.hr.models.user import User
@@ -544,4 +546,131 @@ def zup_status(db: Session = Depends(get_db)) -> dict:
         "last_sync": last_sync,
         "last_sync_result": last_sync_result,
         "sync_interval_minutes": int(interval) if interval else 60,
+    }
+
+
+@router.post(
+    "/zup/cleanup",
+    dependencies=[Depends(require_roles(["admin"]))],
+)
+def zup_cleanup(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
+    """Очистка данных после неудачной синхронизации с 1С ЗУП.
+
+    1. Объединяет дубли (одинаковые ФИО): переносит external_id на старую запись, удаляет новую.
+    2. Удаляет уволенных сотрудников, пришедших из ЗУП.
+    3. Удаляет HR-заявки (тип hire), созданные синхронизацией.
+    4. Удаляет IT-тикеты «Онбординг», созданные синхронизацией.
+    """
+    from backend.modules.it.models import Ticket
+
+    merged_duplicates = 0
+    deleted_dismissed = 0
+    deleted_hr_requests = 0
+    deleted_tickets = 0
+
+    # --- 1. Объединяем дубли ---
+    # Находим ФИО, которые встречаются > 1 раза
+    dupes = (
+        db.query(Employee.full_name)
+        .group_by(Employee.full_name)
+        .having(sa_func.count(Employee.id) > 1)
+        .all()
+    )
+    for (name,) in dupes:
+        employees = (
+            db.query(Employee)
+            .filter(Employee.full_name == name)
+            .order_by(Employee.id)
+            .all()
+        )
+        if len(employees) < 2:
+            continue
+
+        # Оставляем самого старого (первого по ID)
+        original = employees[0]
+        for dup in employees[1:]:
+            # Переносим external_id если у оригинала нет
+            if dup.external_id and not original.external_id:
+                original.external_id = dup.external_id
+            # Переносим данные если у оригинала пусто
+            if dup.birthday and not original.birthday:
+                original.birthday = dup.birthday
+            if dup.department_id and not original.department_id:
+                original.department_id = dup.department_id
+            if dup.position_id and not original.position_id:
+                original.position_id = dup.position_id
+            if dup.email and not original.email:
+                original.email = dup.email
+            if dup.internal_phone and not original.internal_phone:
+                original.internal_phone = dup.internal_phone
+            # Удаляем HR-заявки дубля
+            db.query(HRRequest).filter(HRRequest.employee_id == dup.id).delete()
+            # Удаляем IT-тикеты дубля
+            db.query(Ticket).filter(Ticket.employee_id == dup.id).delete()
+            # Удаляем дубля
+            db.delete(dup)
+            merged_duplicates += 1
+
+    db.flush()
+
+    # --- 2. Удаляем уволенных из ЗУП ---
+    dismissed_from_zup = (
+        db.query(Employee)
+        .filter(
+            Employee.external_id.isnot(None),
+            Employee.status == "dismissed",
+        )
+        .all()
+    )
+    for emp in dismissed_from_zup:
+        db.query(HRRequest).filter(HRRequest.employee_id == emp.id).delete()
+        db.query(Ticket).filter(Ticket.employee_id == emp.id).delete()
+        db.delete(emp)
+        deleted_dismissed += 1
+
+    db.flush()
+
+    # --- 3. Удаляем HR-заявки на приём (созданные синхронизацией) ---
+    hire_requests = (
+        db.query(HRRequest)
+        .filter(
+            HRRequest.type == "hire",
+            HRRequest.request_date == date.today(),
+        )
+        .all()
+    )
+    for hr in hire_requests:
+        db.delete(hr)
+        deleted_hr_requests += 1
+
+    # --- 4. Удаляем тикеты «Онбординг» ---
+    onboarding_tickets = (
+        db.query(Ticket)
+        .filter(
+            Ticket.title.like("Онбординг:%"),
+            Ticket.category == "hr",
+            sa_func.date(Ticket.created_at) == date.today(),
+        )
+        .all()
+    )
+    for ticket in onboarding_tickets:
+        db.delete(ticket)
+        deleted_tickets += 1
+
+    db.commit()
+
+    log_action(
+        db,
+        current_user.email,
+        "zup_cleanup",
+        "integration",
+        f"Очистка ЗУП: дублей={merged_duplicates}, уволенных={deleted_dismissed}, "
+        f"HR-заявок={deleted_hr_requests}, тикетов={deleted_tickets}",
+    )
+
+    return {
+        "merged_duplicates": merged_duplicates,
+        "deleted_dismissed": deleted_dismissed,
+        "deleted_hr_requests": deleted_hr_requests,
+        "deleted_tickets": deleted_tickets,
     }

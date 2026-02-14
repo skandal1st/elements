@@ -478,6 +478,10 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
     result = ZupSyncResult()
     employees_data = fetch_zup_employees(db)
 
+    # Проверяем, была ли уже синхронизация (для подавления онбординга при первом импорте)
+    last_sync = _get_setting(db, "zup_last_sync")
+    is_initial_sync = last_sync is None
+
     # Загружаем ФизическиеЛица для дат рождения
     persons = fetch_zup_persons(db)
     person_birthday_map: dict[str, date | None] = {}
@@ -488,6 +492,8 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 person.get("ДатаРождения") or person.get("DateOfBirth")
             )
     logger.info(f"ЗУП: загружено {len(person_birthday_map)} физ. лиц для дат рождения")
+
+    skipped_dismissed = 0
 
     for emp_data in employees_data:
         full_name = ""
@@ -501,7 +507,27 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
             )
             is_deleted = str(emp_data.get("DeletionMark", "")).lower() in ("true", "1")
 
+            # Статус: уволен или нет
+            dismissed_val = emp_data.get("Уволен") or emp_data.get("dismissed") or ""
+            is_dismissed = str(dismissed_val).lower() in ("true", "1", "да")
+
             if not external_id or not full_name or is_deleted:
+                continue
+
+            # Пропускаем уволенных — не импортируем их совсем
+            # (только обновляем статус если сотрудник уже есть в БД)
+            if is_dismissed:
+                existing = db.query(Employee).filter(
+                    Employee.external_id == external_id
+                ).first()
+                if existing and existing.status != "dismissed":
+                    old_status = existing.status
+                    existing.status = "dismissed"
+                    result.updated += 1
+                    if old_status in ("active", "candidate"):
+                        _handle_fire_detected(db, existing, result)
+                else:
+                    skipped_dismissed += 1
                 continue
 
             # Дата рождения: из ФизическоеЛицо_Key → Catalog_ФизическиеЛица
@@ -546,17 +572,14 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 if pos:
                     position_id = pos.id
 
-            # Статус сотрудника (из XML приходит строка "true"/"false")
-            dismissed_val = emp_data.get("Уволен") or emp_data.get("dismissed") or ""
-            is_dismissed = str(dismissed_val).lower() in ("true", "1", "да")
-            status = "dismissed" if is_dismissed else "active"
+            # Если мы здесь — сотрудник не уволен (уволенные обрабатываются выше)
+            status = "active"
 
             # Ищем существующего сотрудника (по external_id, email или ФИО)
             employee = _find_existing_employee(db, external_id, full_name, email)
 
             if employee:
                 # Сохраняем старые значения до обновления
-                old_status = employee.status
                 old_position_id = employee.position_id
 
                 # Обновляем (не затираем поля если из ЗУП пришло пустое значение)
@@ -574,16 +597,12 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 employee.status = status
                 result.updated += 1
 
-                # Детекция увольнения
-                if old_status in ("active", "candidate") and status == "dismissed":
-                    _handle_fire_detected(db, employee, result)
-
-                # Детекция смены должности
+                # Детекция смены должности (только для повторных синхронизаций)
                 if (
-                    old_position_id is not None
+                    not is_initial_sync
+                    and old_position_id is not None
                     and position_id is not None
                     and old_position_id != position_id
-                    and status == "active"
                 ):
                     _handle_position_change(db, employee, old_position_id, position_id, result)
             else:
@@ -602,14 +621,17 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 db.flush()
                 result.created += 1
 
-                # Детекция нового приёма
-                if status == "active":
+                # Онбординг только при повторных синхронизациях (не при первом импорте)
+                if not is_initial_sync:
                     _handle_hire_detected(db, employee, result)
 
         except Exception as e:
             logger.error(f"Ошибка синхронизации сотрудника: {e}")
             result.errors += 1
             result.error_details.append(f"Сотрудник {full_name}: {e}")
+
+    if skipped_dismissed:
+        logger.info(f"ЗУП: пропущено {skipped_dismissed} уволенных сотрудников")
 
     db.commit()
     return result
