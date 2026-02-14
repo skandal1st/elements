@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -300,12 +300,22 @@ export function TicketsPage() {
   const [showHistory, setShowHistory] = useState(false);
 
   const [assignEmployeeModalOpen, setAssignEmployeeModalOpen] = useState(false);
-  const [employeesForAssign, setEmployeesForAssign] = useState<EmployeeOption[]>(
-    [],
-  );
-  const [employeeSearch, setEmployeeSearch] = useState("");
-  const [employeesLoading, setEmployeesLoading] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | "">("");
+
+  // Полный список сотрудников (загружается один раз)
+  const [allEmployees, setAllEmployees] = useState<EmployeeOption[]>([]);
+
+  // Autocomplete для формы создания тикета
+  const [createEmpSearch, setCreateEmpSearch] = useState("");
+  const [showCreateEmpDropdown, setShowCreateEmpDropdown] = useState(false);
+
+  // Autocomplete для модалки привязки
+  const [assignEmpSearch, setAssignEmpSearch] = useState("");
+  const [showAssignEmpDropdown, setShowAssignEmpDropdown] = useState(false);
+
+  // Autocomplete для исполнителя в детализации
+  const [executorSearch, setExecutorSearch] = useState("");
+  const [showExecutorDropdown, setShowExecutorDropdown] = useState(false);
 
   const [buildings, setBuildings] = useState<
     Array<{ id: string; name: string }>
@@ -319,10 +329,6 @@ export function TicketsPage() {
   const [userRole, setUserRole] = useState<string>("employee");
   const [users, setUsers] = useState<UserOption[]>([]);
 
-  // Новые state для работы с сотрудниками
-  const [createEmployees, setCreateEmployees] = useState<EmployeeOption[]>([]);
-  const [createEmployeeSearch, setCreateEmployeeSearch] = useState("");
-  const [createEmployeesLoading, setCreateEmployeesLoading] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeCard | null>(null);
   const [createRoomEquipment, setCreateRoomEquipment] = useState<EquipmentItem[]>([]);
 
@@ -748,46 +754,12 @@ export function TicketsPage() {
     }
   };
 
-  const loadEmployeesForAssign = async (q?: string) => {
-    setEmployeesLoading(true);
-    try {
-      const qq = (q ?? employeeSearch).trim();
-      const url = qq
-        ? `/hr/employees/?q=${encodeURIComponent(qq)}`
-        : "/hr/employees/";
-      const data = await apiGet<EmployeeOption[]>(url);
-      setEmployeesForAssign(data);
-    } catch (err) {
-      console.error("Ошибка загрузки сотрудников:", err);
-      setEmployeesForAssign([]);
-    } finally {
-      setEmployeesLoading(false);
-    }
-  };
-
   const loadUsers = async () => {
     try {
       const data = await apiGet<UserOption[]>("/hr/users/");
       setUsers(data);
     } catch (err) {
       console.error("Ошибка загрузки пользователей:", err);
-    }
-  };
-
-  const loadCreateEmployees = async (q?: string) => {
-    setCreateEmployeesLoading(true);
-    try {
-      const query = (q ?? createEmployeeSearch).trim();
-      const url = query
-        ? `/hr/employees/?q=${encodeURIComponent(query)}`
-        : "/hr/employees/";
-      const data = await apiGet<EmployeeOption[]>(url);
-      setCreateEmployees(data);
-    } catch (err) {
-      console.error("Ошибка загрузки сотрудников:", err);
-      setCreateEmployees([]);
-    } finally {
-      setCreateEmployeesLoading(false);
     }
   };
 
@@ -843,12 +815,15 @@ export function TicketsPage() {
     setRoomEquipment([]);
     setSelectedEmployee(null);
     setCreateRoomEquipment([]);
-    setCreateEmployeeSearch("");
+    setCreateEmpSearch("");
+    setShowCreateEmpDropdown(false);
     setModalOpen(true);
 
     if (userRole === "it") {
       await loadBuildings();
-      await loadCreateEmployees();
+      if (allEmployees.length === 0) {
+        apiGet<EmployeeOption[]>("/hr/employees/").then(setAllEmployees).catch(() => {});
+      }
     } else {
       await loadEmployeeRoom();
     }
@@ -985,6 +960,8 @@ export function TicketsPage() {
     setEditRoomEquipment([]);
     setConsumables([]);
     setSelectedConsumables(new Set());
+    setExecutorSearch("");
+    setShowExecutorDropdown(false);
     setKbModalOpen(false);
     setKbSaving(false);
     setKbForm({
@@ -1236,9 +1213,12 @@ export function TicketsPage() {
   };
 
   const openAssignEmployeeModal = async () => {
-    setEmployeeSearch("");
+    setAssignEmpSearch("");
     setSelectedEmployeeId("");
-    await loadEmployeesForAssign("");
+    setShowAssignEmpDropdown(false);
+    if (allEmployees.length === 0) {
+      apiGet<EmployeeOption[]>("/hr/employees/").then(setAllEmployees).catch(() => {});
+    }
     setAssignEmployeeModalOpen(true);
   };
 
@@ -1275,6 +1255,32 @@ export function TicketsPage() {
     if (field === "category") return categoryLabel[value] || value;
     return value;
   };
+
+  // Autocomplete: локальная фильтрация сотрудников
+  const filteredCreateEmployees = useMemo(() => {
+    const q = createEmpSearch.trim().toLowerCase();
+    if (!q) return allEmployees.slice(0, 20);
+    return allEmployees
+      .filter((e) => `${e.full_name ?? ""} ${e.email ?? ""}`.toLowerCase().includes(q))
+      .slice(0, 20);
+  }, [createEmpSearch, allEmployees]);
+
+  const filteredAssignEmployees = useMemo(() => {
+    const q = assignEmpSearch.trim().toLowerCase();
+    if (!q) return allEmployees.slice(0, 20);
+    return allEmployees
+      .filter((e) => `${e.full_name ?? ""} ${e.email ?? ""}`.toLowerCase().includes(q))
+      .slice(0, 20);
+  }, [assignEmpSearch, allEmployees]);
+
+  const filteredExecutors = useMemo(() => {
+    const q = executorSearch.trim().toLowerCase();
+    const itUsers = users.filter((u) => u.roles?.it !== "auditor");
+    if (!q) return itUsers.slice(0, 20);
+    return itUsers
+      .filter((u) => `${u.full_name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(q))
+      .slice(0, 20);
+  }, [executorSearch, users]);
 
   return (
     <section className="space-y-6">
@@ -1476,61 +1482,67 @@ export function TicketsPage() {
                   Сотрудник (необязательно)
                 </label>
                 <div className="relative">
-                  <input
-                    className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
-                    placeholder="Поиск сотрудника..."
-                    value={createEmployeeSearch}
-                    onChange={(e) => {
-                      setCreateEmployeeSearch(e.target.value);
-                      loadCreateEmployees(e.target.value);
-                    }}
-                  />
-                  {createEmployeesLoading && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                      Загрузка...
-                    </span>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+                      placeholder="Поиск сотрудника..."
+                      value={
+                        form.for_employee_id
+                          ? allEmployees.find((e) => String(e.id) === form.for_employee_id)?.full_name || createEmpSearch
+                          : createEmpSearch
+                      }
+                      onChange={(e) => {
+                        setCreateEmpSearch(e.target.value);
+                        setForm((p) => ({ ...p, for_employee_id: "", room_id: "", equipment_id: "" }));
+                        setSelectedEmployee(null);
+                        setCreateRoomEquipment([]);
+                        setSelectedBuildingId("");
+                        setSelectedRoomId("");
+                        setShowCreateEmpDropdown(true);
+                      }}
+                      onFocus={() => setShowCreateEmpDropdown(true)}
+                    />
+                    {form.for_employee_id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((p) => ({ ...p, for_employee_id: "", room_id: "", equipment_id: "" }));
+                          setCreateEmpSearch("");
+                          setSelectedEmployee(null);
+                          setCreateRoomEquipment([]);
+                        }}
+                        className="px-2 py-2 text-gray-400 hover:text-white transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {showCreateEmpDropdown && !form.for_employee_id && (
+                    <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-dark-700 border border-dark-600/50 rounded-xl shadow-lg">
+                      {filteredCreateEmployees.map((emp) => (
+                        <button
+                          key={emp.id}
+                          type="button"
+                          className="w-full px-4 py-2.5 text-left text-white hover:bg-dark-600/50 transition-colors"
+                          onClick={() => {
+                            setForm((p) => ({ ...p, for_employee_id: String(emp.id), room_id: "", equipment_id: "" }));
+                            setCreateEmpSearch(emp.full_name);
+                            setShowCreateEmpDropdown(false);
+                            setSelectedBuildingId("");
+                            setSelectedRoomId("");
+                            setRoomEquipment([]);
+                          }}
+                        >
+                          <div className="font-medium">{emp.full_name}</div>
+                          {emp.email && <div className="text-xs text-gray-500">{emp.email}</div>}
+                        </button>
+                      ))}
+                      {filteredCreateEmployees.length === 0 && (
+                        <div className="px-4 py-2.5 text-sm text-gray-500">Не найдено</div>
+                      )}
+                    </div>
                   )}
                 </div>
-
-                {createEmployees.length > 0 && !form.for_employee_id && (
-                  <div className="max-h-48 overflow-y-auto bg-dark-700/50 border border-dark-600/50 rounded-xl">
-                    {createEmployees.map((emp) => (
-                      <button
-                        key={emp.id}
-                        type="button"
-                        className="w-full px-4 py-2.5 text-left text-white hover:bg-dark-600/50 transition-colors"
-                        onClick={() => {
-                          // Очищаем предыдущий выбор кабинета/оборудования
-                          setForm((p) => ({ ...p, for_employee_id: String(emp.id), room_id: "", equipment_id: "" }));
-                          setCreateEmployeeSearch(emp.full_name);
-                          setCreateEmployees([]);
-                          // Очищаем ручной выбор здания/кабинета
-                          setSelectedBuildingId("");
-                          setSelectedRoomId("");
-                          setRoomEquipment([]);
-                        }}
-                      >
-                        <div className="font-medium">{emp.full_name}</div>
-                        {emp.email && <div className="text-xs text-gray-500">{emp.email}</div>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {form.for_employee_id && (
-                  <button
-                    type="button"
-                    className="text-sm text-accent-purple hover:text-accent-purple/80"
-                    onClick={() => {
-                      setForm((p) => ({ ...p, for_employee_id: "", room_id: "", equipment_id: "" }));
-                      setCreateEmployeeSearch("");
-                      setSelectedEmployee(null);
-                      setCreateRoomEquipment([]);
-                    }}
-                  >
-                    Очистить выбор
-                  </button>
-                )}
               </div>
             )}
 
@@ -1856,41 +1868,83 @@ export function TicketsPage() {
               </div>
 
               {userRole === "it" && (
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-medium text-gray-500 mb-2">
                     Исполнитель
                   </label>
                   {canEdit ? (
-                    <select
-                      className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
-                      value={detail.assignee_id ?? ""}
-                      onChange={async (e) => {
-                        const v = e.target.value;
-                        if (!detailId) return;
-                        setError(null);
-                        try {
-                          await apiPost(
-                            `/it/tickets/${detailId}/assign-executor`,
-                            { user_id: v || null }
-                          );
-                          const t = await apiGet<Ticket>(`/it/tickets/${detailId}`);
-                          setDetail(t);
-                        } catch (err) {
-                          setError((err as Error).message);
-                        }
-                      }}
-                    >
-                      <option value="" className="bg-dark-800">
-                        Не назначен
-                      </option>
-                      {users
-                        .filter((u) => u.roles?.it !== "auditor")
-                        .map((u) => (
-                          <option key={u.id} value={u.id} className="bg-dark-800">
-                            {u.full_name} ({u.email})
-                          </option>
-                        ))}
-                    </select>
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          className="flex-1 px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
+                          placeholder="Поиск исполнителя..."
+                          value={
+                            detail.assignee_id && !showExecutorDropdown
+                              ? users.find((u) => u.id === detail.assignee_id)?.full_name || executorSearch
+                              : executorSearch
+                          }
+                          onChange={(e) => {
+                            setExecutorSearch(e.target.value);
+                            setShowExecutorDropdown(true);
+                          }}
+                          onFocus={() => {
+                            setExecutorSearch("");
+                            setShowExecutorDropdown(true);
+                          }}
+                        />
+                        {detail.assignee_id && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!detailId) return;
+                              setError(null);
+                              try {
+                                await apiPost(`/it/tickets/${detailId}/assign-executor`, { user_id: null });
+                                const t = await apiGet<Ticket>(`/it/tickets/${detailId}`);
+                                setDetail(t);
+                                setExecutorSearch("");
+                                setShowExecutorDropdown(false);
+                              } catch (err) {
+                                setError((err as Error).message);
+                              }
+                            }}
+                            className="px-2 py-2 text-gray-400 hover:text-white transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      {showExecutorDropdown && (
+                        <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-dark-700 border border-dark-600/50 rounded-xl shadow-lg">
+                          {filteredExecutors.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={async () => {
+                                if (!detailId) return;
+                                setError(null);
+                                try {
+                                  await apiPost(`/it/tickets/${detailId}/assign-executor`, { user_id: u.id });
+                                  const t = await apiGet<Ticket>(`/it/tickets/${detailId}`);
+                                  setDetail(t);
+                                  setExecutorSearch(u.full_name);
+                                  setShowExecutorDropdown(false);
+                                } catch (err) {
+                                  setError((err as Error).message);
+                                }
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-dark-600/50 text-white transition-colors"
+                            >
+                              {u.full_name}
+                              {u.email && <span className="ml-2 text-xs text-gray-400">{u.email}</span>}
+                            </button>
+                          ))}
+                          {filteredExecutors.length === 0 && (
+                            <div className="px-3 py-2 text-sm text-gray-500">Не найдено</div>
+                          )}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <span className="text-gray-300">
                       {detail.assignee_id
@@ -2338,44 +2392,62 @@ export function TicketsPage() {
             <p className="text-sm text-gray-400">
               Выберите сотрудника (HR), к которому нужно привязать email-тикет.
             </p>
-            <div className="space-y-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input
-                  className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
-                  placeholder="Поиск (ФИО / email / телефон)…"
-                  value={employeeSearch}
-                  onChange={(e) => setEmployeeSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") loadEmployeesForAssign(e.currentTarget.value);
-                  }}
-                />
+            <div className="relative">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+                    placeholder="Поиск (ФИО / email)…"
+                    value={
+                      selectedEmployeeId
+                        ? allEmployees.find((e) => e.id === selectedEmployeeId)?.full_name || assignEmpSearch
+                        : assignEmpSearch
+                    }
+                    onChange={(e) => {
+                      setAssignEmpSearch(e.target.value);
+                      setSelectedEmployeeId("");
+                      setShowAssignEmpDropdown(true);
+                    }}
+                    onFocus={() => setShowAssignEmpDropdown(true)}
+                  />
+                </div>
+                {selectedEmployeeId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedEmployeeId("");
+                      setAssignEmpSearch("");
+                    }}
+                    className="px-2 py-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-              <button
-                onClick={() => loadEmployeesForAssign()}
-                className="glass-button-secondary px-4 py-2 text-sm font-medium disabled:opacity-50"
-                disabled={employeesLoading}
-              >
-                {employeesLoading ? "Поиск…" : "Найти"}
-              </button>
+              {showAssignEmpDropdown && !selectedEmployeeId && (
+                <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-dark-700 border border-dark-600/50 rounded-xl shadow-lg">
+                  {filteredAssignEmployees.map((emp) => (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      className="w-full px-4 py-2.5 text-left text-white hover:bg-dark-600/50 transition-colors"
+                      onClick={() => {
+                        setSelectedEmployeeId(emp.id);
+                        setAssignEmpSearch(emp.full_name);
+                        setShowAssignEmpDropdown(false);
+                      }}
+                    >
+                      <div className="font-medium">{emp.full_name}</div>
+                      {emp.email && <div className="text-xs text-gray-500">{emp.email}</div>}
+                    </button>
+                  ))}
+                  {filteredAssignEmployees.length === 0 && (
+                    <div className="px-4 py-2.5 text-sm text-gray-500">Не найдено</div>
+                  )}
+                </div>
+              )}
             </div>
-            <select
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
-              value={selectedEmployeeId === "" ? "" : String(selectedEmployeeId)}
-              onChange={(e) =>
-                setSelectedEmployeeId(e.target.value ? Number(e.target.value) : "")
-              }
-              disabled={employeesLoading}
-            >
-              <option value="" className="bg-dark-800">
-                {employeesLoading ? "Загрузка…" : "Выберите сотрудника"}
-              </option>
-              {employeesForAssign.map((e) => (
-                <option key={e.id} value={e.id} className="bg-dark-800">
-                  {e.full_name}{e.email ? ` (${e.email})` : ""}
-                </option>
-              ))}
-            </select>
             <div className="flex justify-end gap-3 pt-4">
               <button
                 onClick={() => setAssignEmployeeModalOpen(false)}
