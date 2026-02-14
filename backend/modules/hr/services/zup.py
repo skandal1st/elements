@@ -321,6 +321,11 @@ def fetch_zup_employees(db: Session) -> list[dict]:
     return _fetch_odata_catalog(db, "Catalog_Сотрудники")
 
 
+def fetch_zup_persons(db: Session) -> list[dict]:
+    """Получает физических лиц из 1С ЗУП (содержит даты рождения)."""
+    return _fetch_odata_catalog(db, "Catalog_ФизическиеЛица")
+
+
 def sync_departments_from_zup(db: Session) -> ZupSyncResult:
     """Синхронизирует подразделения из 1С ЗУП"""
     result = ZupSyncResult()
@@ -331,13 +336,24 @@ def sync_departments_from_zup(db: Session) -> ZupSyncResult:
             external_id = dept_data.get("Ref_Key") or dept_data.get("id")
             name = dept_data.get("Description") or dept_data.get("Наименование") or dept_data.get("name")
             parent_ext_id = dept_data.get("Родитель_Key") or dept_data.get("parent_id")
+            is_deleted = str(dept_data.get("DeletionMark", "")).lower() in ("true", "1")
 
-            if not external_id or not name:
+            if not external_id or not name or is_deleted:
                 continue
 
+            # 1. Ищем по external_id
             department = db.query(Department).filter(
                 Department.external_id == external_id
             ).first()
+
+            # 2. Если не нашли — ищем по имени (связываем существующий с ЗУП)
+            if not department:
+                department = db.query(Department).filter(
+                    Department.name == name,
+                    Department.external_id.is_(None),
+                ).first()
+                if department:
+                    department.external_id = external_id
 
             parent_id = None
             if parent_ext_id:
@@ -378,13 +394,24 @@ def sync_positions_from_zup(db: Session) -> ZupSyncResult:
         try:
             external_id = pos_data.get("Ref_Key") or pos_data.get("id")
             name = pos_data.get("Description") or pos_data.get("Наименование") or pos_data.get("name")
+            is_deleted = str(pos_data.get("DeletionMark", "")).lower() in ("true", "1")
 
-            if not external_id or not name:
+            if not external_id or not name or is_deleted:
                 continue
 
+            # 1. Ищем по external_id
             position = db.query(Position).filter(
                 Position.external_id == external_id
             ).first()
+
+            # 2. Если не нашли — ищем по имени (связываем существующую с ЗУП)
+            if not position:
+                position = db.query(Position).filter(
+                    Position.name == name,
+                    Position.external_id.is_(None),
+                ).first()
+                if position:
+                    position.external_id = external_id
 
             if position:
                 position.name = name
@@ -406,43 +433,95 @@ def sync_positions_from_zup(db: Session) -> ZupSyncResult:
     return result
 
 
+def _parse_date(value: str | None) -> date | None:
+    """Парсит дату из строки 1С (ISO или с T)."""
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        clean = value.split("T")[0]
+        # 1С иногда возвращает 0001-01-01 для пустых дат
+        if clean.startswith("0001") or clean.startswith("0000"):
+            return None
+        return date.fromisoformat(clean)
+    except (ValueError, AttributeError):
+        return None
+
+
+def _find_existing_employee(db: Session, external_id: str, full_name: str, email: str | None) -> Employee | None:
+    """Ищет существующего сотрудника: по external_id, затем по email, затем по ФИО."""
+    # 1. По external_id (точное совпадение)
+    emp = db.query(Employee).filter(Employee.external_id == external_id).first()
+    if emp:
+        return emp
+
+    # 2. По email (если есть)
+    if email:
+        emp = db.query(Employee).filter(Employee.email == email).first()
+        if emp:
+            emp.external_id = external_id
+            return emp
+
+    # 3. По ФИО (точное совпадение, только если нет external_id)
+    emp = db.query(Employee).filter(
+        Employee.full_name == full_name,
+        Employee.external_id.is_(None),
+    ).first()
+    if emp:
+        emp.external_id = external_id
+        return emp
+
+    return None
+
+
 def sync_employees_from_zup(db: Session) -> ZupSyncResult:
     """Синхронизирует сотрудников из 1С ЗУП с детекцией кадровых событий."""
     result = ZupSyncResult()
-    employees = fetch_zup_employees(db)
+    employees_data = fetch_zup_employees(db)
 
-    for emp_data in employees:
+    # Загружаем ФизическиеЛица для дат рождения
+    persons = fetch_zup_persons(db)
+    person_birthday_map: dict[str, date | None] = {}
+    for person in persons:
+        ref_key = person.get("Ref_Key")
+        if ref_key:
+            person_birthday_map[ref_key] = _parse_date(
+                person.get("ДатаРождения") or person.get("DateOfBirth")
+            )
+    logger.info(f"ЗУП: загружено {len(person_birthday_map)} физ. лиц для дат рождения")
+
+    for emp_data in employees_data:
+        full_name = ""
         try:
             external_id = emp_data.get("Ref_Key") or emp_data.get("id")
             full_name = (
                 emp_data.get("Description") or
                 emp_data.get("Наименование") or
                 emp_data.get("ФИО") or
-                emp_data.get("full_name") or
-                emp_data.get("fio")
+                emp_data.get("full_name") or ""
             )
+            is_deleted = str(emp_data.get("DeletionMark", "")).lower() in ("true", "1")
 
-            if not external_id or not full_name:
+            if not external_id or not full_name or is_deleted:
                 continue
 
-            # Извлекаем данные
-            birthday_str = emp_data.get("ДатаРождения") or emp_data.get("birthday")
+            # Дата рождения: из ФизическоеЛицо_Key → Catalog_ФизическиеЛица
+            person_key = emp_data.get("ФизическоеЛицо_Key") or emp_data.get("ФизЛицо_Key")
             birthday = None
-            if birthday_str:
-                try:
-                    if isinstance(birthday_str, str):
-                        birthday = date.fromisoformat(birthday_str.split("T")[0])
-                except (ValueError, AttributeError):
-                    pass
+            if person_key and person_key in person_birthday_map:
+                birthday = person_birthday_map[person_key]
+            # Фоллбэк: если дата рождения есть прямо в Catalog_Сотрудники
+            if not birthday:
+                birthday = _parse_date(emp_data.get("ДатаРождения") or emp_data.get("birthday"))
 
             phone = emp_data.get("Телефон") or emp_data.get("phone")
             email = emp_data.get("Email") or emp_data.get("email")
 
-            # Ищем отдел по external_id
+            # Ищем отдел по external_id (пробуем разные имена полей для разных версий ЗУП)
             dept_ext_id = (
                 emp_data.get("Подразделение_Key") or
-                emp_data.get("department_id") or
-                (emp_data.get("Подразделение", {}) or {}).get("Ref_Key")
+                emp_data.get("ТекущееПодразделение_Key") or
+                emp_data.get("ТекущееПодразделениеОрганизации_Key") or
+                emp_data.get("ПодразделениеОрганизации_Key")
             )
             department_id = None
             if dept_ext_id:
@@ -452,11 +531,12 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 if dept:
                     department_id = dept.id
 
-            # Ищем должность по external_id
+            # Ищем должность по external_id (пробуем разные имена полей)
             pos_ext_id = (
                 emp_data.get("Должность_Key") or
-                emp_data.get("position_id") or
-                (emp_data.get("Должность", {}) or {}).get("Ref_Key")
+                emp_data.get("ТекущаяДолжность_Key") or
+                emp_data.get("ТекущаяДолжностьОрганизации_Key") or
+                emp_data.get("ДолжностьОрганизации_Key")
             )
             position_id = None
             if pos_ext_id:
@@ -471,23 +551,26 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
             is_dismissed = str(dismissed_val).lower() in ("true", "1", "да")
             status = "dismissed" if is_dismissed else "active"
 
-            # Ищем существующего сотрудника
-            employee = db.query(Employee).filter(
-                Employee.external_id == external_id
-            ).first()
+            # Ищем существующего сотрудника (по external_id, email или ФИО)
+            employee = _find_existing_employee(db, external_id, full_name, email)
 
             if employee:
                 # Сохраняем старые значения до обновления
                 old_status = employee.status
                 old_position_id = employee.position_id
 
-                # Обновляем
+                # Обновляем (не затираем поля если из ЗУП пришло пустое значение)
                 employee.full_name = full_name
-                employee.birthday = birthday
-                employee.department_id = department_id
-                employee.position_id = position_id
-                employee.internal_phone = phone or employee.internal_phone
-                employee.email = email or employee.email
+                if birthday:
+                    employee.birthday = birthday
+                if department_id:
+                    employee.department_id = department_id
+                if position_id:
+                    employee.position_id = position_id
+                if phone:
+                    employee.internal_phone = phone
+                if email:
+                    employee.email = email
                 employee.status = status
                 result.updated += 1
 
@@ -504,7 +587,7 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 ):
                     _handle_position_change(db, employee, old_position_id, position_id, result)
             else:
-                # Создаём
+                # Создаём нового
                 employee = Employee(
                     full_name=full_name,
                     external_id=external_id,
