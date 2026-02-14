@@ -8,6 +8,7 @@
 """
 
 import logging
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Optional
@@ -59,7 +60,6 @@ def _get_zup_client(db: Session) -> httpx.Client | None:
     return httpx.Client(
         timeout=30,
         auth=(username, password),
-        headers={"Accept": "application/json"},
     )
 
 
@@ -67,6 +67,80 @@ def _get_zup_base_url(db: Session) -> str | None:
     """Возвращает base URL для API ЗУП."""
     url = _get_setting(db, "zup_api_url")
     return url.rstrip("/") if url else None
+
+
+# --- Парсинг OData Atom XML (формат 1С по умолчанию) ---
+
+_ATOM_NS = "http://www.w3.org/2005/Atom"
+_DATASERVICES_NS = "http://schemas.microsoft.com/ado/2007/08/dataservices"
+_METADATA_NS = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"
+
+
+_EMPTY_GUID = "00000000-0000-0000-0000-000000000000"
+
+
+def _parse_atom_xml(text: str) -> list[dict]:
+    """Парсит OData Atom XML ответ от 1С в список словарей."""
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError:
+        logger.error("Не удалось распарсить XML от 1С ЗУП")
+        return []
+
+    entries = root.findall(f"{{{_ATOM_NS}}}entry")
+    results = []
+
+    for entry in entries:
+        content = entry.find(f"{{{_ATOM_NS}}}content")
+        if content is None:
+            continue
+        properties = content.find(f"{{{_METADATA_NS}}}properties")
+        if properties is None:
+            continue
+
+        item = {}
+        for prop in properties:
+            # Тег вида {namespace}ИмяПоля
+            tag = prop.tag
+            if "}" in tag:
+                tag = tag.split("}", 1)[1]
+            # Проверяем m:null="true"
+            is_null = prop.attrib.get(f"{{{_METADATA_NS}}}null", "false") == "true"
+            value = None if is_null else (prop.text or "")
+            # Пустые GUID от 1С считаем как None
+            if value == _EMPTY_GUID:
+                value = None
+            item[tag] = value
+        results.append(item)
+
+    return results
+
+
+def _parse_odata_response(response: httpx.Response) -> list[dict]:
+    """Парсит ответ OData: сначала пробует JSON, затем XML Atom."""
+    content_type = response.headers.get("content-type", "")
+
+    # Попытка JSON
+    if "json" in content_type or "javascript" in content_type:
+        try:
+            data = response.json()
+            return data.get("value", [])
+        except Exception:
+            pass
+
+    # Попытка XML (Atom) — формат 1С по умолчанию
+    if "xml" in content_type or "atom" in content_type or response.text.strip().startswith("<"):
+        return _parse_atom_xml(response.text)
+
+    # Попытка JSON без учёта content-type
+    try:
+        data = response.json()
+        return data.get("value", [])
+    except Exception:
+        pass
+
+    # Последняя попытка — XML
+    return _parse_atom_xml(response.text)
 
 
 def _has_recent_hr_request(db: Session, employee_id: int, request_type: str) -> bool:
@@ -184,64 +258,55 @@ def _handle_position_change(
     result.position_changed += 1
 
 
-def fetch_zup_departments(db: Session) -> list[dict]:
-    """Получает список подразделений из 1С ЗУП"""
+def _fetch_odata_catalog(db: Session, catalog_name: str, extra_params: str = "") -> list[dict]:
+    """Универсальная функция получения данных из каталога OData 1С ЗУП."""
     client = _get_zup_client(db)
     if not client:
         return []
 
     base_url = _get_zup_base_url(db)
+    url = f"{base_url}/{catalog_name}"
+    if extra_params:
+        url = f"{url}?{extra_params}"
+
     try:
-        response = client.get(f"{base_url}/Catalog_ПодразделенияОрганизаций?$format=json")
+        response = client.get(url)
         response.raise_for_status()
-        payload = response.json()
-        return payload.get("value", [])
+        items = _parse_odata_response(response)
+        logger.info(f"ЗУП: {catalog_name} — получено {len(items)} записей")
+        return items
     except httpx.HTTPError as e:
-        logger.error(f"Ошибка получения подразделений из ЗУП: {e}")
+        logger.error(f"Ошибка получения {catalog_name} из ЗУП: {e}")
+        # Попробуем с $format=json на случай если XML не работает
+        try:
+            sep = "&" if "?" in url else "?"
+            response = client.get(f"{url}{sep}$format=json")
+            response.raise_for_status()
+            items = _parse_odata_response(response)
+            logger.info(f"ЗУП: {catalog_name} (json) — получено {len(items)} записей")
+            return items
+        except Exception:
+            return []
+    except Exception as e:
+        logger.error(f"Ошибка парсинга {catalog_name} из ЗУП: {e}")
         return []
     finally:
         client.close()
+
+
+def fetch_zup_departments(db: Session) -> list[dict]:
+    """Получает список подразделений из 1С ЗУП"""
+    return _fetch_odata_catalog(db, "Catalog_ПодразделенияОрганизаций")
 
 
 def fetch_zup_positions(db: Session) -> list[dict]:
     """Получает список должностей из 1С ЗУП"""
-    client = _get_zup_client(db)
-    if not client:
-        return []
-
-    base_url = _get_zup_base_url(db)
-    try:
-        response = client.get(f"{base_url}/Catalog_Должности?$format=json")
-        response.raise_for_status()
-        payload = response.json()
-        return payload.get("value", [])
-    except httpx.HTTPError as e:
-        logger.error(f"Ошибка получения должностей из ЗУП: {e}")
-        return []
-    finally:
-        client.close()
+    return _fetch_odata_catalog(db, "Catalog_Должности")
 
 
 def fetch_zup_employees(db: Session) -> list[dict]:
     """Получает список сотрудников из 1С ЗУП"""
-    client = _get_zup_client(db)
-    if not client:
-        return []
-
-    base_url = _get_zup_base_url(db)
-    try:
-        response = client.get(
-            f"{base_url}/Catalog_Сотрудники?$format=json"
-            "&$expand=Подразделение,Должность"
-        )
-        response.raise_for_status()
-        payload = response.json()
-        return payload.get("value", [])
-    except httpx.HTTPError as e:
-        logger.error(f"Ошибка получения сотрудников из ЗУП: {e}")
-        return []
-    finally:
-        client.close()
+    return _fetch_odata_catalog(db, "Catalog_Сотрудники")
 
 
 def sync_departments_from_zup(db: Session) -> ZupSyncResult:
@@ -389,8 +454,9 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 if pos:
                     position_id = pos.id
 
-            # Статус сотрудника
-            is_dismissed = emp_data.get("Уволен", False) or emp_data.get("dismissed", False)
+            # Статус сотрудника (из XML приходит строка "true"/"false")
+            dismissed_val = emp_data.get("Уволен") or emp_data.get("dismissed") or ""
+            is_dismissed = str(dismissed_val).lower() in ("true", "1", "да")
             status = "dismissed" if is_dismissed else "active"
 
             # Ищем существующего сотрудника

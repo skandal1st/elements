@@ -29,16 +29,24 @@ type DebugResult = {
   root_keys?: string[];
   root_text_preview?: string;
   root_content_type?: string;
+  root_body_preview?: string;
+  root_error?: string;
   available_entities?: string[] | string;
+  entities_count?: number;
   catalogs?: Record<string, Record<string, {
     status?: number;
     count?: number;
+    format?: string;
+    content_type?: string;
     keys?: string[];
     sample?: Record<string, unknown>;
     error?: string;
+    parse_error?: string;
+    body_preview?: string;
   }>>;
   connection_error?: string;
-  root_error?: string;
+  detail?: string;
+  error?: string;
 };
 
 export function ZupSyncPage() {
@@ -350,30 +358,38 @@ export function ZupSyncPage() {
             <div className="glass-card p-6">
               <h3 className="text-lg font-semibold text-white mb-4">Результат диагностики</h3>
 
-              {debugResult.connection_error && (
+              {(debugResult.connection_error || debugResult.error) && (
                 <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 mb-4">
-                  Ошибка подключения: {debugResult.connection_error}
+                  {debugResult.connection_error && <>Ошибка подключения: {debugResult.connection_error}</>}
+                  {debugResult.error && <>{debugResult.error}</>}
+                  {debugResult.detail && <> ({debugResult.detail})</>}
                 </div>
               )}
 
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm text-gray-400 mb-1">URL: <span className="text-white">{debugResult.base_url}</span></div>
-                  <div className="text-sm text-gray-400">HTTP статус корневого запроса: <span className="text-white">{debugResult.root_status ?? "—"}</span></div>
+                  <div className="text-sm text-gray-400 mb-1">URL: <span className="text-white font-mono">{debugResult.base_url}</span></div>
+                  <div className="text-sm text-gray-400">
+                    Корневой запрос: <span className={debugResult.root_status === 200 ? "text-green-400" : "text-red-400"}>HTTP {debugResult.root_status ?? "—"}</span>
+                    {debugResult.root_content_type && <span className="text-gray-500 ml-2">({debugResult.root_content_type})</span>}
+                  </div>
+                  {debugResult.root_error && (
+                    <div className="text-sm text-red-400 mt-1">{debugResult.root_error}</div>
+                  )}
                 </div>
 
                 {/* Доступные сущности */}
                 {debugResult.available_entities && (
                   <div>
                     <div className="text-sm font-medium text-gray-300 mb-2">
-                      Доступные сущности OData ({Array.isArray(debugResult.available_entities) ? debugResult.available_entities.length : "?"}):
+                      Доступные сущности OData ({debugResult.entities_count ?? (Array.isArray(debugResult.available_entities) ? debugResult.available_entities.length : "?")}):
                     </div>
                     {Array.isArray(debugResult.available_entities) ? (
                       <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 max-h-48 overflow-y-auto">
                         <div className="text-xs text-gray-300 font-mono space-y-0.5">
                           {debugResult.available_entities.map((name, i) => (
                             <div key={i} className={
-                              name.includes("Сотрудник") || name.includes("Должност") || name.includes("Подразделен")
+                              name.includes("Сотрудник") || name.includes("Должност") || name.includes("Подразделен") || name.includes("ФизическиеЛица")
                                 ? "text-green-400 font-medium"
                                 : ""
                             }>{name}</div>
@@ -386,7 +402,7 @@ export function ZupSyncPage() {
                   </div>
                 )}
 
-                {/* Если вернулся XML */}
+                {/* Если вернулся необработанный текст */}
                 {debugResult.root_text_preview && (
                   <div>
                     <div className="text-sm font-medium text-gray-300 mb-2">
@@ -403,42 +419,59 @@ export function ZupSyncPage() {
                   <div>
                     <div className="text-sm font-medium text-gray-300 mb-2">Проверка каталогов:</div>
                     <div className="space-y-3">
-                      {Object.entries(debugResult.catalogs).map(([group, variants]) => (
-                        <div key={group} className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50">
-                          <div className="text-sm font-medium text-white mb-2 capitalize">{group}</div>
-                          {Object.entries(variants).map(([name, info]) => (
-                            <div key={name} className="mb-2 last:mb-0">
-                              <div className="flex items-center gap-2 text-sm">
-                                {info.status === 200 ? (
-                                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                                ) : (
-                                  <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      {Object.entries(debugResult.catalogs).map(([group, variants]) => {
+                        const groupLabels: Record<string, string> = {
+                          departments: "Подразделения",
+                          positions: "Должности",
+                          employees: "Сотрудники",
+                        };
+                        return (
+                          <div key={group} className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50">
+                            <div className="text-sm font-medium text-white mb-2">{groupLabels[group] || group}</div>
+                            {Object.entries(variants).map(([name, info]) => (
+                              <div key={name} className="mb-3 last:mb-0">
+                                <div className="flex items-center gap-2 text-sm flex-wrap">
+                                  {info.status === 200 ? (
+                                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                                  )}
+                                  <span className="font-mono text-xs text-gray-300">{name}</span>
+                                  {info.status === 200 && info.count !== undefined && (
+                                    <span className="text-green-400 text-xs">
+                                      {info.count} записей {info.format && `(${info.format})`}
+                                    </span>
+                                  )}
+                                  {info.status && info.status !== 200 && (
+                                    <span className="text-red-400 text-xs">HTTP {info.status}</span>
+                                  )}
+                                  {info.error && (
+                                    <span className="text-red-400 text-xs">{info.error}</span>
+                                  )}
+                                  {info.parse_error && (
+                                    <span className="text-amber-400 text-xs">{info.parse_error}</span>
+                                  )}
+                                </div>
+                                {info.keys && info.keys.length > 0 && (
+                                  <div className="mt-1 ml-6 text-xs text-gray-500">
+                                    Поля: {info.keys.join(", ")}
+                                  </div>
                                 )}
-                                <span className="font-mono text-xs text-gray-300">{name}</span>
-                                {info.status === 200 && (
-                                  <span className="text-green-400 text-xs">({info.count} записей)</span>
+                                {info.sample && (
+                                  <pre className="mt-1 ml-6 text-xs text-gray-400 font-mono overflow-x-auto max-h-32 overflow-y-auto bg-dark-800/50 p-2 rounded">
+                                    {JSON.stringify(info.sample, null, 2)}
+                                  </pre>
                                 )}
-                                {info.status && info.status !== 200 && (
-                                  <span className="text-red-400 text-xs">HTTP {info.status}</span>
-                                )}
-                                {info.error && (
-                                  <span className="text-red-400 text-xs">{info.error}</span>
+                                {info.body_preview && (
+                                  <pre className="mt-1 ml-6 text-xs text-gray-500 font-mono overflow-x-auto max-h-24 overflow-y-auto">
+                                    {info.body_preview}
+                                  </pre>
                                 )}
                               </div>
-                              {info.keys && info.keys.length > 0 && (
-                                <div className="mt-1 ml-6 text-xs text-gray-500">
-                                  Поля: {info.keys.join(", ")}
-                                </div>
-                              )}
-                              {info.sample && (
-                                <pre className="mt-1 ml-6 text-xs text-gray-400 font-mono overflow-x-auto max-h-24 overflow-y-auto">
-                                  {JSON.stringify(info.sample, null, 2)}
-                                </pre>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ))}
+                            ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

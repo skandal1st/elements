@@ -323,77 +323,139 @@ def _update_system_setting(db: Session, key: str, value: str, setting_type: str 
 def zup_debug(db: Session = Depends(get_db)) -> dict:
     """Диагностика подключения к 1С ЗУП: показывает что возвращает API."""
     import httpx
+    import xml.etree.ElementTree as ET
 
     url = _get_system_setting(db, "zup_api_url")
     username = _get_system_setting(db, "zup_username")
     password = _get_system_setting(db, "zup_password")
 
     if not url or not username or not password:
-        return {"error": "ЗУП не настроен"}
+        return {"error": "ЗУП не настроен", "detail": f"url={'есть' if url else 'нет'}, user={'есть' if username else 'нет'}, pass={'есть' if password else 'нет'}"}
 
     base_url = url.rstrip("/")
-    result = {"base_url": base_url, "catalogs": {}, "metadata": None}
+    result = {"base_url": base_url, "catalogs": {}}
 
     try:
-        client = httpx.Client(timeout=30, auth=(username, password), headers={"Accept": "application/json"})
+        client = httpx.Client(timeout=30, auth=(username, password))
 
-        # 1. Корневой запрос — список доступных сущностей
+        # 1. Корневой запрос — список доступных сущностей (всегда XML)
         try:
             resp = client.get(f"{base_url}/")
             result["root_status"] = resp.status_code
+            result["root_content_type"] = resp.headers.get("content-type", "")
+
             if resp.status_code == 200:
+                # Парсим XML сервисный документ
                 try:
-                    root_data = resp.json()
-                    # OData обычно возвращает {"value": [{"name": "...", "url": "..."}]}
-                    entities = root_data.get("value", [])
-                    result["available_entities"] = [
-                        e.get("name") or e.get("Name") or str(e)
-                        for e in entities[:100]
-                    ] if isinstance(entities, list) else "unexpected format"
-                    result["root_keys"] = list(root_data.keys()) if isinstance(root_data, dict) else type(root_data).__name__
-                except Exception:
-                    # Может быть XML
-                    result["root_content_type"] = resp.headers.get("content-type", "")
-                    result["root_text_preview"] = resp.text[:2000]
+                    root = ET.fromstring(resp.text)
+                    # Ищем collection элементы
+                    ns_app = "http://www.w3.org/2007/app"
+                    ns_atom = "http://www.w3.org/2005/Atom"
+                    collections = root.findall(f".//{{{ns_app}}}collection")
+                    entities = []
+                    for col in collections:
+                        href = col.attrib.get("href", "")
+                        title_el = col.find(f"{{{ns_atom}}}title")
+                        title = title_el.text if title_el is not None else href
+                        entities.append(title)
+                    result["available_entities"] = entities
+                    result["entities_count"] = len(entities)
+                except ET.ParseError:
+                    # Может быть JSON
+                    try:
+                        root_data = resp.json()
+                        entities = root_data.get("value", [])
+                        result["available_entities"] = [
+                            e.get("name") or e.get("Name") or str(e)
+                            for e in entities[:200]
+                        ] if isinstance(entities, list) else "unexpected format"
+                    except Exception:
+                        result["root_text_preview"] = resp.text[:2000]
+            else:
+                result["root_error"] = f"HTTP {resp.status_code}"
+                result["root_body_preview"] = resp.text[:500]
         except Exception as e:
             result["root_error"] = str(e)
 
-        # 2. Пробуем основные варианты имён каталогов
+        # 2. Пробуем основные каталоги (без $format=json — 1С возвращает XML Atom)
         catalog_variants = {
             "departments": [
                 "Catalog_ПодразделенияОрганизаций",
-                "Catalog_Подразделения",
                 "Catalog_СтруктураПредприятия",
             ],
             "positions": [
                 "Catalog_Должности",
-                "Catalog_ДолжностиОрганизаций",
             ],
             "employees": [
                 "Catalog_Сотрудники",
-                "Catalog_СотрудникиОрганизаций",
                 "Catalog_ФизическиеЛица",
             ],
         }
+
+        atom_ns = "http://www.w3.org/2005/Atom"
+        ds_ns = "http://schemas.microsoft.com/ado/2007/08/dataservices"
+        meta_ns = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"
 
         for group, variants in catalog_variants.items():
             result["catalogs"][group] = {}
             for catalog_name in variants:
                 try:
-                    resp = client.get(f"{base_url}/{catalog_name}?$format=json&$top=2")
+                    # Запрос без $format=json (XML по умолчанию для 1С)
+                    resp = client.get(f"{base_url}/{catalog_name}?$top=2")
+                    cat_result = {
+                        "status": resp.status_code,
+                        "content_type": resp.headers.get("content-type", ""),
+                    }
+
                     if resp.status_code == 200:
-                        data = resp.json()
-                        items = data.get("value", [])
-                        result["catalogs"][group][catalog_name] = {
-                            "status": resp.status_code,
-                            "count": len(items),
-                            "keys": list(items[0].keys()) if items else [],
-                            "sample": items[0] if items else None,
-                        }
+                        content_type = resp.headers.get("content-type", "")
+
+                        # Пробуем парсить XML Atom
+                        if "xml" in content_type or "atom" in content_type or resp.text.strip().startswith("<"):
+                            try:
+                                feed = ET.fromstring(resp.text)
+                                entries = feed.findall(f"{{{atom_ns}}}entry")
+                                cat_result["format"] = "xml"
+                                cat_result["count"] = len(entries)
+
+                                if entries:
+                                    # Извлекаем поля из первой записи
+                                    content_el = entries[0].find(f"{{{atom_ns}}}content")
+                                    if content_el is not None:
+                                        props_el = content_el.find(f"{{{meta_ns}}}properties")
+                                        if props_el is not None:
+                                            sample = {}
+                                            keys = []
+                                            for prop in props_el:
+                                                tag = prop.tag.split("}", 1)[1] if "}" in prop.tag else prop.tag
+                                                keys.append(tag)
+                                                is_null = prop.attrib.get(f"{{{meta_ns}}}null", "false") == "true"
+                                                sample[tag] = None if is_null else (prop.text or "")
+                                            cat_result["keys"] = keys
+                                            cat_result["sample"] = sample
+                            except ET.ParseError as e:
+                                cat_result["parse_error"] = f"XML parse error: {e}"
+                                cat_result["body_preview"] = resp.text[:300]
+                        else:
+                            # Пробуем JSON
+                            try:
+                                data = resp.json()
+                                items = data.get("value", [])
+                                cat_result["format"] = "json"
+                                cat_result["count"] = len(items)
+                                if items:
+                                    cat_result["keys"] = list(items[0].keys())
+                                    cat_result["sample"] = items[0]
+                            except Exception:
+                                cat_result["body_preview"] = resp.text[:300]
+                    elif resp.status_code == 401:
+                        cat_result["error"] = "Ошибка авторизации (401)"
+                    elif resp.status_code == 404:
+                        cat_result["error"] = "Каталог не найден (404)"
                     else:
-                        result["catalogs"][group][catalog_name] = {
-                            "status": resp.status_code,
-                        }
+                        cat_result["body_preview"] = resp.text[:300]
+
+                    result["catalogs"][group][catalog_name] = cat_result
                 except Exception as e:
                     result["catalogs"][group][catalog_name] = {"error": str(e)}
 
