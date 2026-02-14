@@ -6,7 +6,7 @@ import json
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func as sa_func
+from sqlalchemy import func as sa_func, or_
 from sqlalchemy.orm import Session
 
 from backend.core.auth import get_password_hash
@@ -636,30 +636,33 @@ def zup_cleanup(db: Session = Depends(get_db), current_user: User = Depends(get_
 
     db.flush()
 
-    # --- 3. Удаляем HR-заявки на приём (созданные синхронизацией) ---
-    hire_requests = (
+    # --- 3. Удаляем HR-заявки (hire + fire), созданные синхронизацией ---
+    hr_requests_to_delete = (
         db.query(HRRequest)
         .filter(
-            HRRequest.type == "hire",
+            HRRequest.type.in_(["hire", "fire"]),
             HRRequest.request_date == date.today(),
         )
         .all()
     )
-    for hr in hire_requests:
+    for hr in hr_requests_to_delete:
         db.delete(hr)
         deleted_hr_requests += 1
 
-    # --- 4. Удаляем тикеты «Онбординг» ---
-    onboarding_tickets = (
+    # --- 4. Удаляем тикеты «Онбординг» и «Увольнение» ---
+    sync_tickets = (
         db.query(Ticket)
         .filter(
-            Ticket.title.like("Онбординг:%"),
+            or_(
+                Ticket.title.like("Онбординг:%"),
+                Ticket.title.like("Увольнение:%"),
+            ),
             Ticket.category == "hr",
             sa_func.date(Ticket.created_at) == date.today(),
         )
         .all()
     )
-    for ticket in onboarding_tickets:
+    for ticket in sync_tickets:
         db.delete(ticket)
         deleted_tickets += 1
 
