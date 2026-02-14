@@ -399,7 +399,9 @@ def zup_debug(db: Session = Depends(get_db)) -> dict:
                 "Catalog_ФизическиеЛица",
             ],
             "hr_history": [
-                "InformationRegister_КадроваяИсторияСотрудников",
+                "InformationRegister_КадроваяИсторияСотрудников_RecordType/SliceLast()",
+                "InformationRegister_КадроваяИсторияСотрудников_RecordType",
+                "InformationRegister_ТекущиеКадровыеДанныеСотрудников_RecordType",
                 "InformationRegister_ТекущиеКадровыеДанныеСотрудников",
             ],
         }
