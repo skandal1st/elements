@@ -368,13 +368,20 @@ def sync_departments_from_zup(db: Session) -> ZupSyncResult:
                 Department.external_id == external_id
             ).first()
 
-            # 2. Если не нашли — ищем по имени (связываем существующий с ЗУП)
+            # 2. По имени (без external_id — вручную созданные)
             if not department:
                 department = db.query(Department).filter(
                     Department.name == name,
                     Department.external_id.is_(None),
                 ).first()
                 if department:
+                    department.external_id = external_id
+
+            # 3. По имени (единственное совпадение — даже с другим external_id)
+            if not department:
+                matches = db.query(Department).filter(Department.name == name).all()
+                if len(matches) == 1:
+                    department = matches[0]
                     department.external_id = external_id
 
             parent_id = None
@@ -426,13 +433,20 @@ def sync_positions_from_zup(db: Session) -> ZupSyncResult:
                 Position.external_id == external_id
             ).first()
 
-            # 2. Если не нашли — ищем по имени (связываем существующую с ЗУП)
+            # 2. По имени (без external_id — вручную созданные)
             if not position:
                 position = db.query(Position).filter(
                     Position.name == name,
                     Position.external_id.is_(None),
                 ).first()
                 if position:
+                    position.external_id = external_id
+
+            # 3. По имени (единственное совпадение — даже с другим external_id)
+            if not position:
+                matches = db.query(Position).filter(Position.name == name).all()
+                if len(matches) == 1:
+                    position = matches[0]
                     position.external_id = external_id
 
             if position:
@@ -470,7 +484,11 @@ def _parse_date(value: str | None) -> date | None:
 
 
 def _find_existing_employee(db: Session, external_id: str, full_name: str, email: str | None) -> Employee | None:
-    """Ищет существующего сотрудника: по external_id, затем по email, затем по ФИО."""
+    """Ищет существующего сотрудника: по external_id, затем по email, затем по ФИО.
+
+    Стратегия: максимально избежать дублей. Если находим единственное совпадение
+    по ФИО — привязываем к нему, даже если у записи уже есть другой external_id.
+    """
     # 1. По external_id (точное совпадение)
     emp = db.query(Employee).filter(Employee.external_id == external_id).first()
     if emp:
@@ -480,10 +498,11 @@ def _find_existing_employee(db: Session, external_id: str, full_name: str, email
     if email:
         emp = db.query(Employee).filter(Employee.email == email).first()
         if emp:
-            emp.external_id = external_id
+            if not emp.external_id:
+                emp.external_id = external_id
             return emp
 
-    # 3. По ФИО (точное совпадение, только если нет external_id)
+    # 3. По ФИО — сначала без external_id (новые записи, созданные вручную)
     emp = db.query(Employee).filter(
         Employee.full_name == full_name,
         Employee.external_id.is_(None),
@@ -491,6 +510,24 @@ def _find_existing_employee(db: Session, external_id: str, full_name: str, email
     if emp:
         emp.external_id = external_id
         return emp
+
+    # 4. По ФИО — единственное совпадение (даже если есть external_id)
+    #    Защита от дублей после очистки или если Ref_Key изменился
+    matches = db.query(Employee).filter(Employee.full_name == full_name).all()
+    if len(matches) == 1:
+        emp = matches[0]
+        logger.info(
+            f"ЗУП: привязка по ФИО «{full_name}» "
+            f"(old ext_id={emp.external_id} → new ext_id={external_id})"
+        )
+        emp.external_id = external_id
+        return emp
+
+    if len(matches) > 1:
+        logger.warning(
+            f"ЗУП: найдено {len(matches)} сотрудников с ФИО «{full_name}», "
+            f"невозможно определить — будет создана новая запись"
+        )
 
     return None
 
