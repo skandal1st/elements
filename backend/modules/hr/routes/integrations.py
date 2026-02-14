@@ -398,6 +398,10 @@ def zup_debug(db: Session = Depends(get_db)) -> dict:
                 "Catalog_Сотрудники",
                 "Catalog_ФизическиеЛица",
             ],
+            "hr_history": [
+                "InformationRegister_КадроваяИсторияСотрудников",
+                "InformationRegister_ТекущиеКадровыеДанныеСотрудников",
+            ],
         }
 
         atom_ns = "http://www.w3.org/2005/Atom"

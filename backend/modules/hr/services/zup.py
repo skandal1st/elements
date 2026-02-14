@@ -507,14 +507,18 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
             )
             is_deleted = str(emp_data.get("DeletionMark", "")).lower() in ("true", "1")
 
-            # Статус: уволен или нет
-            dismissed_val = emp_data.get("Уволен") or emp_data.get("dismissed") or ""
+            # Статус: ВАрхиве=true или Уволен=true → уволен/не активен
+            dismissed_val = (
+                emp_data.get("ВАрхиве") or
+                emp_data.get("Уволен") or
+                emp_data.get("dismissed") or ""
+            )
             is_dismissed = str(dismissed_val).lower() in ("true", "1", "да")
 
             if not external_id or not full_name or is_deleted:
                 continue
 
-            # Пропускаем уволенных — не импортируем их совсем
+            # Пропускаем уволенных/архивных — не импортируем их совсем
             # (только обновляем статус если сотрудник уже есть в БД)
             if is_dismissed:
                 existing = db.query(Employee).filter(
@@ -542,7 +546,17 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
             phone = emp_data.get("Телефон") or emp_data.get("phone")
             email = emp_data.get("Email") or emp_data.get("email")
 
-            # Ищем отдел по external_id (пробуем разные имена полей для разных версий ЗУП)
+            # Контактная информация из ФизическиеЛица (если есть)
+            if person_key and not email:
+                person_data = next((p for p in persons if p.get("Ref_Key") == person_key), None)
+                if person_data:
+                    email = person_data.get("Email") or person_data.get("email")
+                    if not phone:
+                        phone = person_data.get("Телефон") or person_data.get("phone")
+
+            # Отдел и должность — в Catalog_Сотрудники ЗУП 3.x их нет,
+            # они хранятся в регистрах. Пробуем все возможные имена полей на случай
+            # если в конкретной конфигурации они есть.
             dept_ext_id = (
                 emp_data.get("Подразделение_Key") or
                 emp_data.get("ТекущееПодразделение_Key") or
@@ -557,7 +571,6 @@ def sync_employees_from_zup(db: Session) -> ZupSyncResult:
                 if dept:
                     department_id = dept.id
 
-            # Ищем должность по external_id (пробуем разные имена полей)
             pos_ext_id = (
                 emp_data.get("Должность_Key") or
                 emp_data.get("ТекущаяДолжность_Key") or

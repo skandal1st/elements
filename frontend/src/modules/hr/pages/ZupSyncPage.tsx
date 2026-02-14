@@ -487,6 +487,7 @@ export function ZupSyncPage() {
                           departments: "Подразделения",
                           positions: "Должности",
                           employees: "Сотрудники",
+                          hr_history: "Кадровая история (должности/отделы)",
                         };
                         return (
                           <div key={group} className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50">
