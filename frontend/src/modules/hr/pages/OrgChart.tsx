@@ -267,18 +267,18 @@ export function OrgChart() {
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
-                  {positions
-                    .filter((pos) => pos.department_id === dept.id)
-                    .map((pos) => {
-                      const orgPos = dept.positions.find((p) => p.id === pos.id)
-                      const employees = orgPos?.employees || []
-                      return (
-                        <div key={pos.id} className="pl-4 border-l-2 border-dark-600/50">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Briefcase className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm font-medium text-white">{pos.name}</span>
-                            </div>
+                  {/* Должности с сотрудниками (из org API — группировка по Employee.position_id) */}
+                  {dept.positions.map((orgPos) => {
+                    const pos = orgPos.id != null ? positions.find((p) => p.id === orgPos.id) : null
+                    const employees = orgPos.employees || []
+                    return (
+                      <div key={orgPos.id ?? 'no-position'} className="pl-4 border-l-2 border-dark-600/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm font-medium text-white">{orgPos.name}</span>
+                          </div>
+                          {pos && (
                             <div className="flex items-center gap-1">
                               <button onClick={() => openEditPosition(pos)} className="p-1.5 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать должность">
                                 <Edit className="w-3 h-3" />
@@ -287,18 +287,45 @@ export function OrgChart() {
                                 <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
-                          </div>
-                          {pos.description && <p className="text-xs text-gray-500 mt-1 ml-6">{pos.description}</p>}
-                          <ul className="mt-2 ml-6 space-y-1">
-                            {employees.map((emp) => (
-                              <li key={emp.id} className="text-sm text-gray-400">{emp.full_name}</li>
-                            ))}
-                            {employees.length === 0 && <li className="text-xs text-gray-500 italic">Нет сотрудников</li>}
-                          </ul>
+                          )}
                         </div>
-                      )
-                    })}
-                  {positions.filter((pos) => pos.department_id === dept.id).length === 0 && (
+                        {pos?.description && <p className="text-xs text-gray-500 mt-1 ml-6">{pos.description}</p>}
+                        <ul className="mt-2 ml-6 space-y-1">
+                          {employees.map((emp) => (
+                            <li key={emp.id} className="text-sm text-gray-400">{emp.full_name}</li>
+                          ))}
+                          {employees.length === 0 && <li className="text-xs text-gray-500 italic">Нет сотрудников</li>}
+                        </ul>
+                      </div>
+                    )
+                  })}
+                  {/* Должности без сотрудников (привязаны к отделу вручную) */}
+                  {positions
+                    .filter((pos) => pos.department_id === dept.id && !dept.positions.some(p => p.id === pos.id))
+                    .map((pos) => (
+                      <div key={pos.id} className="pl-4 border-l-2 border-dark-600/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-gray-500 opacity-50" />
+                            <span className="text-sm font-medium text-gray-400">{pos.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => openEditPosition(pos)} className="p-1.5 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать должность">
+                              <Edit className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => handleDeletePosition(pos)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Удалить должность">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                        {pos.description && <p className="text-xs text-gray-500 mt-1 ml-6">{pos.description}</p>}
+                        <ul className="mt-2 ml-6 space-y-1">
+                          <li className="text-xs text-gray-500 italic">Нет сотрудников</li>
+                        </ul>
+                      </div>
+                    ))
+                  }
+                  {dept.positions.length === 0 && positions.filter((pos) => pos.department_id === dept.id).length === 0 && (
                     <p className="text-sm text-gray-500 italic">Нет должностей</p>
                   )}
                   <button onClick={() => openCreatePosition(dept.id)} className="flex items-center gap-1 text-sm text-accent-purple hover:text-accent-blue mt-2 font-medium transition-colors">
