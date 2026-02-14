@@ -25,6 +25,7 @@ type ZupStatus = {
 
 type DebugResult = {
   base_url?: string;
+  configured_url?: string;
   root_status?: number;
   root_keys?: string[];
   root_text_preview?: string;
@@ -368,7 +369,12 @@ export function ZupSyncPage() {
 
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm text-gray-400 mb-1">URL: <span className="text-white font-mono">{debugResult.base_url}</span></div>
+                  <div className="text-sm text-gray-400 mb-1">OData URL: <span className="text-white font-mono">{debugResult.base_url}</span></div>
+                  {debugResult.configured_url && debugResult.configured_url !== debugResult.base_url && (
+                    <div className="text-sm text-amber-400 mb-1">
+                      URL из настроек автоскорректирован: <span className="font-mono line-through text-gray-500">{debugResult.configured_url}</span>
+                    </div>
+                  )}
                   <div className="text-sm text-gray-400">
                     Корневой запрос: <span className={debugResult.root_status === 200 ? "text-green-400" : "text-red-400"}>HTTP {debugResult.root_status ?? "—"}</span>
                     {debugResult.root_content_type && <span className="text-gray-500 ml-2">({debugResult.root_content_type})</span>}

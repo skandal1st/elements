@@ -63,10 +63,22 @@ def _get_zup_client(db: Session) -> httpx.Client | None:
     )
 
 
+def _normalize_zup_url(url: str) -> str:
+    """Нормализует URL: если не содержит /odata/standard.odata, дополняет."""
+    url = url.rstrip("/")
+    if url.endswith("/odata/standard.odata"):
+        return url
+    if url.endswith("/odata"):
+        return f"{url}/standard.odata"
+    return f"{url}/odata/standard.odata"
+
+
 def _get_zup_base_url(db: Session) -> str | None:
-    """Возвращает base URL для API ЗУП."""
+    """Возвращает base URL для OData API ЗУП."""
     url = _get_setting(db, "zup_api_url")
-    return url.rstrip("/") if url else None
+    if not url:
+        return None
+    return _normalize_zup_url(url)
 
 
 # --- Парсинг OData Atom XML (формат 1С по умолчанию) ---

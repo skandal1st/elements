@@ -332,8 +332,14 @@ def zup_debug(db: Session = Depends(get_db)) -> dict:
     if not url or not username or not password:
         return {"error": "ЗУП не настроен", "detail": f"url={'есть' if url else 'нет'}, user={'есть' if username else 'нет'}, pass={'есть' if password else 'нет'}"}
 
+    # Автокоррекция URL — дополняем /odata/standard.odata если нужно
     base_url = url.rstrip("/")
-    result = {"base_url": base_url, "catalogs": {}}
+    if not base_url.endswith("/odata/standard.odata"):
+        if base_url.endswith("/odata"):
+            base_url = f"{base_url}/standard.odata"
+        else:
+            base_url = f"{base_url}/odata/standard.odata"
+    result = {"base_url": base_url, "configured_url": url.rstrip("/"), "catalogs": {}}
 
     try:
         client = httpx.Client(timeout=30, auth=(username, password))
