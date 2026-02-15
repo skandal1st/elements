@@ -75,6 +75,19 @@ from backend.modules.knowledge_core.models import (  # noqa: F401
 # Модели модуля Tasks (регистрация в Base для create_all)
 import backend.modules.tasks.models  # noqa: F401, E402
 
+# Модели модуля Документы (регистрация в Base для create_all)
+from backend.modules.documents.models import (  # noqa: F401
+    ApprovalInstance,
+    ApprovalRoute,
+    ApprovalStepInstance,
+    Document,
+    DocumentAttachment,
+    DocumentComment,
+    DocumentTemplate,
+    DocumentType,
+    DocumentVersion,
+)
+
 
 def get_password_hash(password: str) -> str:
     """Хеширует пароль используя bcrypt напрямую"""

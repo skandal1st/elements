@@ -334,6 +334,46 @@ def ensure_license_assignments_employee_id() -> None:
     """)
 
 
+def ensure_documents_tables() -> None:
+    """
+    Создаёт таблицы модуля Документы, если их ещё нет.
+    """
+    try:
+        from backend.modules.documents.models import (
+            ApprovalInstance,
+            ApprovalRoute,
+            ApprovalStepInstance,
+            Document,
+            DocumentAttachment,
+            DocumentComment,
+            DocumentTemplate,
+            DocumentType,
+            DocumentVersion,
+        )
+    except Exception as e:
+        logger.warning("Documents models import failed: %s", e)
+        return
+
+    # Порядок важен: сначала таблицы без FK, потом зависимые
+    tables = [
+        ApprovalRoute.__table__,
+        DocumentType.__table__,
+        DocumentTemplate.__table__,
+        Document.__table__,
+        DocumentVersion.__table__,
+        DocumentAttachment.__table__,
+        DocumentComment.__table__,
+        ApprovalInstance.__table__,
+        ApprovalStepInstance.__table__,
+    ]
+
+    for t in tables:
+        try:
+            t.create(bind=engine, checkfirst=True)
+        except Exception as e:
+            logger.warning("startup table create skipped (%s): %s", t.name, e)
+
+
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
     try:
@@ -346,6 +386,7 @@ def apply_startup_migrations() -> None:
         ensure_rocketchat_columns()
         ensure_rustdesk_column()
         ensure_license_assignments_employee_id()
+        ensure_documents_tables()
         logger.info(
             "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat и rustdesk колонки готовы"
         )

@@ -36,6 +36,15 @@ import { ProjectsPage } from "./modules/tasks/pages/ProjectsPage";
 import { TaskBoardPage } from "./modules/tasks/pages/TaskBoardPage";
 import { TaskListPage } from "./modules/tasks/pages/TaskListPage";
 import { ZupSyncPage } from "./modules/hr/pages/ZupSyncPage";
+import { DocumentsLayout } from "./modules/documents/DocumentsLayout";
+import { DocumentsListPage } from "./modules/documents/pages/DocumentsListPage";
+import { DocumentCreatePage } from "./modules/documents/pages/DocumentCreatePage";
+import { DocumentDetailPage } from "./modules/documents/pages/DocumentDetailPage";
+import { DocumentTypesPage } from "./modules/documents/pages/DocumentTypesPage";
+import { TemplatesPage } from "./modules/documents/pages/TemplatesPage";
+import { TemplateEditorPage } from "./modules/documents/pages/TemplateEditorPage";
+import { ApprovalRoutesPage } from "./modules/documents/pages/ApprovalRoutesPage";
+import { ApprovalRouteEditorPage } from "./modules/documents/pages/ApprovalRouteEditorPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token);
@@ -279,6 +288,62 @@ function AppRoutes() {
           <Route path="board" element={<TaskBoardPage />} />
           <Route path="my" element={<TaskListPage />} />
         </Route>
+        <Route
+          path="/documents"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="documents">
+                <DocumentsLayout />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/documents/list" replace />} />
+          <Route path="list" element={<DocumentsListPage />} />
+          <Route path="types" element={<DocumentTypesPage />} />
+          <Route path="templates" element={<TemplatesPage />} />
+          <Route path="routes" element={<ApprovalRoutesPage />} />
+        </Route>
+        <Route
+          path="/documents/create"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="documents">
+                <DocumentCreatePage />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/documents/view/:id"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="documents">
+                <DocumentDetailPage />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/documents/template-editor/:id"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="documents">
+                <TemplateEditorPage />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/documents/route-editor/:id"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="documents">
+                <ApprovalRouteEditorPage />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/profile"
           element={

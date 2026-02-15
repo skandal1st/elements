@@ -18,6 +18,7 @@ from backend.modules.portal import api as portal_api
 from backend.modules.hr import api as hr_api
 from backend.modules.it import api as it_api
 from backend.modules.tasks import api as tasks_api
+from backend.modules.documents import api as documents_api
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -81,6 +82,7 @@ app.include_router(portal_api.router)
 app.include_router(hr_api.router)
 app.include_router(it_api.router)
 app.include_router(tasks_api.router)
+app.include_router(documents_api.router)
 
 
 @app.get("/health")

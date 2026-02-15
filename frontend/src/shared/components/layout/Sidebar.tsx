@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckSquare,
+  FileText,
   Search,
 } from "lucide-react";
 import { useUIStore } from "../../store/ui.store";
@@ -24,6 +25,7 @@ const modules: Module[] = [
   { code: "hr", name: "HR", icon: Users, path: "/hr" },
   { code: "it", name: "IT", icon: Server, path: "/it" },
   { code: "tasks", name: "Задачи", icon: CheckSquare, path: "/tasks" },
+  { code: "documents", name: "Документы", icon: FileText, path: "/documents" },
 ];
 
 export function Sidebar() {
@@ -39,7 +41,7 @@ export function Sidebar() {
         const payload = JSON.parse(atob(token.split(".")[1]));
         const mods = payload.modules || [];
         const su = !!payload.is_superuser;
-        setAvailableModules(su ? ["hr", "it", "tasks"] : [...mods]);
+        setAvailableModules(su ? ["hr", "it", "tasks", "documents"] : [...mods]);
       } catch (e) {
         console.error("Ошибка декодирования токена:", e);
       }
