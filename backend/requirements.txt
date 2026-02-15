@@ -35,5 +35,9 @@ ldap3==2.9.1
 # WinRM (для сканирования ПК через Windows-шлюз)
 pywinrm==0.4.3
 
+# Документы (шаблоны .docx, генерация PDF)
+python-docx==1.1.2
+reportlab==4.2.5
+
 # Утилиты
 python-multipart==0.0.12

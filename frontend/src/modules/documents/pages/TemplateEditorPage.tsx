@@ -16,13 +16,22 @@ export function TemplateEditorPage() {
 
   useEffect(() => {
     if (!id) return
-    Promise.all([
-      documentsService.getTemplate(id),
-      documentsService.getTemplateContent(id),
-    ]).then(([t, content]) => {
-      setTemplate(t)
-      setHtml(content.html)
-    }).catch(console.error).finally(() => setLoading(false))
+    const loadTemplate = async () => {
+      try {
+        const t = await documentsService.getTemplate(id)
+        setTemplate(t)
+      } catch (err) {
+        console.error('Ошибка загрузки шаблона:', err)
+      }
+      try {
+        const content = await documentsService.getTemplateContent(id)
+        setHtml(content.html)
+      } catch (err) {
+        console.error('Ошибка загрузки содержимого шаблона:', err)
+      }
+      setLoading(false)
+    }
+    loadTemplate()
   }, [id])
 
   const handleTextSelect = () => {
@@ -108,14 +117,20 @@ export function TemplateEditorPage() {
       <div className="grid grid-cols-3 gap-6">
         {/* Document preview */}
         <div className="col-span-2">
-          <div
-            className="p-6 bg-white rounded-xl text-black text-sm leading-relaxed min-h-[400px] cursor-text"
-            onMouseUp={handleTextSelect}
-            dangerouslySetInnerHTML={{ __html: html }}
-            style={{
-              fontFamily: 'serif',
-            }}
-          />
+          {html ? (
+            <div
+              className="p-6 bg-white rounded-xl text-black text-sm leading-relaxed min-h-[400px] cursor-text"
+              onMouseUp={handleTextSelect}
+              dangerouslySetInnerHTML={{ __html: html }}
+              style={{
+                fontFamily: 'serif',
+              }}
+            />
+          ) : (
+            <div className="p-6 bg-dark-800/50 border border-dark-600/50 rounded-xl text-gray-400 text-sm min-h-[400px] flex items-center justify-center">
+              Не удалось загрузить содержимое шаблона. Убедитесь, что библиотека python-docx установлена на сервере.
+            </div>
+          )}
           <style>{`
             .placeholder {
               background-color: #fef08a;
