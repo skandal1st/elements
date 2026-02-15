@@ -1,7 +1,7 @@
 # Elements Platform - Архитектура проекта
 
 > Comprehensive документация для AI-ассистентов и разработчиков
-> Последнее обновление: 2026-02-01
+> Последнее обновление: 2026-02-15
 
 ---
 
@@ -29,6 +29,7 @@
 - **IT-модуль**: helpdesk, управление оборудованием, заявки, каталог оборудования, интеграции (Email IMAP, Telegram, RocketChat, Zabbix)
 - **Tasks-модуль**: управление проектами и задачами
 - **Knowledge Core**: база знаний с LLM-нормализацией и семантическим поиском (Qdrant)
+- **Documents-модуль**: внутренний документооборот, шаблоны .docx с плейсхолдерами, маршруты согласования, лист согласования PDF
 
 **Основные особенности:**
 - Мультимодульная архитектура (модули включаются через `ENABLED_MODULES`)
@@ -52,9 +53,9 @@
 - **Async**: asyncio, httpx
 
 ### Frontend
-- **Framework**: React 18 + TypeScript
+- **Framework**: React 19 + TypeScript
 - **Build**: Vite
-- **Routing**: React Router v6
+- **Routing**: React Router DOM v7
 - **State**: Zustand
 - **UI**: Tailwind CSS, Lucide icons
 - **Forms**: React Hook Form + Zod validation
@@ -96,10 +97,17 @@ C:\code\elements/
 │   │   │   ├── api.py
 │   │   │   ├── models.py        # Project, Task
 │   │   │   └── routes/
-│   │   └── knowledge_core/      # База знаний
-│   │       ├── api.py
-│   │       ├── models.py        # Article, ArticleChunk
-│   │       └── services/        # qdrant_service, llm_service
+│   │   ├── knowledge_core/      # База знаний
+│   │   │   ├── api.py
+│   │   │   ├── models.py        # Article, ArticleChunk
+│   │   │   └── services/        # qdrant_service, llm_service
+│   │   └── documents/           # Документооборот и согласование
+│   │       ├── api.py           # APIRouter для /api/v1/documents
+│   │       ├── dependencies.py  # get_current_user, require_documents_roles
+│   │       ├── models.py        # 9 моделей (Document, DocumentTemplate, ApprovalRoute, etc.)
+│   │       ├── routes/          # documents, document_types, templates, approval_routes, approvals, comments
+│   │       ├── schemas/         # Pydantic schemas
+│   │       └── services/        # file_service, template_service, approval_engine, approval_sheet_service
 │   ├── main.py                  # FastAPI app, startup/shutdown hooks (polling)
 │   └── requirements.txt
 ├── frontend/                    # React + Vite
@@ -109,8 +117,12 @@ C:\code\elements/
 │   │   │   │   └── pages/       # EmployeesPage, DepartmentsPage, etc.
 │   │   │   ├── it/
 │   │   │   │   └── pages/       # TicketsPage, EquipmentPage, SettingsPage
-│   │   │   └── tasks/
-│   │   │       └── pages/
+│   │   │   ├── tasks/
+│   │   │   │   └── pages/
+│   │   │   └── documents/       # Документооборот
+│   │   │       ├── DocumentsLayout.tsx  # Tab-навигация
+│   │   │       ├── pages/       # DocumentsListPage, DocumentCreatePage, DocumentDetailPage, TemplatesPage, etc.
+│   │   │       └── components/  # ApprovalActions, ApprovalTimeline, PlaceholderForm, etc.
 │   │   ├── shared/              # Shared utilities
 │   │   │   ├── api/
 │   │   │   │   └── client.ts    # Fetch wrapper (401 auto-logout)
@@ -118,7 +130,7 @@ C:\code\elements/
 │   │   │   ├── store/
 │   │   │   │   ├── auth.store.ts # Zustand: auth state, token expiry check
 │   │   │   │   └── ui.store.ts   # Zustand: UI state (theme, sidebar)
-│   │   │   └── services/        # buildingsService, roomsService
+│   │   │   └── services/        # buildingsService, roomsService, documents.service.ts
 │   │   ├── App.tsx              # Root component, periodic token expiry check (30s)
 │   │   ├── main.tsx             # Entry point, loadFromStorage()
 │   │   └── router.tsx           # React Router routes
@@ -174,6 +186,7 @@ async def on_shutdown():
 - `/api/v1/it` — it.api.router
 - `/api/v1/tasks` — tasks.api.router
 - `/api/v1/it/knowledge` — knowledge_core.api.router
+- `/api/v1/documents` — documents.api.router
 
 #### 2. **Configuration** (`backend/core/config.py`)
 
@@ -182,7 +195,7 @@ class Settings(BaseSettings):
     # App
     api_v1_prefix: str = "/api/v1"
     company_id: str | None = None
-    enabled_modules: str = "hr,it,tasks"  # Comma-separated
+    enabled_modules: str = "hr,it,tasks,documents"  # Comma-separated
 
     # Database
     database_url: str
@@ -304,6 +317,17 @@ def require_superuser():
 - `Article`: статьи базы знаний
 - `ArticleChunk`: чанки статей для векторного поиска
 
+**Documents Models** (`backend/modules/documents/models.py`):
+- `DocumentType`: типы документов (код, название, маршрут по умолчанию)
+- `Document`: документы (статус: draft/pending_approval/approved/rejected/cancelled)
+- `DocumentVersion`: версии файлов (version, file_path, file_name)
+- `DocumentAttachment`: дополнительные вложения
+- `DocumentComment`: комментарии к документам
+- `DocumentTemplate`: шаблоны .docx с плейсхолдерами (JSONB)
+- `ApprovalRoute`: маршруты согласования (steps JSONB: sequential/parallel)
+- `ApprovalInstance`: экземпляры согласования (route_snapshot, attempt, current_step_order)
+- `ApprovalStepInstance`: решения согласующих (pending/approved/rejected/skipped, carry_over)
+
 ---
 
 ## Архитектура Frontend
@@ -418,7 +442,6 @@ export async function apiGet<T>(path: string): Promise<T> {
 - `/api/v1/it/equipment`
 - `/api/v1/it/equipment-catalog`
 - `/api/v1/it/settings` — настройки интеграций
-- `/api/v1/it/telegram` — Telegram webhook/status
 - `/api/v1/it/rocketchat` — RocketChat webhook/status
 - `/api/v1/it/email` — Email IMAP status
 
@@ -448,6 +471,49 @@ export async function apiGet<T>(path: string): Promise<T> {
 **Роли:**
 - `tasks:admin`
 - `tasks:employee`
+
+### Documents Module
+
+**Функционал:**
+- Документооборот: загрузка документов, версионирование, вложения, комментарии
+- Шаблоны .docx с плейсхолдерами (визуальный редактор: выделение текста → создание плейсхолдера)
+- Генерация документов из шаблонов с заполнением плейсхолдеров
+- Маршруты согласования: визуальный редактор с drag-and-drop (@hello-pangea/dnd)
+- Движок согласования: state machine (submit → approve/reject → resubmit с carry-over)
+- Генерация PDF листа согласования (reportlab)
+- Уведомления участникам (через модель Notification из IT-модуля)
+
+**API Endpoints:**
+- `/api/v1/documents/` — CRUD документов, загрузка, версии, вложения
+- `/api/v1/documents/types/` — CRUD типов документов
+- `/api/v1/documents/templates/` — CRUD шаблонов, загрузка .docx, set-placeholder, from-template
+- `/api/v1/documents/routes/` — CRUD маршрутов согласования
+- `/api/v1/documents/{id}/submit` — отправка на согласование
+- `/api/v1/documents/{id}/approve` — согласование
+- `/api/v1/documents/{id}/reject` — отклонение
+- `/api/v1/documents/{id}/cancel` — отмена
+- `/api/v1/documents/my-approvals` — документы ожидающие моего согласования
+- `/api/v1/documents/{id}/approval-sheet` — скачать PDF лист согласования
+
+**Роли:**
+- `documents:admin` — полный доступ (типы, шаблоны, маршруты, все документы)
+- `documents:specialist` — управление шаблонами, все документы
+- `documents:employee` — создание своих документов, участие в согласовании
+
+**Зависимости:**
+- `python-docx` — парсинг и генерация .docx шаблонов
+- `reportlab` — генерация PDF листа согласования
+
+**Статусы документа:**
+```
+draft → pending_approval → approved
+              ↓
+          rejected → pending_approval (повторная отправка с carry-over)
+draft → cancelled
+```
+
+**Важно: порядок роутеров в `api.py`:**
+Роуты с фиксированными путями (`/types`, `/templates`, `/routes`, `/my-approvals`) регистрируются ДО роута `/{document_id}`, иначе FastAPI попытается распарсить фиксированный сегмент как UUID и вернёт 422.
 
 ### Knowledge Core Module
 
@@ -513,9 +579,10 @@ class User(Base):
 ```
 
 **Роли по модулям:**
-- `hr`: `admin`, `employee`
-- `it`: `admin`, `it_specialist`, `employee`
+- `hr`: `admin`, `hr`, `employee`
+- `it`: `admin`, `it_specialist`, `employee`, `auditor`
 - `tasks`: `admin`, `employee`
+- `documents`: `admin`, `specialist`, `employee`
 
 **Проверка прав:**
 ```python
@@ -569,6 +636,17 @@ if (user.roles?.it === "admin" || user.roles?.it === "it_specialist") {
 #### Knowledge Core
 - `articles` — статьи базы знаний
 - `article_chunks` — чанки для векторного поиска
+
+#### Documents Module
+- `document_types` — типы документов (name, code, default_route_id)
+- `documents` — документы (status, creator_id, approval_route_id, current_version)
+- `document_versions` — версии файлов (version, file_path, file_size)
+- `document_attachments` — дополнительные вложения
+- `document_comments` — комментарии к документам
+- `document_templates` — шаблоны .docx (placeholders JSONB, file_path)
+- `approval_routes` — маршруты согласования (steps JSONB)
+- `approval_instances` — экземпляры согласования (route_snapshot, attempt)
+- `approval_step_instances` — решения согласующих (status, carry_over)
 
 ### Migrations Strategy
 
@@ -763,6 +841,7 @@ Response:
 - `postgres_data` — данные PostgreSQL
 - `redis_data` — данные Redis
 - `qdrant_data` — данные Qdrant
+- `uploads_data` — загруженные файлы (документы, шаблоны, вложения тикетов)
 
 **Environment Variables:**
 ```yaml
@@ -772,7 +851,7 @@ backend:
     - SECRET_KEY=${JWT_SECRET:-elements-super-secret-key-change-in-production-min-32-chars}
     - ACCESS_TOKEN_EXPIRE_MINUTES=10080  # 7 days
     - REDIS_URL=redis://redis:6379/0
-    - ENABLED_MODULES=${ENABLED_MODULES:-hr,it,tasks}
+    - ENABLED_MODULES=${ENABLED_MODULES:-hr,it,tasks,documents}
     - QDRANT_URL=http://qdrant:6333
 ```
 
@@ -809,7 +888,7 @@ REDIS_PASSWORD=<strong-password>
 JWT_SECRET=<min-32-chars-secret>
 
 # Modules
-ENABLED_MODULES=hr,it,tasks
+ENABLED_MODULES=hr,it,tasks,documents
 
 # License Server (optional)
 LICENSE_SERVER_URL=http://license-server:8001
@@ -1063,7 +1142,7 @@ CREATE TABLE system_settings (
 
 4. Обновить `.env`:
    ```env
-   ENABLED_MODULES=hr,it,tasks,crm
+   ENABLED_MODULES=hr,it,tasks,documents,crm
    ```
 
 ---
@@ -1215,6 +1294,6 @@ CREATE INDEX idx_users_telegram_id ON users(telegram_id);
 
 ---
 
-**Last Updated:** 2026-02-01
+**Last Updated:** 2026-02-15
 
-**Version:** 1.0.0
+**Version:** 1.1.0
