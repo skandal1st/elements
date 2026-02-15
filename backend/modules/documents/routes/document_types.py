@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.modules.documents.dependencies import get_db, get_current_user
+from backend.modules.documents.dependencies import get_db, get_current_user, require_documents_roles
 from backend.modules.documents.models import DocumentType
 from backend.modules.documents.schemas.document_type import (
     DocumentTypeCreate,
@@ -33,10 +33,8 @@ def list_document_types(
 def create_document_type(
     payload: DocumentTypeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Только администратор может создавать типы документов")
     name = (payload.name or "").strip()
     code = (payload.code or "").strip()
     if not name or not code:
@@ -64,10 +62,8 @@ def update_document_type(
     type_id: UUID,
     payload: DocumentTypeUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Только администратор может обновлять типы документов")
     dt = db.query(DocumentType).filter(DocumentType.id == type_id).first()
     if not dt:
         raise HTTPException(status_code=404, detail="Тип документа не найден")
@@ -104,10 +100,8 @@ def update_document_type(
 def delete_document_type(
     type_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Только администратор может удалять типы документов")
     dt = db.query(DocumentType).filter(DocumentType.id == type_id).first()
     if not dt:
         raise HTTPException(status_code=404, detail="Тип документа не найден")

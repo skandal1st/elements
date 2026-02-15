@@ -152,7 +152,7 @@ def update_document(
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    if doc.creator_id != current_user.id and not current_user.is_superuser:
+    if doc.creator_id != current_user.id and not current_user.is_superuser and current_user.get_role("documents") != "admin":
         raise HTTPException(status_code=403, detail="Только создатель может редактировать документ")
     if doc.status not in ("draft", "rejected"):
         raise HTTPException(status_code=400, detail="Редактирование возможно только для черновиков и отклонённых документов")
@@ -184,7 +184,7 @@ async def upload_new_version(
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    if doc.creator_id != current_user.id and not current_user.is_superuser:
+    if doc.creator_id != current_user.id and not current_user.is_superuser and current_user.get_role("documents") != "admin":
         raise HTTPException(status_code=403, detail="Только создатель может загружать новые версии")
 
     try:

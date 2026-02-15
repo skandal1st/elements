@@ -23,12 +23,14 @@ const ROLE_LABELS: Record<string, string> = {
   it_specialist: 'ИТ-специалист',
   employee: 'Сотрудник',
   auditor: 'Аудитор',
+  specialist: 'Специалист',
 }
 
 const MODULE_LABELS: Record<string, string> = {
   hr: 'HR',
   it: 'IT',
   tasks: 'Задачи',
+  documents: 'Документы',
   portal: 'Портал',
 }
 
@@ -37,6 +39,7 @@ const MODULE_ROLES: Record<string, string[]> = {
   hr: ['admin', 'hr', 'employee'],
   it: ['admin', 'it_specialist', 'employee', 'auditor'],
   tasks: ['admin', 'employee'],
+  documents: ['admin', 'specialist', 'employee'],
   portal: ['admin', 'user'],
 }
 

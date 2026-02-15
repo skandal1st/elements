@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from backend.modules.documents.dependencies import get_db, get_current_user
+from backend.modules.documents.dependencies import get_db, get_current_user, require_documents_roles
 from backend.modules.documents.models import Document, DocumentTemplate, DocumentVersion
 from backend.modules.documents.schemas.template import (
     GenerateFromTemplateRequest,
@@ -61,10 +61,8 @@ async def upload_template(
     description: Optional[str] = Query(None),
     document_type_id: Optional[UUID] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin", "specialist"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
     if not file.filename or not file.filename.lower().endswith(".docx"):
         raise HTTPException(status_code=400, detail="Поддерживаются только .docx файлы")
 
@@ -95,10 +93,8 @@ def update_template(
     template_id: UUID,
     payload: TemplateUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin", "specialist"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
     t = db.query(DocumentTemplate).filter(DocumentTemplate.id == template_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="Шаблон не найден")
@@ -142,10 +138,8 @@ def set_placeholder(
     template_id: UUID,
     payload: SetPlaceholderRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin", "specialist"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
     t = db.query(DocumentTemplate).filter(DocumentTemplate.id == template_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="Шаблон не найден")

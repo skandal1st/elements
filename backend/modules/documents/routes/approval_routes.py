@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.modules.documents.dependencies import get_db, get_current_user
+from backend.modules.documents.dependencies import get_db, get_current_user, require_documents_roles
 from backend.modules.documents.models import ApprovalRoute
 from backend.modules.documents.schemas.approval_route import (
     ApprovalRouteCreate,
@@ -42,10 +42,8 @@ def get_route(
 def create_route(
     payload: ApprovalRouteCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Только администратор может создавать маршруты")
     name = (payload.name or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Название маршрута обязательно")
@@ -67,10 +65,8 @@ def update_route(
     route_id: UUID,
     payload: ApprovalRouteUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Только администратор может обновлять маршруты")
     r = db.query(ApprovalRoute).filter(ApprovalRoute.id == route_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Маршрут не найден")
@@ -94,10 +90,8 @@ def update_route(
 def delete_route(
     route_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_documents_roles(["admin"])),
 ):
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Только администратор может удалять маршруты")
     r = db.query(ApprovalRoute).filter(ApprovalRoute.id == route_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Маршрут не найден")

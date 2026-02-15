@@ -50,7 +50,7 @@ def submit_document(
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    if doc.creator_id != current_user.id and not current_user.is_superuser:
+    if doc.creator_id != current_user.id and not current_user.is_superuser and current_user.get_role("documents") != "admin":
         raise HTTPException(status_code=403, detail="Только создатель может отправить на согласование")
 
     try:
@@ -126,7 +126,7 @@ def cancel_doc(
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    if doc.creator_id != current_user.id and not current_user.is_superuser:
+    if doc.creator_id != current_user.id and not current_user.is_superuser and current_user.get_role("documents") != "admin":
         raise HTTPException(status_code=403, detail="Только создатель может отменить документ")
     try:
         cancel_document(db, doc)
