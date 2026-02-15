@@ -106,6 +106,8 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
+    volumes:
+      - uploads_data:/app/uploads
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 60s
@@ -171,6 +173,8 @@ volumes:
     name: elements_redis_data
   qdrant_data:
     name: elements_qdrant_data
+  uploads_data:
+    name: elements_uploads_data
   nginx_logs:
     name: elements_nginx_logs
 
