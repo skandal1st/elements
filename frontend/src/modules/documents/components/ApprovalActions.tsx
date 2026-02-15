@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check, X, Send, Ban, Download } from 'lucide-react'
-import { documentsService } from '@/shared/services/documents.service'
+import { ApprovalRoute, documentsService } from '@/shared/services/documents.service'
 
 interface Props {
   documentId: string
@@ -15,11 +15,22 @@ export function ApprovalActions({ documentId, documentStatus, isCreator, isPendi
   const [showModal, setShowModal] = useState<'approve' | 'reject' | null>(null)
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showRouteSelect, setShowRouteSelect] = useState(false)
+  const [routes, setRoutes] = useState<ApprovalRoute[]>([])
+  const [selectedRouteId, setSelectedRouteId] = useState('')
 
-  const handleSubmit = async () => {
+  useEffect(() => {
+    if (showRouteSelect && routes.length === 0) {
+      documentsService.getRoutes().then(setRoutes).catch(console.error)
+    }
+  }, [showRouteSelect])
+
+  const handleSubmit = async (routeId?: string) => {
     setLoading(true)
     try {
-      await documentsService.submitForApproval(documentId)
+      await documentsService.submitForApproval(documentId, routeId || undefined)
+      setShowRouteSelect(false)
+      setSelectedRouteId('')
       onAction()
     } catch (err: any) {
       alert(err.message || 'Ошибка отправки на согласование')
@@ -79,15 +90,26 @@ export function ApprovalActions({ documentId, documentStatus, isCreator, isPendi
     <>
       <div className="flex flex-wrap gap-2">
         {/* Отправить на согласование */}
-        {isCreator && (documentStatus === 'draft' || documentStatus === 'rejected') && hasApprovalRoute && (
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 transition-colors text-sm disabled:opacity-50"
-          >
-            <Send className="w-4 h-4" />
-            {documentStatus === 'rejected' ? 'Отправить повторно' : 'На согласование'}
-          </button>
+        {isCreator && (documentStatus === 'draft' || documentStatus === 'rejected') && (
+          hasApprovalRoute ? (
+            <button
+              onClick={() => handleSubmit()}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 transition-colors text-sm disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+              {documentStatus === 'rejected' ? 'Отправить повторно' : 'На согласование'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowRouteSelect(true)}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 transition-colors text-sm disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+              На согласование
+            </button>
+          )
         )}
 
         {/* Согласовать / Отклонить */}
@@ -165,6 +187,40 @@ export function ApprovalActions({ documentId, documentStatus, isCreator, isPendi
                 }`}
               >
                 {loading ? 'Обработка...' : showModal === 'approve' ? 'Согласовать' : 'Отклонить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно выбора маршрута */}
+      {showRouteSelect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-white mb-4">Выберите маршрут согласования</h3>
+            <select
+              value={selectedRouteId}
+              onChange={(e) => setSelectedRouteId(e.target.value)}
+              className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none focus:border-accent-purple/50"
+            >
+              <option value="">Выберите маршрут...</option>
+              {routes.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => { setShowRouteSelect(false); setSelectedRouteId('') }}
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => handleSubmit(selectedRouteId)}
+                disabled={loading || !selectedRouteId}
+                className="px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 text-sm disabled:opacity-50"
+              >
+                {loading ? 'Отправка...' : 'Отправить'}
               </button>
             </div>
           </div>
