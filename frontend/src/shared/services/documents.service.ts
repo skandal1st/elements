@@ -266,6 +266,10 @@ export const documentsService = {
     return apiPatch<DocumentTemplate>(`/documents/templates/${id}`, data)
   },
 
+  async deleteTemplate(id: string): Promise<void> {
+    await apiDelete(`/documents/templates/${id}`)
+  },
+
   async getTemplateContent(id: string): Promise<{ html: string; placeholders: Placeholder[] }> {
     return apiGet(`/documents/templates/${id}/content`)
   },

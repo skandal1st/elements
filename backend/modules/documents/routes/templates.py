@@ -192,6 +192,20 @@ def download_template(
     )
 
 
+@router.delete("/{template_id}", status_code=200)
+def delete_template(
+    template_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_documents_roles(["admin"])),
+):
+    t = db.query(DocumentTemplate).filter(DocumentTemplate.id == template_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Шаблон не найден")
+    db.delete(t)
+    db.commit()
+    return {"message": "Шаблон удалён"}
+
+
 @router.post("/from-template", response_model=DocumentOut, status_code=201)
 def create_from_template(
     payload: GenerateFromTemplateRequest,

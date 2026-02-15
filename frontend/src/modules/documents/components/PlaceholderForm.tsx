@@ -25,7 +25,17 @@ export function PlaceholderForm({ placeholders, onSubmit, loading }: Props) {
         return
       }
     }
-    onSubmit(values)
+    // Форматируем даты из YYYY-MM-DD в DD.MM.YYYY
+    const formatted: Record<string, string> = { ...values }
+    for (const p of placeholders) {
+      if (p.type === 'date' && formatted[p.key]) {
+        const parts = formatted[p.key].split('-')
+        if (parts.length === 3) {
+          formatted[p.key] = `${parts[2]}.${parts[1]}.${parts[0]}`
+        }
+      }
+    }
+    onSubmit(formatted)
   }
 
   return (

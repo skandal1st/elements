@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Download, FileText, Settings } from 'lucide-react'
+import { Plus, Download, FileText, Settings, Trash2 } from 'lucide-react'
 import { DocumentTemplate, DocumentType, documentsService } from '@/shared/services/documents.service'
 
 export function TemplatesPage() {
@@ -53,6 +53,16 @@ export function TemplatesPage() {
       alert(err.message || 'Ошибка загрузки')
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleDelete = async (template: DocumentTemplate) => {
+    if (!window.confirm(`Удалить шаблон "${template.name}"?`)) return
+    try {
+      await documentsService.deleteTemplate(template.id)
+      load()
+    } catch (err: any) {
+      alert(err.message || 'Ошибка удаления')
     }
   }
 
@@ -114,6 +124,13 @@ export function TemplatesPage() {
                 title="Скачать"
               >
                 <Download className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDelete(t)}
+                className="p-2 text-gray-400 hover:text-red-400 rounded-lg transition-colors"
+                title="Удалить"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
