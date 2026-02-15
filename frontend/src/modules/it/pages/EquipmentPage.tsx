@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   Plus,
   Search,
@@ -183,10 +183,11 @@ export function EquipmentPage() {
   const [filterRoomId, setFilterRoomId] = useState<string>("");
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>("");
   const [filterEmployeeSearch, setFilterEmployeeSearch] = useState("");
-  const [filterEmployees, setFilterEmployees] = useState<
+  const [filterAllEmployees, setFilterAllEmployees] = useState<
     Array<{ id: string; full_name: string }>
   >([]);
-  const [filterEmployeesLoading, setFilterEmployeesLoading] = useState(false);
+  const [showFilterEmployeeDropdown, setShowFilterEmployeeDropdown] = useState(false);
+  const filterEmployeeRef = useRef<HTMLDivElement>(null);
   const [filterBuildings, setFilterBuildings] = useState<
     Array<{ id: string; name: string }>
   >([]);
@@ -275,11 +276,12 @@ export function EquipmentPage() {
   const [selectedBuildingForRoom, setSelectedBuildingForRoom] =
     useState<string>("");
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
-  const [employees, setEmployees] = useState<Array<{ id: string; full_name: string }>>(
+  const [allEmployees, setAllEmployees] = useState<Array<{ id: string; full_name: string }>>(
     [],
   );
-  const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState("");
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const employeeRef = useRef<HTMLDivElement>(null);
 
   // Модальные окна для добавления в справочник
   const [addBrandModal, setAddBrandModal] = useState(false);
@@ -357,18 +359,10 @@ export function EquipmentPage() {
 
   const loadFilterEmployees = async () => {
     try {
-      setFilterEmployeesLoading(true);
-      const params = new URLSearchParams();
-      if (filterEmployeeSearch.trim()) params.set("q", filterEmployeeSearch.trim());
-      const url = params.toString()
-        ? `/hr/employees/?${params.toString()}`
-        : "/hr/employees/";
-      const data = await apiGet<Array<{ id: string; full_name: string }>>(url);
-      setFilterEmployees(data);
+      const data = await apiGet<Array<{ id: string; full_name: string }>>("/hr/employees/");
+      setFilterAllEmployees(data);
     } catch (err) {
       console.error("Ошибка загрузки сотрудников (фильтр):", err);
-    } finally {
-      setFilterEmployeesLoading(false);
     }
   };
 
@@ -378,13 +372,27 @@ export function EquipmentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const filteredFilterEmployees = useMemo(() => {
+    const q = filterEmployeeSearch.trim().toLowerCase();
+    if (!q) return filterAllEmployees.slice(0, 20);
+    return filterAllEmployees
+      .filter((emp) => emp.full_name.toLowerCase().includes(q))
+      .slice(0, 20);
+  }, [filterEmployeeSearch, filterAllEmployees]);
+
+  // Закрытие dropdown при клике вне
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      loadFilterEmployees();
-    }, 250);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterEmployeeSearch]);
+    const handler = (e: MouseEvent) => {
+      if (filterEmployeeRef.current && !filterEmployeeRef.current.contains(e.target as Node)) {
+        setShowFilterEmployeeDropdown(false);
+      }
+      if (employeeRef.current && !employeeRef.current.contains(e.target as Node)) {
+        setShowEmployeeDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // Загрузка справочника
   const loadBrands = async () => {
@@ -590,6 +598,7 @@ export function EquipmentPage() {
     setFilterRoomId("");
     setFilterEmployeeId("");
     setFilterEmployeeSearch("");
+    setShowFilterEmployeeDropdown(false);
     setFilterRooms([]);
     setPage(1);
     load();
@@ -903,6 +912,7 @@ export function EquipmentPage() {
     setRoomsForEquipment([]);
     loadBuildingsForRooms();
     setEmployeeSearch("");
+    setShowEmployeeDropdown(false);
     loadEmployees();
     setFormTab("main");
     setModalOpen(true);
@@ -952,8 +962,10 @@ export function EquipmentPage() {
 
     try {
       // Загружаем базовые данные
-      setEmployeeSearch("");
-      await Promise.all([loadBrands(), loadBuildingsForRooms(), loadEmployees()]);
+      setShowEmployeeDropdown(false);
+      const [,, emps] = await Promise.all([loadBrands(), loadBuildingsForRooms(), loadEmployees()]);
+      const ownerName = e.current_owner_id ? emps.find((emp) => String(emp.id) === String(e.current_owner_id))?.full_name ?? "" : "";
+      setEmployeeSearch(ownerName);
 
       // Загружаем марку и модель если есть model_id
       if (e.model_id) {
@@ -1045,29 +1057,22 @@ export function EquipmentPage() {
 
   const loadEmployees = async () => {
     try {
-      setEmployeesLoading(true);
-      const params = new URLSearchParams();
-      if (employeeSearch.trim()) params.set("q", employeeSearch.trim());
-      const url = params.toString()
-        ? `/hr/employees/?${params.toString()}`
-        : "/hr/employees/";
-      const data = await apiGet<Array<{ id: string; full_name: string }>>(url);
-      setEmployees(data);
+      const data = await apiGet<Array<{ id: string; full_name: string }>>("/hr/employees/");
+      setAllEmployees(data);
+      return data;
     } catch (err) {
       console.error("Ошибка загрузки сотрудников:", err);
-    } finally {
-      setEmployeesLoading(false);
+      return [];
     }
   };
 
-  useEffect(() => {
-    if (!modalOpen) return;
-    const t = window.setTimeout(() => {
-      loadEmployees();
-    }, 250);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeSearch, modalOpen]);
+  const filteredEmployees = useMemo(() => {
+    const q = employeeSearch.trim().toLowerCase();
+    if (!q) return allEmployees.slice(0, 20);
+    return allEmployees
+      .filter((emp) => emp.full_name.toLowerCase().includes(q))
+      .slice(0, 20);
+  }, [employeeSearch, allEmployees]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -1322,34 +1327,63 @@ export function EquipmentPage() {
             </select>
           </div>
 
-          <div>
+          <div ref={filterEmployeeRef}>
             <label className="block text-xs text-gray-500 mb-1">Сотрудник</label>
-            <div className="mb-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input
-                  className="glass-input w-full pl-9 pr-3 py-2.5 text-sm"
-                  placeholder="Поиск сотрудника..."
-                  value={filterEmployeeSearch}
-                  onChange={(e) => setFilterEmployeeSearch(e.target.value)}
-                />
+            <div className="relative">
+              <div className="flex gap-1">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    className="glass-input w-full pl-9 pr-3 py-2.5 text-sm"
+                    placeholder="Поиск сотрудника..."
+                    value={
+                      filterEmployeeId
+                        ? filterAllEmployees.find((e) => String(e.id) === filterEmployeeId)?.full_name || filterEmployeeSearch
+                        : filterEmployeeSearch
+                    }
+                    onChange={(e) => {
+                      setFilterEmployeeSearch(e.target.value);
+                      setFilterEmployeeId("");
+                      setShowFilterEmployeeDropdown(true);
+                    }}
+                    onFocus={() => setShowFilterEmployeeDropdown(true)}
+                  />
+                </div>
+                {filterEmployeeId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterEmployeeId("");
+                      setFilterEmployeeSearch("");
+                    }}
+                    className="px-2 py-2 text-gray-400 hover:text-gray-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
+              {showFilterEmployeeDropdown && !filterEmployeeId && (
+                <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-dark-800 border border-white/10 rounded-lg shadow-lg">
+                  {filteredFilterEmployees.map((emp) => (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      onClick={() => {
+                        setFilterEmployeeId(String(emp.id));
+                        setFilterEmployeeSearch(emp.full_name);
+                        setShowFilterEmployeeDropdown(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-white/10 text-gray-200"
+                    >
+                      {emp.full_name}
+                    </button>
+                  ))}
+                  {filteredFilterEmployees.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-gray-500">Не найдено</div>
+                  )}
+                </div>
+              )}
             </div>
-            <select
-              className="glass-input w-full px-3 py-2.5 text-sm"
-              value={filterEmployeeId}
-              onChange={(e) => setFilterEmployeeId(e.target.value)}
-              disabled={filterEmployeesLoading}
-            >
-              <option value="" className="bg-dark-800">
-                {filterEmployeesLoading ? "Загрузка…" : "Все сотрудники"}
-              </option>
-              {filterEmployees.map((emp) => (
-                <option key={emp.id} value={emp.id} className="bg-dark-800">
-                  {emp.full_name}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
@@ -1857,44 +1891,65 @@ export function EquipmentPage() {
                         </select>
                       </div>
 
-                      <div>
+                      <div ref={employeeRef}>
                         <label className="block text-sm font-medium text-gray-400 mb-1">
                           Ответственный сотрудник
                         </label>
-                        <div className="mb-2">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                            <input
-                              className="glass-input w-full pl-9 pr-4 py-2.5 text-sm"
-                              placeholder="Поиск сотрудника (ФИО / email / телефон)..."
-                              value={employeeSearch}
-                              onChange={(e) => setEmployeeSearch(e.target.value)}
-                            />
+                        <div className="relative">
+                          <div className="flex gap-1">
+                            <div className="relative flex-1">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                              <input
+                                className="glass-input w-full pl-9 pr-4 py-2.5 text-sm"
+                                placeholder="Поиск сотрудника..."
+                                value={
+                                  form.current_owner_id
+                                    ? allEmployees.find((e) => String(e.id) === form.current_owner_id)?.full_name || employeeSearch
+                                    : employeeSearch
+                                }
+                                onChange={(e) => {
+                                  setEmployeeSearch(e.target.value);
+                                  setForm((p) => ({ ...p, current_owner_id: "" }));
+                                  setShowEmployeeDropdown(true);
+                                }}
+                                onFocus={() => setShowEmployeeDropdown(true)}
+                              />
+                            </div>
+                            {form.current_owner_id && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setForm((p) => ({ ...p, current_owner_id: "" }));
+                                  setEmployeeSearch("");
+                                }}
+                                className="px-2 py-2 text-gray-400 hover:text-gray-200"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {employeesLoading ? "Поиск…" : `Найдено: ${employees.length}`}
-                          </div>
+                          {showEmployeeDropdown && !form.current_owner_id && (
+                            <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-dark-800 border border-white/10 rounded-lg shadow-lg">
+                              {filteredEmployees.map((emp) => (
+                                <button
+                                  key={emp.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((p) => ({ ...p, current_owner_id: String(emp.id) }));
+                                    setEmployeeSearch(emp.full_name);
+                                    setShowEmployeeDropdown(false);
+                                  }}
+                                  className="w-full px-3 py-2 text-left text-sm hover:bg-white/10 text-gray-200"
+                                >
+                                  {emp.full_name}
+                                </button>
+                              ))}
+                              {filteredEmployees.length === 0 && (
+                                <div className="px-3 py-2 text-sm text-gray-500">Не найдено</div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <select
-                          className="glass-input w-full px-4 py-3 text-sm"
-                          value={form.current_owner_id}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              current_owner_id: e.target.value,
-                            }))
-                          }
-                          disabled={employeesLoading}
-                        >
-                          <option value="" className="bg-dark-800">
-                            {employeesLoading ? "Загрузка…" : "Выберите сотрудника"}
-                          </option>
-                          {employees.map((emp) => (
-                            <option key={emp.id} value={emp.id} className="bg-dark-800">
-                              {emp.full_name}
-                            </option>
-                          ))}
-                        </select>
                       </div>
 
                       <div>
