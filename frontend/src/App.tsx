@@ -29,7 +29,6 @@ import { ReportsPage } from "./modules/it/pages/ReportsPage";
 import { LicensesPage } from "./modules/it/pages/LicensesPage";
 import { DictionariesPage } from "./modules/it/pages/DictionariesPage";
 import { SettingsPage } from "./modules/it/pages/SettingsPage";
-import { TelegramPage } from "./modules/it/pages/TelegramPage";
 import { SettingsLayout } from "./modules/settings/SettingsLayout";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ProjectsPage } from "./modules/tasks/pages/ProjectsPage";
@@ -257,7 +256,6 @@ function AppRoutes() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="licenses" element={<LicensesPage />} />
           <Route path="dictionaries" element={<DictionariesPage />} />
-          <Route path="telegram" element={<TelegramPage />} />
         </Route>
         <Route
           path="/settings"

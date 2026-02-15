@@ -10,7 +10,6 @@ const links = [
   { to: "/it/reports", label: "Отчеты" },
   { to: "/it/licenses", label: "Лицензии ПО" },
   { to: "/it/dictionaries", label: "Справочники" },
-  { to: "/it/telegram", label: "Telegram" },
 ];
 
 export function ITLayout() {
@@ -35,8 +34,7 @@ export function ITLayout() {
         to === "/it/knowledge" ||
         to === "/it/consumables" ||
         to === "/it/licenses" ||
-        to === "/it/dictionaries" ||
-        to === "/it/telegram"
+        to === "/it/dictionaries"
       ) {
         return false;
       }
