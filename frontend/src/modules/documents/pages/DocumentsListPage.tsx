@@ -30,7 +30,7 @@ export function DocumentsListPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const [docs, t, approvals] = await Promise.all([
+      const [docs, t] = await Promise.all([
         documentsService.getDocuments({
           status: statusFilter || undefined,
           document_type_id: typeFilter || undefined,
@@ -38,16 +38,19 @@ export function DocumentsListPage() {
           search: search || undefined,
         }),
         documentsService.getTypes(),
-        documentsService.getMyApprovals(),
       ])
       setDocuments(docs)
       setTypes(t)
-      setMyApprovals(approvals)
     } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
+      console.error('Ошибка загрузки документов:', err)
     }
+    // Загружаем мои согласования отдельно, чтобы ошибка не блокировала список
+    try {
+      setMyApprovals(await documentsService.getMyApprovals())
+    } catch (err) {
+      console.error('Ошибка загрузки согласований:', err)
+    }
+    setLoading(false)
   }
 
   useEffect(() => { load() }, [tab, statusFilter, typeFilter])

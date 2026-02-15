@@ -1,6 +1,11 @@
 """
 API роуты для модуля Документы.
 Префикс: /api/v1/documents.
+
+Порядок include_router важен: роуты с фиксированными путями (my-approvals,
+/types, /templates, /routes) должны быть зарегистрированы ДО роутов с
+path-параметром /{document_id}, иначе FastAPI попытается распарсить
+фиксированный сегмент как UUID и вернёт 422.
 """
 
 from uuid import UUID
@@ -26,23 +31,18 @@ from .routes import (
 
 router = APIRouter(prefix=f"{settings.api_v1_prefix}/documents", tags=["documents"])
 
-router.include_router(document_types.router)
-router.include_router(documents.router)
-router.include_router(comments.router)
-router.include_router(templates.router)
-router.include_router(approval_routes.router)
+# 1. Роуты с фиксированными префиксами — не конфликтуют с /{document_id}
+router.include_router(document_types.router)   # /types/*
+router.include_router(templates.router)        # /templates/*
+router.include_router(approval_routes.router)  # /routes/*
+
+# 2. approvals содержит GET /my-approvals — ДОЛЖЕН быть ДО documents.router,
+#    иначе /{document_id} перехватит "my-approvals" и вернёт 422
 router.include_router(approvals.router)
 
-
-@router.get("/")
-async def documents_module_info():
-    """Информация о модуле Документы"""
-    return {
-        "module": "documents",
-        "name": "Documents Module",
-        "version": "1.0.0",
-        "status": "active",
-    }
+# 3. documents.router (без префикса) — содержит /{document_id}, поэтому последний
+router.include_router(documents.router)
+router.include_router(comments.router)
 
 
 @router.get("/{document_id}/approval-sheet")
