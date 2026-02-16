@@ -331,6 +331,7 @@ def list_tickets(
     source: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     hide_closed: bool = Query(False),
+    my_tickets: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> List[Ticket]:
@@ -341,6 +342,9 @@ def list_tickets(
     # employee видит только свои заявки; auditor — все (как admin/it_specialist)
     if role == "employee":
         q = q.filter(Ticket.creator_id == user.id)
+    elif my_tickets:
+        from sqlalchemy import or_
+        q = q.filter(or_(Ticket.creator_id == user.id, Ticket.assignee_id == user.id))
     if hide_closed:
         q = q.filter(Ticket.status != "closed")
     if status:

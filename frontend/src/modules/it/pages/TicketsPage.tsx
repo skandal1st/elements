@@ -278,6 +278,11 @@ export function TicketsPage() {
     const saved = localStorage.getItem("tickets_hide_closed");
     return saved === "true";
   });
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [onlyMine, setOnlyMine] = useState<boolean>(() => {
+    const saved = localStorage.getItem("tickets_only_mine");
+    return saved === "true";
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Ticket | null>(null);
@@ -531,6 +536,8 @@ export function TicketsPage() {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (hideClosed) params.set("hide_closed", "true");
+      if (statusFilter) params.set("status", statusFilter);
+      if (onlyMine) params.set("my_tickets", "true");
       params.set("page", String(page));
       params.set("page_size", String(PAGE_SIZE));
       const data = await apiGet<Ticket[]>(`/it/tickets/?${params}`);
@@ -540,7 +547,7 @@ export function TicketsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, hideClosed, search]);
+  }, [page, hideClosed, search, statusFilter, onlyMine]);
 
   useEffect(() => {
     load();
@@ -1319,6 +1326,22 @@ export function TicketsPage() {
           />
         </div>
 
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
+          className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50 transition-all"
+        >
+          <option value="">Все статусы</option>
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {statusLabel[s] || s}
+            </option>
+          ))}
+        </select>
+
         <button
           onClick={toggleSortByPriority}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all ${
@@ -1342,6 +1365,25 @@ export function TicketsPage() {
           <Filter className="w-4 h-4" />
           {hideClosed ? "Показать закрытые" : "Скрыть закрытые"}
         </button>
+
+        {userRole === "it" && (
+          <button
+            onClick={() => {
+              const newValue = !onlyMine;
+              setOnlyMine(newValue);
+              localStorage.setItem("tickets_only_mine", String(newValue));
+              setPage(1);
+            }}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all ${
+              onlyMine
+                ? "bg-accent-blue/20 text-accent-blue border-accent-blue/30"
+                : "bg-dark-700/50 text-gray-400 border-dark-600/50 hover:text-white hover:border-dark-500"
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            Только мои
+          </button>
+        )}
       </div>
 
       {/* Table */}
