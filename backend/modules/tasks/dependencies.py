@@ -17,7 +17,7 @@ from backend.modules.tasks.models import Project, ProjectShare, Task
 
 def department_id_to_uuid(department_id: int) -> UUID:
     """Конвертирует integer ID отдела в детерминистичный UUID."""
-    return PyUUID(int=department_id)
+    return UUID(int=department_id)
 
 
 def uuid_to_department_id(target_uuid: UUID) -> int:

@@ -3,8 +3,10 @@ Email Receiver Service
 Получает письма через IMAP и создает тикеты или комментарии (для ответов)
 """
 
+import asyncio
 import email
 import imaplib
+import logging
 import os
 import re
 import uuid
@@ -14,6 +16,8 @@ from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.hr.models.user import User
@@ -68,6 +72,12 @@ def _ext_from_content_type(content_type: str) -> Optional[str]:
 
 class EmailReceiverService:
     """Сервис для получения email и создания тикетов"""
+
+    POLL_INTERVAL = 60  # секунд между проверками почты
+
+    def __init__(self):
+        self._polling_active = False
+        self._polling_task: Optional[asyncio.Task] = None
 
     def _get_setting(self, db: Session, key: str) -> Optional[str]:
         """Получить настройку из БД"""
@@ -580,6 +590,82 @@ class EmailReceiverService:
             print(f"[Email Receiver] Ошибка IMAP: {e}")
 
         return stats
+
+    async def _poll_loop(self) -> None:
+        """Основной цикл polling для проверки входящей почты."""
+        from backend.core.database import SessionLocal
+
+        logger.info("[Email Receiver] Polling запущен")
+
+        while self._polling_active:
+            db = SessionLocal()
+            try:
+                if not self._is_enabled(db):
+                    await asyncio.sleep(15)
+                    continue
+
+                config = self._get_imap_config(db)
+                if not config["host"] or not config["user"] or not config["password"]:
+                    await asyncio.sleep(15)
+                    continue
+
+                result = self.check_new_emails(db)
+                if result.get("success"):
+                    created = result.get("tickets_created", 0)
+                    comments = result.get("comments_created", 0)
+                    if created or comments:
+                        logger.info(
+                            f"[Email Receiver] Создано тикетов: {created}, комментариев: {comments}"
+                        )
+                else:
+                    logger.warning(f"[Email Receiver] Ошибка: {result.get('error', 'unknown')}")
+            except Exception as e:
+                logger.error(f"[Email Receiver] Ошибка в polling loop: {e}")
+            finally:
+                db.close()
+
+            await asyncio.sleep(self.POLL_INTERVAL)
+
+        logger.info("[Email Receiver] Polling остановлен")
+
+    async def start_polling(self) -> None:
+        """Запустить фоновый polling."""
+        if self._polling_task and not self._polling_task.done():
+            return
+
+        from backend.core.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            enabled = self._is_enabled(db)
+            config = self._get_imap_config(db)
+        finally:
+            db.close()
+
+        if not enabled or not config["host"] or not config["user"] or not config["password"]:
+            logger.info("[Email Receiver] Polling не запущен: интеграция отключена или не настроена")
+            return
+
+        self._polling_active = True
+        self._polling_task = asyncio.create_task(self._poll_loop())
+        logger.info("[Email Receiver] Фоновый polling запущен")
+
+    async def stop_polling(self) -> None:
+        """Остановить фоновый polling."""
+        self._polling_active = False
+        if self._polling_task and not self._polling_task.done():
+            self._polling_task.cancel()
+            try:
+                await self._polling_task
+            except asyncio.CancelledError:
+                pass
+        self._polling_task = None
+        logger.info("[Email Receiver] Polling остановлен")
+
+    async def restart_polling(self) -> None:
+        """Перезапустить polling (после изменения настроек)."""
+        await self.stop_polling()
+        await self.start_polling()
 
 
 # Singleton instance

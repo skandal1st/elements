@@ -259,6 +259,13 @@ async def update_email_settings(
 
     db.commit()
 
+    # Перезапускаем polling если изменились IMAP/email настройки
+    try:
+        from backend.modules.it.services.email_receiver import email_receiver
+        await email_receiver.restart_polling()
+    except Exception:
+        pass
+
     return {"success": True, "message": "Настройки сохранены"}
 
 
@@ -289,6 +296,13 @@ async def enable_email_integration(
         db.add(new_setting)
 
     db.commit()
+
+    try:
+        from backend.modules.it.services.email_receiver import email_receiver
+        await email_receiver.restart_polling()
+    except Exception:
+        pass
+
     return {"success": True, "enabled": True}
 
 
@@ -319,6 +333,13 @@ async def disable_email_integration(
         db.add(new_setting)
 
     db.commit()
+
+    try:
+        from backend.modules.it.services.email_receiver import email_receiver
+        await email_receiver.stop_polling()
+    except Exception:
+        pass
+
     return {"success": True, "enabled": False}
 
 

@@ -130,6 +130,13 @@ async def on_startup():
     except Exception as e:
         logger.warning(f"Не удалось запустить ZUP sync: {e}")
 
+    # Запускаем Email IMAP polling
+    try:
+        from backend.modules.it.services.email_receiver import email_receiver
+        await email_receiver.start_polling()
+    except Exception as e:
+        logger.warning(f"Не удалось запустить Email polling: {e}")
+
     logger.info("Elements Platform запущен успешно")
 
 
@@ -149,6 +156,11 @@ async def on_shutdown():
     try:
         from backend.modules.hr.services.zup_sync_service import zup_sync_service
         await zup_sync_service.stop_polling()
+    except Exception:
+        pass
+    try:
+        from backend.modules.it.services.email_receiver import email_receiver
+        await email_receiver.stop_polling()
     except Exception:
         pass
 
