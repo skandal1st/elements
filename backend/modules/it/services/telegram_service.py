@@ -947,8 +947,7 @@ class TelegramService:
 
         if assignee:
             ticket.assignee_id = assignee.id
-            db.commit()
-            db.refresh(ticket)
+            db.flush()
             print(f"[Telegram] Заявка #{str(ticket.id)[:8]} назначена на {assignee.email} (метод: {method})")
 
         return assignee

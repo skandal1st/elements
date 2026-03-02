@@ -364,39 +364,15 @@ class EmailReceiverService:
             _cfg = {k: (v or "") for k, v in _cfg_rows}
             _auto = str(_cfg.get("auto_assign_tickets", "false")).lower() in ("true", "1", "yes")
 
-            assignee = None
             if _auto:
                 from backend.modules.it.services.telegram_service import telegram_service
-                assignee = telegram_service.auto_assign_to_it_specialist(
+                telegram_service.auto_assign_to_it_specialist(
                     db, ticket,
                     method=_cfg.get("ticket_distribution_method", "least_loaded"),
                     specialist_ids_json=_cfg.get("ticket_distribution_specialists") or None,
                 )
-
-                # Уведомление IT-специалистов в Telegram
-                import asyncio
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    asyncio.create_task(
-                        telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="email")
-                    )
-                else:
-                    loop.run_until_complete(
-                        telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="email")
-                    )
-
-                # Уведомление назначенного специалиста
-                if assignee and assignee.telegram_id:
-                    if loop.is_running():
-                        asyncio.create_task(
-                            telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title)
-                        )
-                    else:
-                        loop.run_until_complete(
-                            telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title)
-                        )
         except Exception as e:
-            print(f"[Email Receiver] Ошибка отправки уведомлений: {e}")
+            print(f"[Email Receiver] Ошибка автоназначения: {e}")
 
         return ticket
 
@@ -430,6 +406,56 @@ class EmailReceiverService:
 
         print(f"[Email Receiver] Комментарий создан для тикета #{str(ticket.id)[:8]}")
         return comment
+
+    def _send_ticket_notifications(self, db: Session, tickets: list) -> None:
+        """Отправить Telegram-уведомления о созданных тикетах (вызывать ПОСЛЕ db.commit)"""
+        if not tickets:
+            return
+        try:
+            from backend.modules.it.services.telegram_service import telegram_service
+            import asyncio
+
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            for ticket in tickets:
+                try:
+                    if loop and loop.is_running():
+                        asyncio.ensure_future(
+                            telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="email"),
+                            loop=loop,
+                        )
+                    else:
+                        _loop = asyncio.new_event_loop()
+                        try:
+                            _loop.run_until_complete(
+                                telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="email")
+                            )
+                        finally:
+                            _loop.close()
+
+                    if ticket.assignee_id:
+                        assignee = db.query(User).filter(User.id == ticket.assignee_id).first()
+                        if assignee and assignee.telegram_id:
+                            if loop and loop.is_running():
+                                asyncio.ensure_future(
+                                    telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title),
+                                    loop=loop,
+                                )
+                            else:
+                                _loop = asyncio.new_event_loop()
+                                try:
+                                    _loop.run_until_complete(
+                                        telegram_service.notify_ticket_assigned(db, assignee.id, ticket.id, ticket.title)
+                                    )
+                                finally:
+                                    _loop.close()
+                except Exception as e:
+                    print(f"[Email Receiver] Ошибка уведомления для тикета #{str(ticket.id)[:8]}: {e}")
+        except Exception as e:
+            print(f"[Email Receiver] Ошибка отправки уведомлений: {e}")
 
     def check_new_emails(self, db: Session) -> dict:
         """Проверить новые письма и создать тикеты/комментарии"""
@@ -468,6 +494,8 @@ class EmailReceiverService:
             email_ids = messages[0].split()
             print(f"[Email Receiver] Найдено новых писем: {len(email_ids)}")
 
+            created_tickets = []  # Тикеты для уведомлений после commit
+
             for email_id in email_ids:
                 try:
                     # Получаем письмо
@@ -499,9 +527,10 @@ class EmailReceiverService:
                     )
 
                     did_process = False
+                    ticket_for_notify = None
                     if existing_ticket:
                         if existing_ticket.status == "closed":
-                            self._create_ticket_from_email(
+                            ticket_for_notify = self._create_ticket_from_email(
                                 db, from_email_addr, subject, body, attachments, message_id
                             )
                             stats["tickets_created"] += 1
@@ -514,11 +543,14 @@ class EmailReceiverService:
                                 stats["comments_created"] += 1
                                 did_process = True
                     else:
-                        self._create_ticket_from_email(
+                        ticket_for_notify = self._create_ticket_from_email(
                             db, from_email_addr, subject, body, attachments, message_id
                         )
                         stats["tickets_created"] += 1
                         did_process = True
+
+                    if ticket_for_notify:
+                        created_tickets.append(ticket_for_notify)
 
                     stats["emails_processed"] += 1
 
@@ -535,6 +567,10 @@ class EmailReceiverService:
                     print(f"[Email Receiver] Ошибка обработки письма: {e}")
 
             db.commit()
+
+            # Уведомления ПОСЛЕ commit — тикеты гарантированно в БД
+            self._send_ticket_notifications(db, created_tickets)
+
             imap.close()
             imap.logout()
 

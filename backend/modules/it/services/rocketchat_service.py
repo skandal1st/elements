@@ -335,6 +335,9 @@ class RocketChatService:
                     method=_cfg.get("ticket_distribution_method", "least_loaded"),
                     specialist_ids_json=_cfg.get("ticket_distribution_specialists") or None,
                 )
+                if assignee:
+                    db.commit()
+                    db.refresh(ticket)
 
                 # Уведомляем IT-специалистов в Telegram
                 await telegram_service.notify_new_ticket(db, ticket.id, ticket.title, source="rocketchat")

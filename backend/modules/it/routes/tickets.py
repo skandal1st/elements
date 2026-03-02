@@ -521,6 +521,9 @@ async def create_ticket(
                 method=cfg.get("ticket_distribution_method", "least_loaded"),
                 specialist_ids_json=cfg.get("ticket_distribution_specialists"),
             )
+            if assignee:
+                db.commit()
+                db.refresh(t)
         except Exception as e:
             print(f"[Tickets] Ошибка автораспределения: {e}")
 
