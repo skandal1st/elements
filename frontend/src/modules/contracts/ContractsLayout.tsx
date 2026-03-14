@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { FileText, Building2, Tag, List } from 'lucide-react'
+import { FileText, Building2, Tag } from 'lucide-react'
 
 const links = [
   { to: '/contracts', label: 'Договора', icon: FileText },

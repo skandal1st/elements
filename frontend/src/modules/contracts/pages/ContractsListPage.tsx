@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, FileText } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { contractsService, type ContractListItem } from '@/shared/services/contracts.service'
 
 function formatDate(s: string | null | undefined) {

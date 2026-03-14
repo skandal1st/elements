@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { contractsService, type ContractDetail } from '@/shared/services/contracts.service'
 
 function formatDate(s: string | null | undefined) {
