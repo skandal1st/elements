@@ -23,7 +23,7 @@ import { useAuthStore } from "../../store/auth.store";
 interface Module {
   code: string;
   name: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
   path: string;
 }
 
