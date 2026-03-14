@@ -60,7 +60,7 @@ export function ContractCreatePage() {
         date_end: dateEnd || undefined,
         counterparty_id: counterpartyId || undefined,
         contract_type_id: contractTypeId || undefined,
-        sum_amount: sumAmount ? parseFloat(sumAmount) : 0,
+        sum_amount: sumAmount.trim() || '0',
         funding_id: fundingId || undefined,
         subunit_id: subunitId || undefined,
         notice: notice.trim() || undefined,
