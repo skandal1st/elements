@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -219,12 +220,19 @@ async def get_inbox_attachment(
         index=index,
     )
     if not result:
+        logging.getLogger(__name__).warning(
+            "Attachment not found: uid=%s folder=%r index=%s", uid, folder, index
+        )
         raise HTTPException(status_code=404, detail="Вложение не найдено")
     content, filename, content_type = result
     safe_name = filename.replace('"', "'").replace("\r", "").replace("\n", " ")
+    # Заголовок Content-Type: только тип без параметров (charset и т.д.), без переносов
+    safe_content_type = (content_type or "application/octet-stream").split(";")[0].strip().split("\n")[0].strip()
+    if not safe_content_type:
+        safe_content_type = "application/octet-stream"
     return Response(
         content=content,
-        media_type=content_type,
+        media_type=safe_content_type,
         headers={
             "Content-Disposition": f'attachment; filename="{safe_name}"',
             "Content-Length": str(len(content)),

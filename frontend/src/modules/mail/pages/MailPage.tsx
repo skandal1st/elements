@@ -169,24 +169,39 @@ export function MailPage() {
   const handleDownloadAttachment = async (index: number) => {
     if (!selectedEmail || !selectedDetail?.attachments?.[index]) return;
     const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Требуется авторизация");
+      return;
+    }
     const folderParam = encodeURIComponent(activeFolder);
+    const url = `/api/v1/mail/inbox/${selectedEmail.uid}/attachments/${index}?folder=${folderParam}`;
     try {
-      const res = await fetch(
-        `/api/v1/mail/inbox/${selectedEmail.uid}/attachments/${index}?folder=${folderParam}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!res.ok) throw new Error("Не удалось скачать");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "same-origin",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = `Ошибка ${res.status}`;
+        try {
+          const j = JSON.parse(text) as { detail?: string };
+          if (typeof j.detail === "string") msg = j.detail;
+        } catch {
+          if (text) msg = text;
+        }
+        throw new Error(msg);
+      }
       const blob = await res.blob();
       const name = selectedDetail.attachments[index].filename || "attachment";
-      const url = URL.createObjectURL(blob);
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = blobUrl;
       a.download = name;
       a.click();
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(blobUrl);
     } catch (e) {
-      console.error(e);
-      alert("Ошибка при скачивании вложения");
+      console.error("Download attachment error:", e);
+      alert(e instanceof Error ? e.message : "Ошибка при скачивании вложения");
     }
   };
 

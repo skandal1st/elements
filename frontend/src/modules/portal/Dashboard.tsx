@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import {
-  Paperclip,
   FileStack,
   Archive,
   Activity,
   BookOpen,
   Megaphone,
+  Gift,
 } from "lucide-react";
 import { DashboardCalendar } from "./DashboardCalendar";
 
@@ -17,9 +17,18 @@ interface Announcement {
   content: string;
 }
 
+interface BirthdayEntry {
+  id: string;
+  name: string;
+  date: string;
+  days_left: number;
+  department?: string | null;
+}
+
 interface DashboardData {
   announcements: Announcement[];
   available_modules: string[];
+  birthdays?: BirthdayEntry[];
   stats?: {
     employees_count: number;
     active_tickets: number;
@@ -51,11 +60,11 @@ export function Dashboard() {
         setData(dashboardData);
       } else {
         // Mock data if failed
-        setData({ announcements: [], available_modules: [] });
+        setData({ announcements: [], available_modules: [], birthdays: [] });
       }
     } catch (error) {
       console.error("Ошибка загрузки данных:", error);
-      setData({ announcements: [], available_modules: [] });
+      setData({ announcements: [], available_modules: [], birthdays: [] });
     } finally {
       setLoading(false);
     }
@@ -71,11 +80,18 @@ export function Dashboard() {
     );
   }
 
-  // --- Mocks ---
-  const emails = [
-    { id: 1, sender: "Иванов Д.В.", subject: "Корпоративный портал", preview: "В 2024 году запланирован...", date: "19 фев", type: "unread", avatar: "ИД" },
-    { id: 2, sender: "Дубинина А.А.", subject: "Стажерская программа", preview: "Анна, еще раз здравств...", date: "19 фев", type: "urgent", avatar: "ДА", hasAttachment: true },
-  ];
+  const formatBirthdayDate = (isoDate: string) => {
+    const d = new Date(isoDate);
+    const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+    return `${d.getDate()} ${months[d.getMonth()]}`;
+  };
+
+  const formatDaysLeft = (days: number) => {
+    if (days === 0) return "Сегодня";
+    if (days === 1) return "Завтра";
+    if (days >= 2 && days <= 4) return `Через ${days} дня`;
+    return `Через ${days} дн.`;
+  };
 
   return (
     <div className="relative">
@@ -200,49 +216,39 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Mail Widget */}
-          <div className="portal-card !p-0 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 flex items-center justify-between">
-              <h3 className="text-gray-800 font-medium px-1">Почта</h3>
-              <div className="flex gap-4 text-sm font-medium">
-                <button className="text-gray-800 flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-green-100 text-brand-green flex items-center justify-center text-[10px]">2</span>
-                  Непрочитанные
-                </button>
-                <button className="text-gray-400 hover:text-gray-800 flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-yellow-100 text-brand-yellow flex items-center justify-center text-[10px]">1</span>
-                  Срочные
-                </button>
-                <button className="text-gray-400 hover:text-gray-800">Отправленные</button>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                   {/* mock avatars */}
-                   <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-200"></div>
-                   <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-300"></div>
-                   <button className="w-8 h-8 rounded-full border-2 border-white bg-gray-50 flex items-center justify-center text-gray-400 text-xs">+</button>
-                </div>
-              </div>
+          {/* Ближайшие дни рождения */}
+          <div className="portal-card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-gray-800 font-medium">Ближайшие дни рождения</h3>
+              {data?.birthdays && data.birthdays.length > 0 && (
+                <span className="text-sm text-gray-400">{data.birthdays.length}</span>
+              )}
             </div>
-
-            <div className="divide-y divide-gray-50">
-              {emails.map((email) => (
-                <div key={email.id} className="p-4 hover:bg-gray-50 flex items-center gap-4 cursor-pointer transition-colors">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${email.type === 'unread' ? 'bg-green-100 text-brand-green' : 'bg-gray-100 text-gray-600'}`}>
-                    {email.avatar}
+            <div className="space-y-2">
+              {data?.birthdays && data.birthdays.length > 0 ? (
+                data.birthdays.slice(0, 8).map((b) => (
+                  <div
+                    key={b.id}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors"
+                  >
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-green/10 flex items-center justify-center">
+                      <Gift className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{b.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatBirthdayDate(b.date)} · {formatDaysLeft(b.days_left)}
+                        {b.department && ` · ${b.department}`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="w-32 truncate text-sm font-medium text-gray-800">{email.sender}</div>
-                  
-                  {email.type === 'urgent' && <span className="text-brand-yellow font-bold mr-1">!</span>}
-                  
-                  <div className="w-48 truncate text-sm font-medium text-gray-800">{email.subject}</div>
-                  <div className="flex-1 truncate text-sm text-gray-400">{email.preview}</div>
-                  
-                  {email.hasAttachment && <Paperclip className="w-4 h-4 text-gray-400" />}
-                  
-                  <div className="text-xs text-gray-400 w-12 text-right">{email.date}</div>
+                ))
+              ) : (
+                <div className="flex items-center gap-3 py-8 text-gray-400 text-sm">
+                  <Gift className="w-8 h-8 text-gray-300 flex-shrink-0" />
+                  <span>В ближайшие 7 дней именинников нет</span>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
