@@ -426,6 +426,20 @@ export function MailPage() {
     }
   };
 
+  /** Скрывает inline-изображения (cid:) в HTML письма при отображении в iframe */
+  const htmlHideInlineImages = (html: string): string => {
+    const style = '<style>img[src^="cid:"]{display:none !important;}</style>';
+    const raw = html.trim();
+    const lower = raw.toLowerCase();
+    if (lower.startsWith("<!doctype") || lower.startsWith("<html")) {
+      const headClose = raw.indexOf("</head>");
+      if (headClose !== -1) {
+        return raw.slice(0, headClose) + style + raw.slice(headClose);
+      }
+    }
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${style}</head><body style="margin:0;padding:12px;font-family:system-ui,sans-serif;">${raw}</body></html>`;
+  };
+
   const folderIcon = (name: string) => {
     const n = name.toUpperCase();
     if (n === "INBOX") return Inbox;
@@ -596,12 +610,7 @@ export function MailPage() {
                     <iframe
                       title="Тело письма"
                       sandbox="allow-same-origin"
-                      srcDoc={
-                        selectedDetail.html_body.trim().toLowerCase().startsWith("<!doctype") ||
-                        selectedDetail.html_body.trim().toLowerCase().startsWith("<html")
-                          ? selectedDetail.html_body
-                          : `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;padding:12px;font-family:system-ui,sans-serif;">${selectedDetail.html_body}</body></html>`
-                      }
+                      srcDoc={htmlHideInlineImages(selectedDetail.html_body)}
                       className="w-full min-h-[400px] border-0 rounded-lg bg-white"
                       style={{ height: "calc(100vh - 320px)" }}
                     />
