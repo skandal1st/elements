@@ -4,7 +4,6 @@ import {
   ChevronRight,
   Paperclip,
   CalendarDays,
-  FileText,
   FileStack,
   Archive,
   Activity,

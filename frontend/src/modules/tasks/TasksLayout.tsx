@@ -18,7 +18,7 @@ export function TasksLayout() {
             className={({ isActive }) =>
               `flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                 isActive
-                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  ? "bg-brand-green/20 text-brand-green border border-brand-green/30"
                   : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
               }`
             }
