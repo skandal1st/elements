@@ -44,7 +44,7 @@ class ImapClient:
                 pass
 
     def list_folders(self) -> List[Dict]:
-        """Return list of IMAP folders (only selectable mailboxes). Each item: {name, display_name}."""
+        """Return list of IMAP folders. LIST format: (flags) "delim" "mailbox" or (flags) "delim" mailbox."""
         if not self.mail and not self.connect():
             return []
         try:
@@ -52,22 +52,43 @@ class ImapClient:
             if status != "OK" or not data:
                 return []
             result = []
+            seen = set()
             for line in data:
-                line_str = line.decode("utf-8", errors="replace") if isinstance(line, bytes) else str(line)
-                matches = re.findall(r'"([^"]*)"', line_str)
-                if not matches:
+                try:
+                    line_str = line.decode("utf-8", errors="replace") if isinstance(line, bytes) else str(line)
+                except Exception:
                     continue
-                name = matches[-1].strip()
-                if not name or name == "/":
+                name = self._parse_list_line(line_str)
+                if not name or name in ("/", ".") or name in seen:
                     continue
+                seen.add(name)
                 display_name = self._decode_imap_folder_name(name)
                 result.append({"name": name, "display_name": display_name})
             if not result:
+                logger.debug("IMAP LIST returned no folders, using INBOX fallback")
                 return [{"name": "INBOX", "display_name": "Входящие"}]
             return result
         except Exception as e:
             logger.error("IMAP list failed: %s", e)
             return []
+
+    def _parse_list_line(self, line: str) -> Optional[str]:
+        """Извлекает имя папки из строки ответа LIST. Форматы: (flags) \"delim\" \"name\" или (flags) \"delim\" name."""
+        quoted = re.findall(r'"([^"]*)"', line)
+        if len(quoted) >= 2:
+            return quoted[-1].strip() or None
+        if len(quoted) == 1:
+            delim = quoted[0].strip()
+            after_last_quote = line.split('"')[-1].strip()
+            if after_last_quote and after_last_quote != delim and "(" not in after_last_quote:
+                return after_last_quote
+            return None
+        parts = [p for p in line.split() if p and not p.startswith("(")]
+        if parts:
+            last = parts[-1].strip(")")
+            if last and last not in (".", "/"):
+                return last
+        return None
 
     def _decode_imap_folder_name(self, name: str) -> str:
         """Decode IMAP modified UTF-7 folder name to Unicode where possible."""
@@ -231,6 +252,38 @@ class ImapClient:
             logger.error("set_seen_by_uid failed: %s", e)
             return False
 
+    def archive_by_uid(self, uid: int, folder: str = "INBOX", archive_folder: str = "Archive") -> bool:
+        """Переместить письмо в папку Архив: COPY в archive_folder, затем \\Deleted и EXPUNGE."""
+        if not self.mail and not self.connect():
+            return False
+        try:
+            self.mail.select(folder, readonly=False)
+            status, _ = self.mail.uid("COPY", str(uid), archive_folder)
+            if status != "OK":
+                logger.warning("IMAP COPY to %r failed: %s", archive_folder, status)
+                return False
+            self.mail.uid("STORE", str(uid), "+FLAGS", "\\Deleted")
+            self.mail.expunge()
+            return True
+        except Exception as e:
+            logger.error("archive_by_uid failed: %s", e)
+            return False
+
+    def delete_by_uid(self, uid: int, folder: str = "INBOX") -> bool:
+        """Пометить письмо как удалённое (\\Deleted) и выполнить EXPUNGE."""
+        if not self.mail and not self.connect():
+            return False
+        try:
+            self.mail.select(folder, readonly=False)
+            status, _ = self.mail.uid("STORE", str(uid), "+FLAGS", "\\Deleted")
+            if status != "OK":
+                return False
+            self.mail.expunge()
+            return True
+        except Exception as e:
+            logger.error("delete_by_uid failed: %s", e)
+            return False
+
 
 async def list_folders_async(host, port, login, password, ssl=True):
     def _list():
@@ -274,6 +327,29 @@ async def set_seen_by_uid_async(host, port, login, password, ssl, uid: int, fold
             client.close()
 
     return await asyncio.to_thread(_store)
+
+
+async def archive_by_uid_async(host, port, login, password, ssl, uid: int, folder: str = "INBOX", archive_folder: str = "Archive"):
+    def _archive():
+        client = ImapClient(host, port, login, password, ssl)
+        try:
+            return client.archive_by_uid(uid, folder, archive_folder)
+        finally:
+            client.close()
+
+    return await asyncio.to_thread(_archive)
+
+
+async def delete_by_uid_async(host, port, login, password, ssl, uid: int, folder: str = "INBOX"):
+    def _delete():
+        client = ImapClient(host, port, login, password, ssl)
+        try:
+            return client.delete_by_uid(uid, folder)
+        finally:
+            client.close()
+
+    return await asyncio.to_thread(_delete)
+
 
 async def send_email_async(host, port, login, password, ssl, to_email, subject, text_body, html_body=None):
     message = MIMEMultipart("alternative")

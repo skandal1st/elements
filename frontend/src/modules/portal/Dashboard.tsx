@@ -3,13 +3,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Paperclip,
-  CheckCircle2,
   CalendarDays,
   FileText,
   FileStack,
   Archive,
   Activity,
   BookOpen,
+  Megaphone,
 } from "lucide-react";
 
 interface Announcement {
@@ -170,30 +170,40 @@ export function Dashboard() {
               </div>
             </div>
 
-            <div className="portal-card flex-[1.5] flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-gray-800 font-medium">Основные направления</h3>
-                <span className="text-sm text-gray-400">7/10</span>
+            <div className="portal-card flex-[1.5] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-gray-800 font-medium">Важные объявления</h3>
+                {data?.announcements && data.announcements.length > 0 && (
+                  <span className="text-sm text-gray-400">{data.announcements.length}</span>
+                )}
               </div>
-              
-              <div className="space-y-4">
-                <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
-                  <div className="h-full bg-brand-green" style={{ width: '40%' }}></div>
-                  <div className="h-full bg-brand-yellow" style={{ width: '30%' }}></div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-2">
-                    <span className="px-3 py-1 bg-green-50 text-brand-green text-xs font-medium rounded-full">Согласование</span>
-                    <span className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full">Исследования</span>
-                    <span className="px-3 py-1 bg-yellow-50 text-brand-yellow text-xs font-medium rounded-full">Функционал</span>
+              <div className="flex-1 space-y-3 overflow-hidden">
+                {data?.announcements && data.announcements.length > 0 ? (
+                  data.announcements.slice(0, 4).map((announcement) => (
+                    <div
+                      key={announcement.id}
+                      className="flex items-start gap-3 p-3 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors cursor-pointer group"
+                    >
+                      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center">
+                        <Megaphone className="w-4 h-4 text-brand-green" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-400 mb-0.5">{announcement.date}</p>
+                        <h4 className="text-sm font-medium text-gray-800 group-hover:text-brand-green transition-colors line-clamp-2" title={announcement.title}>
+                          {announcement.title}
+                        </h4>
+                        {announcement.content && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">{announcement.content}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex items-center gap-3 py-6 text-gray-400 text-sm">
+                    <Megaphone className="w-8 h-8 text-gray-300 flex-shrink-0" />
+                    <span>Нет важных объявлений</span>
                   </div>
-                  
-                  <div className="flex gap-2">
-                     <button className="w-8 h-8 rounded-full bg-yellow-50 flex items-center justify-center text-brand-yellow"><FileText className="w-4 h-4" /></button>
-                     <button className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-brand-green"><CheckCircle2 className="w-4 h-4" /></button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

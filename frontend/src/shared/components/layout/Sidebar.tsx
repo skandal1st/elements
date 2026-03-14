@@ -28,7 +28,7 @@ interface Module {
 const modules: Module[] = [
   { code: "portal", name: "Главная", icon: LayoutDashboard, path: "/" },
   { code: "hr", name: "Сотрудники", icon: Users, path: "/hr" },
-  { code: "mail", name: "Чаты и звонки", icon: MessageCircle, path: "/mail" },
+  { code: "mail", name: "Почта", icon: MessageCircle, path: "/mail" },
   { code: "tasks", name: "Задачи", icon: CheckSquare, path: "/tasks" },
   { code: "news", name: "Новости", icon: Newspaper, path: "/news" },
   { code: "it", name: "IT", icon: Wrench, path: "/it" },

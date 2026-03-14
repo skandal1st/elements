@@ -11,6 +11,7 @@ import {
   MoreVertical,
   Reply,
   Forward,
+  Archive,
   X
 } from "lucide-react";
 
@@ -115,6 +116,60 @@ export function MailPage() {
   /** Синхронизация: обновляет папки и письма (эффект вызовет fetchMessages после обновления папок). */
   const syncAll = () => {
     fetchFolders();
+  };
+
+  const archiveFolderName = (() => {
+    const arch = folders.find(
+      (f) =>
+        f.name.toUpperCase().includes("ARCHIVE") ||
+        f.display_name.toUpperCase().includes("АРХИВ")
+    );
+    return arch?.name ?? "Archive";
+  })();
+
+  const handleArchive = async () => {
+    if (!selectedEmail) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(
+        `/api/v1/mail/inbox/${selectedEmail.uid}/archive?folder=${encodeURIComponent(activeFolder)}&archive_folder=${encodeURIComponent(archiveFolderName)}`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        setSelectedEmail(null);
+        setSelectedDetail(null);
+        await fetchMessages();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || "Не удалось переместить в архив");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при архивации");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedEmail) return;
+    if (!confirm("Удалить это письмо?")) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(
+        `/api/v1/mail/inbox/${selectedEmail.uid}/delete?folder=${encodeURIComponent(activeFolder)}`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        setSelectedEmail(null);
+        setSelectedDetail(null);
+        await fetchMessages();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || "Не удалось удалить письмо");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при удалении");
+    }
   };
 
   // Load current account into settings when opening the modal
@@ -454,8 +509,14 @@ export function MailPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-400 mr-2">{selectedEmail.date}</span>
-                <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><Reply className="w-4 h-4" /></button>
-                <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><Forward className="w-4 h-4" /></button>
+                <button type="button" onClick={handleArchive} className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors" title="В архив">
+                  <Archive className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={handleDelete} className="p-2 hover:bg-gray-100 rounded-md text-gray-500 hover:text-red-600 transition-colors" title="Удалить">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors" title="Ответить"><Reply className="w-4 h-4" /></button>
+                <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors" title="Переслать"><Forward className="w-4 h-4" /></button>
                 <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><MoreVertical className="w-4 h-4" /></button>
               </div>
             </div>
@@ -498,14 +559,22 @@ export function MailPage() {
               )}
             </div>
             <div className="p-4 border-t border-gray-100 bg-gray-50">
-               <div className="flex gap-2">
-                 <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+               <div className="flex flex-wrap gap-2">
+                 <button type="button" className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
                     <Reply className="w-4 h-4" />
                     Ответить
                  </button>
-                 <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                 <button type="button" className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
                     <Forward className="w-4 h-4" />
                     Переслать
+                 </button>
+                 <button type="button" onClick={handleArchive} className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                    <Archive className="w-4 h-4" />
+                    В архив
+                 </button>
+                 <button type="button" onClick={handleDelete} className="px-4 py-2 bg-white border border-red-200 rounded-lg text-sm font-medium text-red-700 hover:bg-red-50 transition-colors flex items-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Удалить
                  </button>
                </div>
             </div>

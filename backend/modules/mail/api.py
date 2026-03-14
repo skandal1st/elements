@@ -17,6 +17,8 @@ from backend.modules.mail.schemas import (
     MailSendRequest,
 )
 from backend.modules.mail.services import (
+    archive_by_uid_async,
+    delete_by_uid_async,
     fetch_emails_async,
     fetch_message_by_uid_async,
     list_folders_async,
@@ -190,6 +192,64 @@ async def mark_inbox_message_read(
     if not ok:
         raise HTTPException(status_code=502, detail="Не удалось установить флаг прочтения")
     return {"status": "ok"}
+
+
+@router.post("/inbox/{uid}/archive", status_code=status.HTTP_200_OK)
+async def archive_inbox_message(
+    uid: int,
+    folder: str = "INBOX",
+    archive_folder: str = "Archive",
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+):
+    """Переместить письмо в папку Архив (COPY + помечаем удалённым в текущей папке)."""
+    user_id = _user_id_from_payload(payload)
+    account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    ok = await archive_by_uid_async(
+        host=account.imap_host,
+        port=account.imap_port,
+        login=account.login,
+        password=account.password,
+        ssl=account.imap_ssl,
+        uid=uid,
+        folder=folder,
+        archive_folder=archive_folder,
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=502,
+            detail="Не удалось переместить в архив. Проверьте, что папка «Архив» существует на сервере.",
+        )
+    return {"status": "ok"}
+
+
+@router.post("/inbox/{uid}/delete", status_code=status.HTTP_200_OK)
+async def delete_inbox_message(
+    uid: int,
+    folder: str = "INBOX",
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+):
+    """Удалить письмо (пометить \\Deleted и выполнить EXPUNGE)."""
+    user_id = _user_id_from_payload(payload)
+    account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    ok = await delete_by_uid_async(
+        host=account.imap_host,
+        port=account.imap_port,
+        login=account.login,
+        password=account.password,
+        ssl=account.imap_ssl,
+        uid=uid,
+        folder=folder,
+    )
+    if not ok:
+        raise HTTPException(status_code=502, detail="Не удалось удалить письмо")
+    return {"status": "ok"}
+
 
 @router.post("/send", status_code=status.HTTP_200_OK)
 async def send_new_email(
