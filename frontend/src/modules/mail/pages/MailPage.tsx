@@ -73,9 +73,37 @@ export function MailPage() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
 
-  // При первом заходе на страницу и при смене папки — подтягиваем папки и письма
+  // При загрузке страницы: сначала проверяем, есть ли учётная запись почты, затем синхронизируем
   useEffect(() => {
-    syncAll();
+    let cancelled = false;
+    const init = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setFoldersLoading(false);
+        setShowSettings(true);
+        return;
+      }
+      try {
+        const res = await fetch("/api/v1/mail/accounts/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (cancelled) return;
+        if (res.status === 404) {
+          setFoldersLoading(false);
+          setShowSettings(true);
+          return;
+        }
+        if (res.ok) {
+          fetchFolders();
+        } else {
+          setFoldersLoading(false);
+        }
+      } catch {
+        if (!cancelled) setFoldersLoading(false);
+      }
+    };
+    init();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {

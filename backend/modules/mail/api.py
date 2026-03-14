@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -24,27 +26,36 @@ from backend.modules.mail.services import (
 
 router = APIRouter(prefix="/api/v1/mail", tags=["mail"])
 
+
+def _user_id_from_payload(payload: dict) -> UUID:
+    """Извлекает user_id (UUID) из JWT payload для надёжного поиска учётной записи в БД."""
+    sub = payload.get("sub")
+    if sub is None:
+        raise HTTPException(status_code=401, detail="Токен не содержит идентификатора пользователя")
+    try:
+        return UUID(str(sub))
+    except (ValueError, TypeError) as e:
+        raise HTTPException(status_code=401, detail="Неверный формат идентификатора пользователя") from e
+
+
 @router.post("/accounts", response_model=MailAccountResponse, status_code=status.HTTP_201_CREATED)
 async def create_mail_account(
     account_in: MailAccountCreate,
     db: Session = Depends(get_db),
-    payload: dict = Depends(get_token_payload)
+    payload: dict = Depends(get_token_payload),
 ):
-    """Создать или обновить учетную запись почты для текущего пользователя"""
-    user_id = payload.get("sub")
-    
-    # Check if exists
-    existing = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    """Создать или обновить учетную запись почты для текущего пользователя (сохраняется в БД)."""
+    user_id = _user_id_from_payload(payload)
     data = account_in.model_dump()
+    existing = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if existing:
         for key, value in data.items():
             if key == "password" and not (value or "").strip():
-                continue  # do not overwrite password with empty when updating
+                continue
             setattr(existing, key, value)
         db.commit()
         db.refresh(existing)
         return existing
-
     if not (data.get("password") or "").strip():
         raise HTTPException(status_code=400, detail="Пароль обязателен при создании учётной записи")
     new_account = MailAccount(user_id=user_id, **data)
@@ -53,17 +64,19 @@ async def create_mail_account(
     db.refresh(new_account)
     return new_account
 
+
 @router.get("/accounts/me", response_model=MailAccountResponse)
 async def get_my_mail_account(
     db: Session = Depends(get_db),
-    payload: dict = Depends(get_token_payload)
+    payload: dict = Depends(get_token_payload),
 ):
-    """Получить настройки почты текущего пользователя"""
-    user_id = payload.get("sub")
+    """Получить настройки почты текущего пользователя из БД."""
+    user_id = _user_id_from_payload(payload)
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Учетная запись не настроена")
     return account
+
 
 @router.get("/folders", response_model=List[MailFolderResponse])
 async def get_folders(
@@ -71,7 +84,7 @@ async def get_folders(
     payload: dict = Depends(get_token_payload),
 ):
     """Получить список папок почты (Входящие, Отправленные и т.д.) из IMAP."""
-    user_id = payload.get("sub")
+    user_id = _user_id_from_payload(payload)
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
@@ -82,6 +95,8 @@ async def get_folders(
         password=account.password,
         ssl=account.imap_ssl,
     )
+    if not folders:
+        return [MailFolderResponse(name="INBOX", display_name="Входящие")]
     return folders
 
 
@@ -93,11 +108,10 @@ async def get_inbox_messages(
     payload: dict = Depends(get_token_payload),
 ):
     """Получить письма из указанной папки через IMAP (folder=INBOX по умолчанию)."""
-    user_id = payload.get("sub")
+    user_id = _user_id_from_payload(payload)
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
-
     emails = await fetch_emails_async(
         host=account.imap_host,
         port=account.imap_port,
@@ -134,7 +148,7 @@ async def get_inbox_message(
     payload: dict = Depends(get_token_payload),
 ):
     """Получить полное тело письма по IMAP UID из указанной папки (текст и HTML)."""
-    user_id = payload.get("sub")
+    user_id = _user_id_from_payload(payload)
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
@@ -160,7 +174,7 @@ async def mark_inbox_message_read(
     payload: dict = Depends(get_token_payload),
 ):
     """Отметить письмо как прочитанное (установить флаг \\Seen в IMAP) в указанной папке."""
-    user_id = payload.get("sub")
+    user_id = _user_id_from_payload(payload)
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
@@ -184,7 +198,7 @@ async def send_new_email(
     payload: dict = Depends(get_token_payload)
 ):
     """Отправить новое письмо"""
-    user_id = payload.get("sub")
+    user_id = _user_id_from_payload(payload)
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")

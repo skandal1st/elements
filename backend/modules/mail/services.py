@@ -54,19 +54,16 @@ class ImapClient:
             result = []
             for line in data:
                 line_str = line.decode("utf-8", errors="replace") if isinstance(line, bytes) else str(line)
-                # LIST format: (flags) "delim" "name" — skip \Noselect (not a selectable mailbox)
-                # Mailcow/Dovecot могут отдавать флаг как \Noselect или \\Noselect
-                if "Noselect" in line_str:
-                    continue
                 matches = re.findall(r'"([^"]*)"', line_str)
                 if not matches:
                     continue
                 name = matches[-1].strip()
-                # Exclude root/delimiter-only entries (e.g. "/" or "")
                 if not name or name == "/":
                     continue
                 display_name = self._decode_imap_folder_name(name)
                 result.append({"name": name, "display_name": display_name})
+            if not result:
+                return [{"name": "INBOX", "display_name": "Входящие"}]
             return result
         except Exception as e:
             logger.error("IMAP list failed: %s", e)

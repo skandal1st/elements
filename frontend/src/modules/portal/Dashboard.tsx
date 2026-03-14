@@ -90,43 +90,43 @@ export function Dashboard() {
       <div className="flex gap-6">
         {/* Main Content (Left) */}
         <div className="flex-1 space-y-6">
-          {/* Кнопки быстрого доступа */}
-          <div className="flex flex-wrap gap-3">
+          {/* Кнопки быстрого доступа — карточки как виджет План */}
+          <div className="flex gap-6">
             <a
               href="http://10.20.30.81/docs/index.php"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+              className="portal-card flex-1 flex flex-col items-center justify-center gap-3 min-h-[180px] text-gray-700 font-medium hover:border-gray-200 transition-colors group"
             >
-              <FileStack className="w-5 h-5 text-brand-green" />
-              Документы
+              <FileStack className="w-10 h-10 text-brand-green group-hover:scale-110 transition-transform" />
+              <span className="text-[15px]">Документы</span>
             </a>
             <a
               href="http://10.20.30.81/archive/index.php"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+              className="portal-card flex-1 flex flex-col items-center justify-center gap-3 min-h-[180px] text-gray-700 font-medium hover:border-gray-200 transition-colors group"
             >
-              <Archive className="w-5 h-5 text-brand-green" />
-              Архив
+              <Archive className="w-10 h-10 text-brand-green group-hover:scale-110 transition-transform" />
+              <span className="text-[15px]">Архив</span>
             </a>
             <a
               href="http://10.20.30.81/values/index.php"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+              className="portal-card flex-1 flex flex-col items-center justify-center gap-3 min-h-[180px] text-gray-700 font-medium hover:border-gray-200 transition-colors group"
             >
-              <Activity className="w-5 h-5 text-brand-green" />
-              Мониторинг
+              <Activity className="w-10 h-10 text-brand-green group-hover:scale-110 transition-transform" />
+              <span className="text-[15px]">Мониторинг</span>
             </a>
             <a
               href="http://10.20.30.12:8080/app"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+              className="portal-card flex-1 flex flex-col items-center justify-center gap-3 min-h-[180px] text-gray-700 font-medium hover:border-gray-200 transition-colors group"
             >
-              <BookOpen className="w-5 h-5 text-brand-green" />
-              Тезис
+              <BookOpen className="w-10 h-10 text-brand-green group-hover:scale-110 transition-transform" />
+              <span className="text-[15px]">Тезис</span>
             </a>
           </div>
 
