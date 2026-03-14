@@ -41,3 +41,6 @@ reportlab==4.2.5
 
 # Утилиты
 python-multipart==0.0.12
+
+# Email client
+aiosmtplib==3.0.1
