@@ -88,6 +88,12 @@ from backend.modules.documents.models import (  # noqa: F401
     DocumentVersion,
 )
 
+# Модели модуля Портал (регистрация в Base для create_all)
+from backend.modules.portal.models import Announcement  # noqa: F401
+
+# Модели модуля Почта (регистрация в Base для create_all)
+from backend.modules.mail.models import MailAccount, MailAttachment, MailMessage  # noqa: F401
+
 
 def get_password_hash(password: str) -> str:
     """Хеширует пароль используя bcrypt напрямую"""

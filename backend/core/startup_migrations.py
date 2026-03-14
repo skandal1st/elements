@@ -374,6 +374,23 @@ def ensure_documents_tables() -> None:
             logger.warning("startup table create skipped (%s): %s", t.name, e)
 
 
+def ensure_portal_tables() -> None:
+    """
+    Создаёт таблицы модуля Портал (объявления и т.д.), если их ещё нет.
+    """
+    try:
+        from backend.modules.portal.models import Announcement
+    except Exception as e:
+        logger.warning("Portal models import failed: %s", e)
+        return
+
+    for t in [Announcement.__table__]:
+        try:
+            t.create(bind=engine, checkfirst=True)
+        except Exception as e:
+            logger.warning("startup table create skipped (%s): %s", t.name, e)
+
+
 def ensure_mail_tables() -> None:
     """
     Создаёт таблицы модуля почты, если их ещё нет.
@@ -396,6 +413,7 @@ def ensure_mail_tables() -> None:
             t.create(bind=engine, checkfirst=True)
         except Exception as e:
             logger.warning("startup table create skipped (%s): %s", t.name, e)
+
 
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
