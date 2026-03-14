@@ -52,16 +52,19 @@ export function MailPage() {
   const [isComposing, setIsComposing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  // Settings state
+  // Settings state (must match MailAccountCreate: email_address, imap_*, smtp_*, login, password)
   const [settings, setSettings] = useState({
     email_address: "",
     login: "",
     password: "",
     imap_host: "",
     imap_port: 993,
+    imap_ssl: true,
     smtp_host: "",
-    smtp_port: 465
+    smtp_port: 465,
+    smtp_ssl: true
   });
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   // Form compose state
   const [toEmail, setToEmail] = useState("");
@@ -78,6 +81,39 @@ export function MailPage() {
       fetchMessages();
     }
   }, [activeFolder, folders]);
+
+  // Load current account into settings when opening the modal
+  useEffect(() => {
+    if (!showSettings) return;
+    const loadAccount = async () => {
+      setSettingsLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/v1/mail/accounts/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const acc = await res.json();
+          setSettings({
+            email_address: acc.email_address ?? "",
+            login: acc.login ?? "",
+            password: "", // never send stored password back
+            imap_host: acc.imap_host ?? "",
+            imap_port: acc.imap_port ?? 993,
+            imap_ssl: acc.imap_ssl !== false,
+            smtp_host: acc.smtp_host ?? "",
+            smtp_port: acc.smtp_port ?? 465,
+            smtp_ssl: acc.smtp_ssl !== false
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+    loadAccount();
+  }, [showSettings]);
 
   const fetchFolders = async () => {
     const token = localStorage.getItem("token");
@@ -167,22 +203,36 @@ export function MailPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
+      const payload = {
+        email_address: settings.email_address,
+        login: settings.login,
+        password: settings.password,
+        imap_host: settings.imap_host,
+        imap_port: Number(settings.imap_port),
+        imap_ssl: settings.imap_ssl,
+        smtp_host: settings.smtp_host,
+        smtp_port: Number(settings.smtp_port),
+        smtp_ssl: settings.smtp_ssl
+      };
       const res = await fetch("/api/v1/mail/accounts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setShowSettings(false);
-        fetchFolders();
+        await fetchFolders();
+        if (activeFolder) fetchMessages();
       } else {
-        alert("Ошибка при сохранении настроек почты");
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail ? (Array.isArray(err.detail) ? err.detail.map((d: { msg: string }) => d.msg).join("\n") : err.detail) : "Ошибка при сохранении настроек почты");
       }
     } catch (e) {
       console.error(e);
+      alert("Ошибка при сохранении настроек почты");
     }
   };
 
@@ -484,6 +534,11 @@ export function MailPage() {
             </div>
             
             <div className="p-6 overflow-y-auto w-full custom-scrollbar">
+              {settingsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-brand-green/30 border-t-brand-green rounded-full animate-spin" />
+                </div>
+              ) : (
               <form id="mail-settings-form" onSubmit={handleSaveSettings} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email адрес</label>
@@ -495,7 +550,7 @@ export function MailPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Пароль (IMAP/SMTP)</label>
-                  <input type="password" required value={settings.password} onChange={e => setSettings({...settings, password: e.target.value})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="••••••••" />
+                  <input type="password" value={settings.password} onChange={e => setSettings({...settings, password: e.target.value})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="Оставьте пустым, чтобы не менять" />
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <div>
@@ -518,6 +573,7 @@ export function MailPage() {
                   </div>
                 </div>
               </form>
+              )}
             </div>
             
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">

@@ -35,14 +35,19 @@ async def create_mail_account(
     
     # Check if exists
     existing = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    data = account_in.model_dump()
     if existing:
-        for key, value in account_in.dict().items():
+        for key, value in data.items():
+            if key == "password" and not (value or "").strip():
+                continue  # do not overwrite password with empty when updating
             setattr(existing, key, value)
         db.commit()
         db.refresh(existing)
         return existing
 
-    new_account = MailAccount(user_id=user_id, **account_in.dict())
+    if not (data.get("password") or "").strip():
+        raise HTTPException(status_code=400, detail="Пароль обязателен при создании учётной записи")
+    new_account = MailAccount(user_id=user_id, **data)
     db.add(new_account)
     db.commit()
     db.refresh(new_account)
