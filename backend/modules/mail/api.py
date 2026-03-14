@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -225,8 +226,12 @@ async def get_inbox_attachment(
         )
         raise HTTPException(status_code=404, detail="Вложение не найдено")
     content, filename, content_type = result
-    safe_name = filename.replace('"', "'").replace("\r", "").replace("\n", " ")
-    # Заголовок Content-Type: только тип без параметров (charset и т.д.), без переносов
+    # Имя файла может содержать кириллицу — заголовки HTTP только latin-1.
+    # Используем RFC 5987: filename (ASCII fallback) + filename*=UTF-8''percent-encoded
+    safe_ascii = "".join(c if ord(c) < 128 else "_" for c in filename).replace('"', "'").replace("\r", "").replace("\n", " ") or "attachment"
+    filename_utf8 = quote(filename.replace("\r", "").replace("\n", " "), safe="")
+    content_disp = f'attachment; filename="{safe_ascii}"; filename*=UTF-8\'\'{filename_utf8}'
+    # Content-Type: только тип без параметров, без не-ASCII
     safe_content_type = (content_type or "application/octet-stream").split(";")[0].strip().split("\n")[0].strip()
     if not safe_content_type:
         safe_content_type = "application/octet-stream"
@@ -234,7 +239,7 @@ async def get_inbox_attachment(
         content=content,
         media_type=safe_content_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{safe_name}"',
+            "Content-Disposition": content_disp,
             "Content-Length": str(len(content)),
         },
     )
