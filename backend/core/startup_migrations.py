@@ -391,6 +391,40 @@ def ensure_portal_tables() -> None:
             logger.warning("startup table create skipped (%s): %s", t.name, e)
 
 
+def ensure_contracts_tables() -> None:
+    """Создаёт таблицы модуля Договора."""
+    try:
+        from backend.modules.hr.models.user import User
+        from backend.modules.contracts.models import (
+            Counterparty,
+            ContractType,
+            Funding,
+            CostCode,
+            Subunit,
+            Contract,
+            ContractAct,
+            ContractFile,
+        )
+    except Exception as e:
+        logger.warning("Contracts models import failed: %s", e)
+        return
+    tables = [
+        Counterparty.__table__,
+        ContractType.__table__,
+        Funding.__table__,
+        CostCode.__table__,
+        Subunit.__table__,
+        Contract.__table__,
+        ContractAct.__table__,
+        ContractFile.__table__,
+    ]
+    for t in tables:
+        try:
+            t.create(bind=engine, checkfirst=True)
+        except Exception as e:
+            logger.warning("startup table create skipped (%s): %s", t.name, e)
+
+
 def ensure_mail_tables() -> None:
     """
     Создаёт таблицы модуля почты, если их ещё нет.
@@ -425,10 +459,11 @@ def apply_startup_migrations() -> None:
         ensure_zabbix_integration_columns()
         ensure_equipment_category_network()
         ensure_documents_tables()
+        ensure_contracts_tables()
         ensure_portal_tables()
         ensure_mail_tables()
         logger.info(
-            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat, rustdesk, portal, documents и mail готовы"
+            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat, rustdesk, portal, documents, contracts и mail готовы"
         )
     except Exception as e:
         # Не блокируем запуск приложения, но логируем проблему.

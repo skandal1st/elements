@@ -44,6 +44,11 @@ import { TemplatesPage } from "./modules/documents/pages/TemplatesPage";
 import { TemplateEditorPage } from "./modules/documents/pages/TemplateEditorPage";
 import { ApprovalRoutesPage } from "./modules/documents/pages/ApprovalRoutesPage";
 import { ApprovalRouteEditorPage } from "./modules/documents/pages/ApprovalRouteEditorPage";
+import { ContractsLayout } from "./modules/contracts/ContractsLayout";
+import { ContractsListPage } from "./modules/contracts/pages/ContractsListPage";
+import { ContractDetailPage } from "./modules/contracts/pages/ContractDetailPage";
+import { CounterpartiesPage } from "./modules/contracts/pages/CounterpartiesPage";
+import { ContractTypesPage } from "./modules/contracts/pages/ContractTypesPage";
 import { MailLayout } from "./modules/mail/MailLayout";
 import { MailPage } from "./modules/mail/pages/MailPage";
 
@@ -315,6 +320,21 @@ function AppRoutes() {
           <Route path="types" element={<DocumentTypesPage />} />
           <Route path="templates" element={<TemplatesPage />} />
           <Route path="routes" element={<ApprovalRoutesPage />} />
+        </Route>
+        <Route
+          path="/contracts"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="contracts">
+                <ContractsLayout />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ContractsListPage />} />
+          <Route path="counterparties" element={<CounterpartiesPage />} />
+          <Route path="types" element={<ContractTypesPage />} />
+          <Route path=":id" element={<ContractDetailPage />} />
         </Route>
         <Route
           path="/documents/create"

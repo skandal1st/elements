@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     license_check_cache_ttl: int = 300
 
     # Модули — в .env строка "hr,it,tasks" (не JSON)
-    enabled_modules: str = "hr,it,tasks"
+    enabled_modules: str = "hr,it,tasks,documents,contracts"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Upload } from 'lucide-react'
+import { ArrowLeft, Upload, FileSignature } from 'lucide-react'
 import { DocumentDetail, ApprovalInstance, documentsService } from '@/shared/services/documents.service'
+import { contractsService, type ContractDetail as ContractFromDoc } from '@/shared/services/contracts.service'
 import { DocumentStatusBadge } from '../components/DocumentStatusBadge'
 import { DocumentVersionsList } from '../components/DocumentVersionsList'
 import { DocumentAttachments } from '../components/DocumentAttachments'
@@ -17,6 +18,8 @@ export function DocumentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'versions' | 'attachments' | 'comments' | 'approval'>('versions')
   const [uploadingVersion, setUploadingVersion] = useState(false)
+  const [contractFromDoc, setContractFromDoc] = useState<ContractFromDoc | null>(null)
+  const [sendingToContracts, setSendingToContracts] = useState(false)
   const versionFileRef = useRef<HTMLInputElement>(null)
 
   const currentUserId = (() => {
@@ -36,6 +39,12 @@ export function DocumentDetailPage() {
       ])
       setDoc(d)
       setApprovalInstances(instances)
+      const approved = instances.some((i) => i.status === 'completed')
+      if (approved) {
+        contractsService.getContractByDocument(id).then(setContractFromDoc).catch(() => setContractFromDoc(null))
+      } else {
+        setContractFromDoc(null)
+      }
     } catch (err) {
       console.error(err)
     } finally {
@@ -64,6 +73,7 @@ export function DocumentDetailPage() {
   if (loading) return <div className="text-gray-400">Загрузка...</div>
   if (!doc) return <div className="text-gray-400">Документ не найден</div>
 
+  const isApproved = approvalInstances.some((i) => i.status === 'completed')
   const isCreator = currentUserId === doc.creator_id
   const isPendingApprover = approvalInstances.some(inst =>
     inst.status === 'in_progress' &&
@@ -109,6 +119,49 @@ export function DocumentDetailPage() {
         hasApprovalRoute={!!doc.approval_route_id}
         onAction={load}
       />
+
+      {/* Отправить в договора — после согласования */}
+      {isApproved && (
+        <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+          <FileSignature className="w-5 h-5 text-brand-green" />
+          {contractFromDoc ? (
+            <>
+              <span className="text-sm text-gray-600">По этому документу создан договор:</span>
+              <button
+                type="button"
+                onClick={() => navigate(`/contracts/${contractFromDoc.id}`)}
+                className="text-sm font-medium text-brand-green hover:underline"
+              >
+                {contractFromDoc.number} — {contractFromDoc.name}
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-sm text-gray-600">Отправить в раздел «Договора» для учёта:</span>
+              <button
+                type="button"
+                disabled={sendingToContracts}
+                onClick={async () => {
+                  if (!id) return
+                  setSendingToContracts(true)
+                  try {
+                    const contract = await contractsService.createFromDocument(id)
+                    setContractFromDoc(contract)
+                    navigate(`/contracts/${contract.id}`)
+                  } catch (err: any) {
+                    alert(err.message || 'Ошибка')
+                  } finally {
+                    setSendingToContracts(false)
+                  }
+                }}
+                className="px-4 py-2 bg-brand-green text-white text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-50"
+              >
+                {sendingToContracts ? 'Создание...' : 'Отправить в договора'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-200 pb-3">

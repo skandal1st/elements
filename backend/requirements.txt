@@ -42,5 +42,8 @@ reportlab==4.2.5
 # Утилиты
 python-multipart==0.0.12
 
+# Миграция из docs (MySQL)
+pymysql==1.1.1
+
 # Email client
 aiosmtplib==3.0.1

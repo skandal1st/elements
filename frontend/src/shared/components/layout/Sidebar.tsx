@@ -8,6 +8,7 @@ import {
   Newspaper,
   Wrench,
   FileText,
+  FileSignature,
   Settings,
   LogOut,
   ChevronLeft,
@@ -33,6 +34,7 @@ const modules: Module[] = [
   { code: "news", name: "Новости", icon: Newspaper, path: "/news" },
   { code: "it", name: "IT", icon: Wrench, path: "/it" },
   { code: "documents", name: "Документы", icon: FileText, path: "/documents" },
+  { code: "contracts", name: "Договора", icon: FileSignature, path: "/contracts" },
   { code: "settings", name: "Настройки", icon: Settings, path: "/settings" },
 ];
 
