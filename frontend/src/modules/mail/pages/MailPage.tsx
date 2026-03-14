@@ -43,7 +43,8 @@ interface MailFolder {
 
 export function MailPage() {
   const [emails, setEmails] = useState<MailMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [foldersLoading, setFoldersLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<MailMessage | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<MailMessageDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -77,10 +78,10 @@ export function MailPage() {
   }, []);
 
   useEffect(() => {
-    if (folders.length > 0 && activeFolder) {
+    if (!foldersLoading && folders.length > 0 && activeFolder) {
       fetchMessages();
     }
-  }, [activeFolder, folders]);
+  }, [activeFolder, folders, foldersLoading]);
 
   // Load current account into settings when opening the modal
   useEffect(() => {
@@ -116,11 +117,16 @@ export function MailPage() {
   }, [showSettings]);
 
   const fetchFolders = async () => {
+    setFoldersLoading(true);
     const token = localStorage.getItem("token");
     try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 25000);
       const res = await fetch("/api/v1/mail/folders", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        signal: ctrl.signal
       });
+      clearTimeout(t);
       if (res.ok) {
         const raw = await res.json();
         const data = (Array.isArray(raw) ? raw : []).filter(
@@ -135,7 +141,10 @@ export function MailPage() {
         setShowSettings(true);
       }
     } catch (e) {
-      console.error(e);
+      if ((e as Error).name !== "AbortError") console.error(e);
+      setShowSettings(true);
+    } finally {
+      setFoldersLoading(false);
     }
   };
 
@@ -143,12 +152,15 @@ export function MailPage() {
     setLoading(true);
     setSelectedEmail(null);
     setSelectedDetail(null);
+    const token = localStorage.getItem("token");
     try {
-      const token = localStorage.getItem("token");
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 35000);
       const res = await fetch(
         `/api/v1/mail/inbox?folder=${encodeURIComponent(activeFolder)}&limit=50`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, signal: ctrl.signal }
       );
+      clearTimeout(t);
       if (res.ok) {
         const data = await res.json();
         setEmails(data);
@@ -159,7 +171,7 @@ export function MailPage() {
         setShowSettings(true);
       }
     } catch (e) {
-      console.error(e);
+      if ((e as Error).name !== "AbortError") console.error(e);
     } finally {
       setLoading(false);
     }
@@ -294,8 +306,13 @@ export function MailPage() {
           </button>
         </div>
         <div className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">
-          {folders.length === 0 && !loading ? (
-            <p className="text-sm text-gray-500 px-3 py-2">Настройте почту</p>
+          {foldersLoading ? (
+            <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500">
+              <div className="w-4 h-4 border-2 border-brand-green/30 border-t-brand-green rounded-full animate-spin" />
+              Загрузка папок…
+            </div>
+          ) : folders.length === 0 ? (
+            <p className="text-sm text-gray-500 px-3 py-2">Настройте почту или проверьте подключение</p>
           ) : (
             folders.map((f) => {
               const Icon = folderIcon(f.name);

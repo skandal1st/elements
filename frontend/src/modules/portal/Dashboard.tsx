@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import {
-  Bell,
-  Search,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   Paperclip,
   CheckCircle2,
   CalendarDays,
-  FileText
+  FileText,
+  FileStack,
+  Archive,
+  Activity,
+  BookOpen,
 } from "lucide-react";
 
 interface Announcement {
@@ -86,37 +87,49 @@ export function Dashboard() {
 
   return (
     <div className="relative">
-      {/* Search Header Row */}
-      <div className="flex items-center justify-between mb-8 gap-4">
-        <div className="relative flex-1 max-w-2xl">
-          <input
-            type="text"
-            placeholder="Поиск сотрудника, задачи..."
-            className="w-full bg-white border border-gray-100 rounded-[2rem] pl-6 pr-12 py-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-          />
-          <button className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-brand-green flex items-center justify-center text-white">
-            <Search className="w-4 h-4" />
-          </button>
-        </div>
-        
-        <div className="flex items-center gap-6">
-          <button className="w-12 h-12 rounded-full bg-[#0E3D2B] text-white flex items-center justify-center hover:bg-[#0a2e20] transition-colors">
-            <SlidersHorizontal className="w-5 h-5" />
-          </button>
-          <div className="text-[28px] text-gray-800 font-light tracking-wide">
-            13:20
-          </div>
-          <button className="relative w-12 h-12 rounded-full border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-50 transition-colors">
-            <Bell className="w-5 h-5 text-brand-green" />
-            <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-brand-yellow border-2 border-white flex items-center justify-center text-[9px] font-bold text-white">4</span>
-          </button>
-        </div>
-      </div>
-
       <div className="flex gap-6">
         {/* Main Content (Left) */}
         <div className="flex-1 space-y-6">
-          
+          {/* Кнопки быстрого доступа */}
+          <div className="flex flex-wrap gap-3">
+            <a
+              href="http://10.20.30.81/docs/index.php"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+            >
+              <FileStack className="w-5 h-5 text-brand-green" />
+              Документы
+            </a>
+            <a
+              href="http://10.20.30.81/archive/index.php"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+            >
+              <Archive className="w-5 h-5 text-brand-green" />
+              Архив
+            </a>
+            <a
+              href="http://10.20.30.81/values/index.php"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+            >
+              <Activity className="w-5 h-5 text-brand-green" />
+              Мониторинг
+            </a>
+            <a
+              href="http://10.20.30.12:8080/app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+            >
+              <BookOpen className="w-5 h-5 text-brand-green" />
+              Тезис
+            </a>
+          </div>
+
           {/* Stats Row */}
           <div className="flex gap-6">
             <div className="portal-card flex-1 flex items-center justify-between">

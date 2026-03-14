@@ -6,11 +6,9 @@ import {
   MessageCircle,
   CheckSquare,
   Newspaper,
-  GraduationCap,
   Wrench,
   FileText,
   Settings,
-  HelpCircle,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -33,11 +31,9 @@ const modules: Module[] = [
   { code: "mail", name: "Чаты и звонки", icon: MessageCircle, path: "/mail" },
   { code: "tasks", name: "Задачи", icon: CheckSquare, path: "/tasks" },
   { code: "news", name: "Новости", icon: Newspaper, path: "/news" },
-  { code: "learning", name: "Обучение", icon: GraduationCap, path: "/learning" },
-  { code: "it", name: "Сервисы", icon: Wrench, path: "/it" },
+  { code: "it", name: "IT", icon: Wrench, path: "/it" },
   { code: "documents", name: "Документы", icon: FileText, path: "/documents" },
   { code: "settings", name: "Настройки", icon: Settings, path: "/settings" },
-  { code: "help", name: "Помощь", icon: HelpCircle, path: "/help" },
 ];
 
 export function Sidebar() {
@@ -55,7 +51,7 @@ export function Sidebar() {
         const mods = payload.modules || [];
         const su = !!payload.is_superuser;
         // Mocking some modules as always available for the portal layout
-        const requiredMods = ["portal", "news", "learning", "mail", "help"].concat(mods);
+        const requiredMods = ["portal", "news", "mail"].concat(mods);
         setAvailableModules(su ? modules.map(m => m.code) : requiredMods);
       } catch (e) {
         console.error("Ошибка декодирования токена:", e);
@@ -101,43 +97,20 @@ export function Sidebar() {
         <div className="flex flex-col h-full bg-white relative">
           
           {/* Logo Area */}
-          <div className={`pt-10 pb-8 flex items-center ${sidebarCollapsed ? "justify-center" : "justify-center"} border-b border-gray-50 mx-6 mb-4 relative`}>
-             {!sidebarCollapsed ? (
-                <div className="flex flex-row items-center gap-3">
-                  <div className="flex items-center text-[#F08C00]">
-                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      {/* Sun rays */}
-                      <line x1="50" y1="12" x2="50" y2="28" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                      <line x1="50" y1="72" x2="50" y2="88" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                      <line x1="12" y1="50" x2="28" y2="50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                      <line x1="72" y1="50" x2="88" y2="50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                      <line x1="23.1" y1="23.1" x2="34.4" y2="34.4" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                      <line x1="76.9" y1="76.9" x2="65.6" y2="65.6" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                      <line x1="76.9" y1="23.1" x2="65.6" y2="34.4" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                      <line x1="23.1" y1="76.9" x2="34.4" y2="65.6" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                      {/* Inner roof */}
-                      <path d="M28 65 L50 38 L72 65" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <span className="text-[20px] font-black text-[#F08C00] tracking-widest uppercase mt-1" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial" }}>
-                    ТЕПЛОЦЕНТРАЛЬ
-                  </span>
-                </div>
-             ) : (
-                <div className="flex items-center text-[#F08C00]">
-                  <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <line x1="50" y1="12" x2="50" y2="28" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <line x1="50" y1="72" x2="50" y2="88" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <line x1="12" y1="50" x2="28" y2="50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <line x1="72" y1="50" x2="88" y2="50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <line x1="23.1" y1="23.1" x2="34.4" y2="34.4" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <line x1="76.9" y1="76.9" x2="65.6" y2="65.6" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <line x1="76.9" y1="23.1" x2="65.6" y2="34.4" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <line x1="23.1" y1="76.9" x2="34.4" y2="65.6" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <path d="M28 65 L50 38 L72 65" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-             )}
+          <div className={`pt-10 pb-8 flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-center"} border-b border-gray-50 mx-6 mb-4 relative`}>
+            {!sidebarCollapsed ? (
+              <img
+                src="/logo.png"
+                alt="ТЕПЛОЦЕНТРАЛЬ"
+                className="h-10 w-auto max-w-full object-contain object-left"
+              />
+            ) : (
+              <img
+                src="/logo-icon.png"
+                alt="ТЕПЛОЦЕНТРАЛЬ"
+                className="w-10 h-10 object-contain"
+              />
+            )}
           </div>
 
           {/* Toggle Button */}

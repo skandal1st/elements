@@ -21,16 +21,19 @@ class ImapClient:
         self.ssl = ssl
         self.mail = None
 
+    # Таймаут для всех IMAP операций (mailcow/Dovecot могут отвечать медленно на LIST)
+    IMAP_TIMEOUT = 25
+
     def connect(self):
         try:
             if self.ssl:
-                self.mail = imaplib.IMAP4_SSL(self.host, port=self.port, timeout=10)
+                self.mail = imaplib.IMAP4_SSL(self.host, port=self.port, timeout=self.IMAP_TIMEOUT)
             else:
-                self.mail = imaplib.IMAP4(self.host, port=self.port, timeout=10)
+                self.mail = imaplib.IMAP4(self.host, port=self.port, timeout=self.IMAP_TIMEOUT)
             self.mail.login(self.login_user, self.password)
             return True
         except Exception as e:
-            logger.error(f"IMAP login failed: {e}")
+            logger.error("IMAP login failed: %s", e)
             return False
 
     def close(self):
@@ -52,7 +55,8 @@ class ImapClient:
             for line in data:
                 line_str = line.decode("utf-8", errors="replace") if isinstance(line, bytes) else str(line)
                 # LIST format: (flags) "delim" "name" — skip \Noselect (not a selectable mailbox)
-                if r"\Noselect" in line_str:
+                # Mailcow/Dovecot могут отдавать флаг как \Noselect или \\Noselect
+                if "Noselect" in line_str:
                     continue
                 matches = re.findall(r'"([^"]*)"', line_str)
                 if not matches:
