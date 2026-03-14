@@ -12,6 +12,26 @@ import aiosmtplib
 
 logger = logging.getLogger(__name__)
 
+# Человекочитаемые названия для стандартных папок (mailcow и др. отдают технические имена)
+FOLDER_DISPLAY_NAMES = {
+    "inbox": "Входящие",
+    "sent": "Отправленные",
+    "sent items": "Отправленные",
+    "drafts": "Черновики",
+    "trash": "Корзина",
+    "deleted": "Удалённые",
+    "deleted items": "Удалённые",
+    "spam": "Спам",
+    "junk": "Спам",
+    "junk e-mail": "Спам",
+    "archive": "Архив",
+    "archived": "Архив",
+}
+
+# Порядок папок: сначала стандартные, INBOX всегда первый
+FOLDER_ORDER = ["INBOX", "Sent", "Sent Items", "Drafts", "Archive", "Archived", "Trash", "Deleted", "Spam", "Junk"]
+
+
 class ImapClient:
     def __init__(self, host: str, port: int, login: str, password: str, ssl: bool = True):
         self.host = host
@@ -62,12 +82,12 @@ class ImapClient:
                 if not name or name in ("/", ".") or name in seen:
                     continue
                 seen.add(name)
-                display_name = self._decode_imap_folder_name(name)
+                display_name = self._folder_display_name(name)
                 result.append({"name": name, "display_name": display_name})
             if not result:
                 logger.debug("IMAP LIST returned no folders, using INBOX fallback")
                 return [{"name": "INBOX", "display_name": "Входящие"}]
-            return result
+            return self._sort_folders(result)
         except Exception as e:
             logger.error("IMAP list failed: %s", e)
             return []
@@ -98,6 +118,34 @@ class ImapClient:
             return imaplib.IMAP4._decode_utf7(name)
         except Exception:
             return name
+
+    def _folder_display_name(self, name: str) -> str:
+        """Подставляет человекочитаемое название для стандартных папок (mailcow и др.)."""
+        decoded = self._decode_imap_folder_name(name)
+        key = (decoded or "").strip().lower()
+        if key in FOLDER_DISPLAY_NAMES:
+            return FOLDER_DISPLAY_NAMES[key]
+        for tech, label in FOLDER_DISPLAY_NAMES.items():
+            if tech in key or key in tech:
+                return label
+        return decoded or name
+
+    def _sort_folders(self, folders: List[Dict]) -> List[Dict]:
+        """INBOX первым, затем стандартные папки, остальные по алфавиту."""
+        order_lower = [s.lower() for s in FOLDER_ORDER]
+
+        def sort_key(item: Dict) -> tuple:
+            name = (item.get("name") or "").strip()
+            name_lower = name.lower()
+            if name_lower == "inbox":
+                return (0, 0)
+            try:
+                idx = order_lower.index(name_lower)
+                return (0, idx + 1)
+            except ValueError:
+                return (1, name_lower)
+
+        return sorted(folders, key=sort_key)
 
     def fetch_folder(self, folder: str, limit: int = 50) -> List[Dict]:
         """Fetch messages from the given folder (e.g. INBOX, Sent)."""
@@ -284,6 +332,24 @@ class ImapClient:
             logger.error("delete_by_uid failed: %s", e)
             return False
 
+    def get_inbox_unread_count(self) -> int:
+        """Возвращает количество непрочитанных писем в INBOX (для бейджа в сайдбаре)."""
+        if not self.mail and not self.connect():
+            return 0
+        try:
+            self.mail.select("INBOX", readonly=True)
+            status, data = self.mail.search(None, "UNSEEN")
+            if status != "OK" or not data:
+                return 0
+            msg_ids = data[0]
+            if isinstance(msg_ids, bytes):
+                msg_ids = msg_ids.decode()
+            parts = msg_ids.split()
+            return len(parts) if parts and parts[0] else 0
+        except Exception as e:
+            logger.debug("get_inbox_unread_count failed: %s", e)
+            return 0
+
 
 async def list_folders_async(host, port, login, password, ssl=True):
     def _list():
@@ -349,6 +415,17 @@ async def delete_by_uid_async(host, port, login, password, ssl, uid: int, folder
             client.close()
 
     return await asyncio.to_thread(_delete)
+
+
+async def get_inbox_unread_count_async(host, port, login, password, ssl):
+    def _count():
+        client = ImapClient(host, port, login, password, ssl)
+        try:
+            return client.get_inbox_unread_count()
+        finally:
+            client.close()
+
+    return await asyncio.to_thread(_count)
 
 
 async def send_email_async(host, port, login, password, ssl, to_email, subject, text_body, html_body=None):

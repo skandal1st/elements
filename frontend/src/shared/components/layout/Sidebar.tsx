@@ -39,6 +39,7 @@ const modules: Module[] = [
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [availableModules, setAvailableModules] = useState<string[]>([]);
+  const [mailUnreadCount, setMailUnreadCount] = useState(0);
   const location = useLocation();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const logout = useAuthStore((state) => state.logout);
@@ -50,7 +51,6 @@ export function Sidebar() {
         const payload = JSON.parse(atob(token.split(".")[1]));
         const mods = payload.modules || [];
         const su = !!payload.is_superuser;
-        // Mocking some modules as always available for the portal layout
         const requiredMods = ["portal", "news", "mail"].concat(mods);
         setAvailableModules(su ? modules.map(m => m.code) : requiredMods);
       } catch (e) {
@@ -58,6 +58,28 @@ export function Sidebar() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!availableModules.includes("mail")) return;
+    const fetchUnread = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const res = await fetch("/api/v1/mail/unread-count", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setMailUnreadCount(data.unread_count ?? 0);
+        }
+      } catch {
+        setMailUnreadCount(0);
+      }
+    };
+    fetchUnread();
+    const t = setInterval(fetchUnread, 60000);
+    return () => clearInterval(t);
+  }, [availableModules]);
 
   const filteredModules = modules.filter(
     (m) => availableModules.includes(m.code) || availableModules.length === 0,
@@ -169,10 +191,10 @@ export function Sidebar() {
                   <Icon className={`w-[22px] h-[22px] flex-shrink-0 ${isActive ? "text-brand-green" : ""}`} strokeWidth={isActive ? 2.5 : 2} />
                   {!sidebarCollapsed && <span className="text-[15px]">{module.name}</span>}
                   
-                  {/* Бейджик, если это например звонки/задачи (мок данных) */}
-                  {module.code === "mail" && !sidebarCollapsed && (
-                    <span className="ml-auto w-5 h-5 rounded-full bg-brand-yellow text-white text-[10px] font-bold flex items-center justify-center">
-                      1
+                  {/* Счётчик непрочитанных писем в папке Входящие */}
+                  {module.code === "mail" && !sidebarCollapsed && mailUnreadCount > 0 && (
+                    <span className="ml-auto min-w-[20px] h-5 px-1 rounded-full bg-brand-yellow text-white text-[10px] font-bold flex items-center justify-center">
+                      {mailUnreadCount > 99 ? "99+" : mailUnreadCount}
                     </span>
                   )}
                 </Link>

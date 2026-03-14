@@ -273,7 +273,7 @@ export function Phonebook() {
   return (
     <section className="space-y-6">
       <div className="glass-card-purple p-6">
-        <h2 className="text-2xl font-bold text-white mb-1">Телефонная книга</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">Телефонная книга</h2>
         <p className="text-gray-400">Поиск по сотрудникам и контактам</p>
       </div>
 
@@ -314,7 +314,7 @@ export function Phonebook() {
         <div className="glass-card overflow-hidden">
           <table className="min-w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-dark-600/50">
+              <tr className="border-b border-gray-200">
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">ФИО</th>
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Отдел</th>
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Должность</th>
@@ -324,9 +324,9 @@ export function Phonebook() {
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Действия</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-700/50">
+            <tbody className="divide-y divide-gray-200">
               {items.map((item) => (
-                <tr key={item.id} className="hover:bg-dark-700/30 transition-colors">
+                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4 font-medium text-white">{item.full_name}</td>
                   <td className="px-4 py-4 text-gray-400">{departments.find((d) => d.id === item.department_id)?.name ?? '-'}</td>
                   <td className="px-4 py-4 text-gray-400">{positions.find((p) => p.id === item.position_id)?.name ?? '-'}</td>
@@ -335,7 +335,7 @@ export function Phonebook() {
                   <td className="px-4 py-4 text-gray-400">{item.email ?? '-'}</td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(item)} className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать">
+                      <button onClick={() => openEdit(item)} className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all" title="Редактировать">
                         <Edit className="w-4 h-4" />
                       </button>
                       <button onClick={() => openTransfer(item)} className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Перевести на другую должность">
@@ -361,7 +361,7 @@ export function Phonebook() {
       {editModalOpen && editingEmployee && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
-            <h3 className="text-lg font-semibold text-white">Редактирование сотрудника</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Редактирование сотрудника</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">ФИО <span className="text-red-400">*</span></label>
@@ -430,9 +430,9 @@ export function Phonebook() {
       {transferModalOpen && transferEmployee && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
-            <h3 className="text-lg font-semibold text-white">Перевод сотрудника</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Перевод сотрудника</h3>
             <p className="text-sm text-gray-400">Перевод: <strong className="text-white">{transferEmployee.full_name}</strong></p>
-            <div className="bg-dark-700/30 rounded-xl p-4 text-sm">
+            <div className="bg-gray-50 rounded-xl p-4 text-sm">
               <div className="text-gray-500 mb-2">Текущее назначение:</div>
               <div className="text-gray-400"><strong className="text-gray-300">Подразделение:</strong> {departments.find((d) => d.id === transferEmployee.department_id)?.name ?? 'Не указано'}</div>
               <div className="text-gray-400"><strong className="text-gray-300">Должность:</strong> {positions.find((p) => p.id === transferEmployee.position_id)?.name ?? 'Не указано'}</div>

@@ -113,7 +113,7 @@ export function DocumentCreatePage() {
           className={`flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl transition-colors ${
             mode === 'upload'
               ? 'bg-accent-purple/20 text-accent-purple border border-accent-purple/30'
-              : 'text-gray-400 border border-dark-600/50 hover:text-white'
+              : 'text-gray-400 border border-gray-200 hover:text-gray-900'
           }`}
         >
           <Upload className="w-4 h-4" />
@@ -124,7 +124,7 @@ export function DocumentCreatePage() {
           className={`flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl transition-colors ${
             mode === 'template'
               ? 'bg-accent-purple/20 text-accent-purple border border-accent-purple/30'
-              : 'text-gray-400 border border-dark-600/50 hover:text-white'
+              : 'text-gray-400 border border-gray-200 hover:text-gray-900'
           }`}
         >
           <FileUp className="w-4 h-4" />
@@ -133,22 +133,22 @@ export function DocumentCreatePage() {
       </div>
 
       {mode === 'upload' ? (
-        <div className="space-y-4 p-6 bg-dark-800/50 border border-dark-600/50 rounded-2xl">
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название документа *" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 resize-none" />
+        <div className="space-y-4 p-6 bg-gray-50 border border-gray-200 rounded-2xl">
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название документа *" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
           <div className="grid grid-cols-2 gap-3">
-            <select value={typeId} onChange={(e) => setTypeId(e.target.value)} className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none">
+            <select value={typeId} onChange={(e) => setTypeId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
               <option value="">Тип документа</option>
               {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <select value={routeId} onChange={(e) => setRouteId(e.target.value)} className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none">
+            <select value={routeId} onChange={(e) => setRouteId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
               <option value="">Маршрут согласования</option>
               {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
           <div>
             <input ref={fileRef} type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-3 w-full justify-center text-sm text-gray-400 border border-dashed border-dark-600 rounded-xl hover:text-white hover:border-accent-purple/30 transition-colors">
+            <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-3 w-full justify-center text-sm text-gray-400 border border-dashed border-dark-600 rounded-xl hover:text-gray-900 hover:border-brand-green/30 transition-colors">
               <Upload className="w-5 h-5" />
               {file ? file.name : 'Выберите файл'}
             </button>
@@ -158,29 +158,29 @@ export function DocumentCreatePage() {
           </button>
         </div>
       ) : (
-        <div className="space-y-4 p-6 bg-dark-800/50 border border-dark-600/50 rounded-2xl">
-          <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)} className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none">
+        <div className="space-y-4 p-6 bg-gray-50 border border-gray-200 rounded-2xl">
+          <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
             <option value="">Выберите шаблон</option>
             {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
 
           {selectedTemplate && (
             <>
-              <input type="text" value={templateTitle} onChange={(e) => setTemplateTitle(e.target.value)} placeholder="Название документа *" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
-              <textarea value={templateDescription} onChange={(e) => setTemplateDescription(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 resize-none" />
+              <input type="text" value={templateTitle} onChange={(e) => setTemplateTitle(e.target.value)} placeholder="Название документа *" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <textarea value={templateDescription} onChange={(e) => setTemplateDescription(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
               <div className="grid grid-cols-2 gap-3">
-                <select value={templateTypeId} onChange={(e) => setTemplateTypeId(e.target.value)} className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none">
+                <select value={templateTypeId} onChange={(e) => setTemplateTypeId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
                   <option value="">Тип документа</option>
                   {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                <select value={templateRouteId} onChange={(e) => setTemplateRouteId(e.target.value)} className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none">
+                <select value={templateRouteId} onChange={(e) => setTemplateRouteId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
                   <option value="">Маршрут согласования</option>
                   {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
 
               {selectedTemplate.placeholders.length > 0 ? (
-                <div className="border-t border-dark-600/50 pt-4">
+                <div className="border-t border-gray-200 pt-4">
                   <h4 className="text-sm font-medium text-gray-300 mb-3">Заполните поля шаблона</h4>
                   <PlaceholderForm
                     placeholders={selectedTemplate.placeholders}

@@ -379,12 +379,12 @@ def ensure_portal_tables() -> None:
     Создаёт таблицы модуля Портал (объявления и т.д.), если их ещё нет.
     """
     try:
-        from backend.modules.portal.models import Announcement
+        from backend.modules.portal.models import Announcement, CalendarEvent
     except Exception as e:
         logger.warning("Portal models import failed: %s", e)
         return
 
-    for t in [Announcement.__table__]:
+    for t in [Announcement.__table__, CalendarEvent.__table__]:
         try:
             t.create(bind=engine, checkfirst=True)
         except Exception as e:

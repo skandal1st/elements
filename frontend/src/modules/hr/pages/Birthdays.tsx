@@ -55,7 +55,7 @@ export function Birthdays() {
   return (
     <section className="space-y-6">
       <div className="glass-card-purple p-6">
-        <h2 className="text-2xl font-bold text-white mb-1">Дни рождения</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">Дни рождения</h2>
         <p className="text-gray-400">Календарь сотрудников по месяцам</p>
       </div>
 
@@ -89,7 +89,7 @@ export function Birthdays() {
           <ul className="space-y-3">
             {items.map((item) => (
               <li key={item.id} className="text-sm flex items-baseline gap-2">
-                <span className="font-medium text-white">{item.full_name}</span>
+                <span className="font-medium text-gray-900">{item.full_name}</span>
                 <span className="text-gray-400">— {formatBirthday(item.birthday)}</span>
               </li>
             ))}

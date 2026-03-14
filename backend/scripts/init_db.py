@@ -89,7 +89,7 @@ from backend.modules.documents.models import (  # noqa: F401
 )
 
 # Модели модуля Портал (регистрация в Base для create_all)
-from backend.modules.portal.models import Announcement  # noqa: F401
+from backend.modules.portal.models import Announcement, CalendarEvent  # noqa: F401
 
 # Модели модуля Почта (регистрация в Base для create_all)
 from backend.modules.mail.models import MailAccount, MailAttachment, MailMessage  # noqa: F401

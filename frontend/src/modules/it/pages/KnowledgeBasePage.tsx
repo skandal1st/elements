@@ -396,7 +396,7 @@ export function KnowledgeBasePage() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">База знаний</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">База знаний</h2>
             <p className="text-gray-400">Статьи, инструкции и решения</p>
           </div>
           <button
@@ -444,7 +444,7 @@ export function KnowledgeBasePage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50"
+          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-brand-green/50"
         >
           <option value="">Все статусы</option>
           <option value="draft">Черновик</option>
@@ -456,7 +456,7 @@ export function KnowledgeBasePage() {
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50"
+          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-brand-green/50"
         >
           <option value="">Все типы</option>
           <option value="instruction">Инструкция</option>
@@ -500,7 +500,7 @@ export function KnowledgeBasePage() {
             <div className="glass-card overflow-hidden">
               <table className="min-w-full">
                 <thead>
-                  <tr className="border-b border-dark-600/50">
+                  <tr className="border-b border-gray-200">
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статья</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Тип</th>
@@ -509,15 +509,15 @@ export function KnowledgeBasePage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-dark-700/50">
+                <tbody className="divide-y divide-gray-200">
                   {searchResults.map((r) => (
                     <tr
                       key={r.id}
-                      className="hover:bg-dark-700/30 cursor-pointer transition-colors"
+                      className="hover:bg-gray-50 cursor-pointer transition-colors"
                       onClick={() => void openDetail(r.id)}
                     >
                       <td className="px-4 py-3">
-                        <div className="text-white font-medium truncate">{r.title}</div>
+                        <div className="text-gray-900 font-medium truncate">{r.title}</div>
                         {r.summary && (
                           <div className="text-xs text-gray-500 truncate mt-0.5">{r.summary}</div>
                         )}
@@ -557,7 +557,7 @@ export function KnowledgeBasePage() {
             <div className="glass-card overflow-hidden">
               <table className="min-w-full">
                 <thead>
-                  <tr className="border-b border-dark-600/50">
+                  <tr className="border-b border-gray-200">
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статья</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Тип</th>
@@ -568,11 +568,11 @@ export function KnowledgeBasePage() {
                     <th className="px-4 py-3 w-24" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-dark-700/50">
+                <tbody className="divide-y divide-gray-200">
                   {sorted.map((a) => (
                     <tr
                       key={a.id}
-                      className="hover:bg-dark-700/30 cursor-pointer transition-colors"
+                      className="hover:bg-gray-50 cursor-pointer transition-colors"
                       onClick={() => void openDetail(a.id)}
                     >
                       <td className="px-4 py-3">
@@ -580,7 +580,7 @@ export function KnowledgeBasePage() {
                           {a.is_pinned && <Pin className="w-3.5 h-3.5 text-accent-purple flex-shrink-0" />}
                           <FileText className="w-4 h-4 text-accent-purple flex-shrink-0" />
                           <div className="min-w-0">
-                            <div className="text-white font-medium truncate">{a.title}</div>
+                            <div className="text-gray-900 font-medium truncate">{a.title}</div>
                             <div className="text-xs text-gray-500">
                               v{a.normalization_version} • {new Date(a.updated_at).toLocaleString("ru-RU")}
                             </div>
@@ -639,24 +639,24 @@ export function KnowledgeBasePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-2xl p-6 space-y-4 mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-white">Новая статья</h3>
+              <h3 className="text-xl font-semibold text-gray-900">Новая статья</h3>
               <button
                 onClick={() => setCreateOpen(false)}
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+                className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <input
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
               placeholder="Заголовок"
               value={createForm.title}
               onChange={(e) => setCreateForm((p) => ({ ...p, title: e.target.value }))}
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[100px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[100px] resize-none"
               placeholder="Краткое описание (summary)…"
               value={createForm.summary}
               onChange={(e) => setCreateForm((p) => ({ ...p, summary: e.target.value }))}
@@ -677,7 +677,7 @@ export function KnowledgeBasePage() {
               <select
                 value={createForm.article_type}
                 onChange={(e) => setCreateForm((p) => ({ ...p, article_type: e.target.value }))}
-                className="px-3 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50"
+                className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-brand-green/50"
               >
                 <option value="">Тип статьи</option>
                 <option value="instruction">Инструкция</option>
@@ -690,7 +690,7 @@ export function KnowledgeBasePage() {
               <select
                 value={createForm.category_id}
                 onChange={(e) => setCreateForm((p) => ({ ...p, category_id: e.target.value }))}
-                className="px-3 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50"
+                className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-brand-green/50"
               >
                 <option value="">Категория</option>
                 {flatCategories.map((c) => (
@@ -701,7 +701,7 @@ export function KnowledgeBasePage() {
               <select
                 value={createForm.difficulty_level}
                 onChange={(e) => setCreateForm((p) => ({ ...p, difficulty_level: e.target.value }))}
-                className="px-3 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50"
+                className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-brand-green/50"
               >
                 <option value="">Сложность</option>
                 <option value="beginner">Начальный</option>
@@ -729,8 +729,8 @@ export function KnowledgeBasePage() {
                         }
                         className={`px-2.5 py-1 rounded-full text-xs transition-all ${
                           sel
-                            ? "bg-accent-purple/30 text-white border border-accent-purple/50"
-                            : "bg-dark-700/50 text-gray-400 border border-dark-600/50 hover:text-white"
+                            ? "bg-brand-green/30 text-gray-900 border border-brand-green/50"
+                            : "bg-white text-gray-400 border border-gray-200 hover:text-gray-900"
                         }`}
                       >
                         {t.name}
@@ -744,7 +744,7 @@ export function KnowledgeBasePage() {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setCreateOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-900 transition-colors"
               >
                 Отмена
               </button>
@@ -792,7 +792,7 @@ export function KnowledgeBasePage() {
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <FileText className="w-5 h-5 text-accent-purple flex-shrink-0" />
                 <input
-                  className="text-xl font-semibold text-white bg-dark-700/50 border border-dark-600/50 rounded-xl px-3 py-2 flex-1 focus:outline-none focus:border-accent-purple/50 transition-all min-w-0"
+                  className="text-xl font-semibold text-gray-900 bg-white border border-gray-200 rounded-xl px-3 py-2 flex-1 focus:outline-none focus:border-brand-green/50 transition-all min-w-0"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="Заголовок"
@@ -802,7 +802,7 @@ export function KnowledgeBasePage() {
                 {saving && <span className="text-xs text-accent-purple">Сохранение…</span>}
                 <button
                   onClick={closeDetail}
-                  className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+                  className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -839,7 +839,7 @@ export function KnowledgeBasePage() {
             <div className="space-y-1">
               <div className="text-xs font-medium text-gray-500">Краткое описание</div>
               <textarea
-                className="w-full px-4 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[60px] resize-none"
+                className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[60px] resize-none"
                 value={editSummary}
                 onChange={(e) => setEditSummary(e.target.value)}
                 placeholder="Краткое описание статьи…"
@@ -851,7 +851,7 @@ export function KnowledgeBasePage() {
               <select
                 value={editArticleType}
                 onChange={(e) => setEditArticleType(e.target.value)}
-                className="px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50"
+                className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-brand-green/50"
               >
                 <option value="">Тип статьи</option>
                 <option value="instruction">Инструкция</option>
@@ -864,7 +864,7 @@ export function KnowledgeBasePage() {
               <select
                 value={editCategoryId}
                 onChange={(e) => setEditCategoryId(e.target.value)}
-                className="px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50"
+                className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-brand-green/50"
               >
                 <option value="">Категория</option>
                 {flatCategories.map((c) => (
@@ -875,7 +875,7 @@ export function KnowledgeBasePage() {
               <select
                 value={editDifficulty}
                 onChange={(e) => setEditDifficulty(e.target.value)}
-                className="px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50"
+                className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-brand-green/50"
               >
                 <option value="">Сложность</option>
                 <option value="beginner">Начальный</option>
@@ -898,8 +898,8 @@ export function KnowledgeBasePage() {
                         onClick={() => toggleEditTag(t.id)}
                         className={`px-2.5 py-1 rounded-full text-xs transition-all ${
                           sel
-                            ? "bg-accent-purple/30 text-white border border-accent-purple/50"
-                            : "bg-dark-700/50 text-gray-400 border border-dark-600/50 hover:text-white"
+                            ? "bg-brand-green/30 text-gray-900 border border-brand-green/50"
+                            : "bg-white text-gray-400 border border-gray-200 hover:text-gray-900"
                         }`}
                       >
                         {t.name}
@@ -925,7 +925,7 @@ export function KnowledgeBasePage() {
               <div className="space-y-2">
                 <div className="text-xs font-medium text-gray-500">normalized_content</div>
                 <textarea
-                  className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[260px] resize-none"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[260px] resize-none"
                   value={editNormalized}
                   onChange={(e) => setEditNormalized(e.target.value)}
                   placeholder={`Problem:\nSymptoms:\nEnvironment:\nRoot cause:\nSolution steps:\nVerification:\nNotes:`}
@@ -934,7 +934,7 @@ export function KnowledgeBasePage() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex flex-wrap gap-2 border-t border-dark-600/50 pt-4">
+            <div className="flex flex-wrap gap-2 border-t border-gray-200 pt-4">
               <button
                 onClick={() => void saveArticle()}
                 disabled={saving}
@@ -945,7 +945,7 @@ export function KnowledgeBasePage() {
               <button
                 onClick={() => void requestNormalization()}
                 disabled={normalizeLoading || saving}
-                className="px-4 py-2.5 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-dark-700/50 text-gray-300 border border-dark-600/50 hover:text-white disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-white text-gray-300 border border-gray-200 hover:text-gray-900 disabled:opacity-50"
               >
                 <Sparkles className="w-4 h-4" />
                 {normalizeLoading ? "Нормализация…" : "Нормализовать (LLM)"}
@@ -971,7 +971,7 @@ export function KnowledgeBasePage() {
               <button
                 onClick={() => void archive()}
                 disabled={saving}
-                className="px-4 py-2.5 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-dark-700/50 text-gray-400 border border-dark-600/50 hover:text-white disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-white text-gray-400 border border-gray-200 hover:text-gray-900 disabled:opacity-50"
               >
                 <Archive className="w-4 h-4" />
                 В архив

@@ -90,12 +90,12 @@ export function KnowledgeSearchBar({ onSearch, onClear }: Props) {
           onKeyDown={handleKeyDown}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           placeholder="Поиск по базе знаний…"
-          className="w-full pl-10 pr-10 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+          className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
         />
         {query && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-white transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-900 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -103,14 +103,14 @@ export function KnowledgeSearchBar({ onSearch, onClear }: Props) {
       </div>
 
       {showDropdown && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-dark-800 border border-dark-600/50 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-dark-800 border border-gray-200 rounded-xl shadow-lg overflow-hidden">
           {suggestions.map((s, i) => (
             <button
               key={s}
               className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
                 i === activeIndex
                   ? 'bg-accent-purple/20 text-white'
-                  : 'text-gray-300 hover:bg-dark-700/50 hover:text-white'
+                  : 'text-gray-300 hover:bg-gray-100 hover:text-gray-900'
               }`}
               onMouseEnter={() => setActiveIndex(i)}
               onClick={() => {

@@ -69,7 +69,7 @@ export function ApprovalRouteEditorPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/documents/routes')} className="p-2 text-gray-400 hover:text-white rounded-lg">
+          <button onClick={() => navigate('/documents/routes')} className="p-2 text-gray-400 hover:text-gray-900 rounded-lg">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h2 className="text-xl font-bold text-white">{isNew ? 'Новый маршрут' : 'Редактирование маршрута'}</h2>
@@ -90,14 +90,14 @@ export function ApprovalRouteEditorPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Название маршрута *"
-          className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+          className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
         />
         <input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Описание"
-          className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+          className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
         />
       </div>
 

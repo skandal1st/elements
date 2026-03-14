@@ -1181,7 +1181,7 @@ export function EquipmentPage() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Оборудование</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Оборудование</h2>
             <p className="text-gray-400">Учет IT-оборудования</p>
           </div>
           <div className="flex items-center gap-2">
@@ -1222,7 +1222,7 @@ export function EquipmentPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -1244,7 +1244,7 @@ export function EquipmentPage() {
           className={`px-3 py-2 rounded-xl text-sm border transition-all ${
             activeTab === ""
               ? "bg-accent-purple/20 text-accent-purple border-accent-purple/30"
-              : "bg-dark-700/30 text-gray-400 border-dark-600/50 hover:text-gray-200"
+              : "bg-gray-50 text-gray-400 border-gray-200 hover:text-gray-200"
           }`}
         >
           Все
@@ -1256,7 +1256,7 @@ export function EquipmentPage() {
             className={`px-3 py-2 rounded-xl text-sm border transition-all ${
               activeTab === s
                 ? "bg-accent-purple/20 text-accent-purple border-accent-purple/30"
-                : "bg-dark-700/30 text-gray-400 border-dark-600/50 hover:text-gray-200"
+                : "bg-gray-50 text-gray-400 border-gray-200 hover:text-gray-200"
             }`}
           >
             {statusLabel[s] || s}
@@ -1408,7 +1408,7 @@ export function EquipmentPage() {
         <div className="glass-card overflow-hidden">
           <table className="min-w-full">
             <thead>
-              <tr className="border-b border-dark-600/50">
+              <tr className="border-b border-gray-200">
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Инв. №</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ответственный</th>
@@ -1418,11 +1418,11 @@ export function EquipmentPage() {
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-700/50">
+            <tbody className="divide-y divide-gray-200">
               {items.map((e) => (
                 <tr
                   key={e.id}
-                  className="hover:bg-dark-700/30 cursor-pointer transition-colors"
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => openDetail(e)}
                 >
                   <td className="px-4 py-4 text-gray-300">{e.inventory_number}</td>
@@ -1443,7 +1443,7 @@ export function EquipmentPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openEdit(e)}
-                        className="text-accent-blue hover:text-accent-purple transition-colors"
+                        className="text-accent-blue hover:text-brand-green transition-colors"
                       >
                         Изменить
                       </button>
@@ -1458,7 +1458,7 @@ export function EquipmentPage() {
                       )}
                       <button
                         onClick={() => openQrModal(e)}
-                        className="p-1.5 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all"
+                        className="p-1.5 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all"
                         title="QR-код"
                       >
                         <QrCode className="w-4 h-4" />
@@ -1487,12 +1487,12 @@ export function EquipmentPage() {
               </div>
             ) : (
               <>
-                <h3 className="text-lg font-semibold text-white mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   {editing ? "Редактирование" : "Новое оборудование"}
                 </h3>
 
                 {/* Вкладки */}
-                <div className="flex border-b border-dark-600/50 mb-4">
+                <div className="flex border-b border-gray-200 mb-4">
                   <button
                     onClick={() => setFormTab("main")}
                     className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
@@ -1557,7 +1557,7 @@ export function EquipmentPage() {
                       />
 
                       {/* Справочник оборудования */}
-                      <div className="space-y-2 border-t border-dark-600/50 pt-4">
+                      <div className="space-y-2 border-t border-gray-200 pt-4">
                         <label className="text-sm font-medium text-gray-400">
                           Справочник оборудования
                         </label>
@@ -1640,7 +1640,7 @@ export function EquipmentPage() {
 
                         {/* Расходники модели */}
                         {selectedModelId && (
-                          <div className="mt-2 p-4 bg-dark-700/30 rounded-xl border border-dark-600/50">
+                          <div className="mt-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <Package className="w-4 h-4 text-accent-purple" />
@@ -1785,7 +1785,7 @@ export function EquipmentPage() {
 
                       {/* IP-адрес */}
                       {(form.category === "computer" || form.category === "printer" || form.category === "server" || form.category === "network") && (
-                        <div className={form.category === "computer" || form.category === "server" ? "border-t border-dark-600/50 pt-4 mt-4" : ""}>
+                        <div className={form.category === "computer" || form.category === "server" ? "border-t border-gray-200 pt-4 mt-4" : ""}>
                           <label className="block text-sm font-medium text-gray-400 mb-1">
                             IP-адрес
                           </label>
@@ -1802,7 +1802,7 @@ export function EquipmentPage() {
 
                       {/* Имя компьютера в сети (для синхронизации со сканером) */}
                       {(form.category === "computer" || form.category === "server") && (
-                        <div className="border-t border-dark-600/50 pt-4 mt-4">
+                        <div className="border-t border-gray-200 pt-4 mt-4">
                           <label className="block text-sm font-medium text-gray-400 mb-1">
                             Имя компьютера в сети (hostname)
                           </label>
@@ -1975,7 +1975,7 @@ export function EquipmentPage() {
                 </div>
 
                 {/* Кнопки */}
-                <div className="flex justify-end gap-2 pt-4 border-t border-dark-600/50 mt-4">
+                <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 mt-4">
                   <button
                     onClick={() => {
                       setModalOpen(false);
@@ -2025,14 +2025,14 @@ export function EquipmentPage() {
               </div>
               <button
                 onClick={closeDetail}
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all"
+                className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Вкладки */}
-            <div className="flex border-b border-dark-600/50 mb-4">
+            <div className="flex border-b border-gray-200 mb-4">
               <button
                 onClick={() => setDetailTab("info")}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
@@ -2100,7 +2100,7 @@ export function EquipmentPage() {
                       <Monitor className="w-4 h-4 text-gray-500" />
                       Основная информация
                     </h4>
-                    <div className="bg-dark-700/30 rounded-xl p-4 space-y-3">
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-500">Категория</span>
                         <span className="text-sm font-medium">{categoryLabel[detailEquipment.category] || detailEquipment.category}</span>
@@ -2144,7 +2144,7 @@ export function EquipmentPage() {
                           <Server className="w-4 h-4 text-gray-500" />
                           Мониторинг Zabbix
                         </h4>
-                        <div className="bg-dark-700/30 rounded-xl p-4 space-y-3">
+                        <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                           {zabbixLoading && (
                             <p className="text-sm text-gray-500">Загрузка…</p>
                           )}
@@ -2172,7 +2172,7 @@ export function EquipmentPage() {
                                 <span className="text-sm font-medium">{zabbixStatus.available ? "Онлайн" : "Офлайн"}</span>
                               </div>
                               {detailEquipment.category === "printer" && zabbixCounters && (
-                                <div className="text-sm text-gray-400 pt-2 border-t border-dark-600/50">
+                                <div className="text-sm text-gray-400 pt-2 border-t border-gray-200">
                                   <span className="font-medium text-gray-300">Страниц: </span>
                                   {zabbixCounters.total != null ? `всего ${zabbixCounters.total}` : "—"}
                                   {zabbixCounters.black != null && `, ч/б ${zabbixCounters.black}`}
@@ -2181,7 +2181,7 @@ export function EquipmentPage() {
                                 </div>
                               )}
                               {detailEquipment.category === "printer" && zabbixSupplies && zabbixSupplies.supplies.length > 0 && (
-                                <div className="text-sm text-gray-400 pt-2 border-t border-dark-600/50">
+                                <div className="text-sm text-gray-400 pt-2 border-t border-gray-200">
                                   <span className="font-medium text-gray-300">Расходники: </span>
                                   {zabbixSupplies.supplies.map((s, i) => (
                                     <span key={i}>
@@ -2209,7 +2209,7 @@ export function EquipmentPage() {
                       <User className="w-4 h-4 text-gray-500" />
                       Ответственный
                     </h4>
-                    <div className="bg-dark-700/30 rounded-xl p-4">
+                    <div className="bg-gray-50 rounded-xl p-4">
                       {detailEquipment.owner_name ? (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
@@ -2234,7 +2234,7 @@ export function EquipmentPage() {
                       <MapPin className="w-4 h-4 text-gray-500" />
                       Расположение
                     </h4>
-                    <div className="bg-dark-700/30 rounded-xl p-4">
+                    <div className="bg-gray-50 rounded-xl p-4">
                       {detailEquipment.building_name || detailEquipment.room_name || detailEquipment.location_department || detailEquipment.location_room ? (
                         <div className="space-y-2">
                           {detailEquipment.building_name && (
@@ -2267,7 +2267,7 @@ export function EquipmentPage() {
                       <Cpu className="w-4 h-4 text-gray-500" />
                       Характеристики
                     </h4>
-                    <div className="bg-dark-700/30 rounded-xl p-4">
+                    <div className="bg-gray-50 rounded-xl p-4">
                       {detailEquipment.specifications && Object.keys(detailEquipment.specifications).length > 0 ? (
                         <div className="space-y-3">
                           {detailEquipment.specifications.cpu && (
@@ -2329,7 +2329,7 @@ export function EquipmentPage() {
                       {equipmentLicenses.map((lic) => (
                         <div
                           key={lic.id}
-                          className="bg-dark-700/30 rounded-xl p-4 border-l-4 border-green-500"
+                          className="bg-gray-50 rounded-xl p-4 border-l-4 border-green-500"
                         >
                           <div className="flex justify-between items-start">
                             <div>
@@ -2380,7 +2380,7 @@ export function EquipmentPage() {
                       {detailConsumables.map((consumable) => (
                         <div
                           key={consumable.id}
-                          className="bg-dark-700/30 rounded-xl p-4 flex items-center justify-between"
+                          className="bg-gray-50 rounded-xl p-4 flex items-center justify-between"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-accent-purple/20 rounded-xl flex items-center justify-center">
@@ -2430,7 +2430,7 @@ export function EquipmentPage() {
                       {equipmentHistory.map((record) => (
                         <div
                           key={record.id}
-                          className="bg-dark-700/30 rounded-xl p-4 border-l-4 border-accent-blue"
+                          className="bg-gray-50 rounded-xl p-4 border-l-4 border-accent-blue"
                         >
                           <div className="flex justify-between items-start mb-2">
                             <span className="text-xs text-gray-500">
@@ -2474,7 +2474,7 @@ export function EquipmentPage() {
                               </>
                             )}
                             {record.reason && (
-                              <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-dark-600/50">
+                              <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-200">
                                 <span className="font-medium">Причина:</span>{" "}
                                 {record.reason}
                               </div>
@@ -2489,7 +2489,7 @@ export function EquipmentPage() {
             </div>
 
             {/* Кнопки внизу */}
-            <div className="flex justify-between items-center pt-4 border-t border-dark-600/50 mt-4">
+            <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-4">
               <button
                 onClick={() => openQrModal(detailEquipment)}
                 className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium"
@@ -2523,7 +2523,7 @@ export function EquipmentPage() {
       {addBrandModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">Добавить марку</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Добавить марку</h3>
             <input
               className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название марки"
@@ -2542,7 +2542,7 @@ export function EquipmentPage() {
       {addTypeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">Выберите тип оборудования</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Выберите тип оборудования</h3>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Тип устройства</label>
               <select
@@ -2581,7 +2581,7 @@ export function EquipmentPage() {
       {addModelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">Добавить модель</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Добавить модель</h3>
             <input
               className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название модели (например: ThinkPad X1 Carbon)"
@@ -2615,7 +2615,7 @@ export function EquipmentPage() {
       {addConsumableModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">Добавить расходный материал в модель</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Добавить расходный материал в модель</h3>
             <input
               className="glass-input w-full px-4 py-3 text-sm"
               placeholder="Название расходника *"
@@ -2662,10 +2662,10 @@ export function EquipmentPage() {
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-semibold text-white">QR-код оборудования</h3>
+                <h3 className="text-lg font-semibold text-gray-900">QR-код оборудования</h3>
                 <p className="text-sm text-gray-400">{qrEquipment.name}</p>
               </div>
-              <button onClick={closeQrModal} className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all">
+              <button onClick={closeQrModal} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -2676,7 +2676,7 @@ export function EquipmentPage() {
                 {qrEquipment.serial_number && <p className="text-sm text-gray-400">S/N: {qrEquipment.serial_number}</p>}
               </div>
             </div>
-            <div className="flex justify-center gap-3 pt-2 border-t border-dark-600/50">
+            <div className="flex justify-center gap-3 pt-2 border-t border-gray-200">
               <button onClick={printQrCode} className="glass-button-secondary flex items-center gap-2 px-4 py-2.5 text-sm font-medium">
                 <Printer className="w-4 h-4" /> Печать
               </button>
@@ -2692,7 +2692,7 @@ export function EquipmentPage() {
       {addToZabbixModalOpen && detailEquipment && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">Добавить в Zabbix</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Добавить в Zabbix</h3>
             <p className="text-sm text-gray-400">{detailEquipment.name} — {detailEquipment.ip_address || "IP не указан"}</p>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Группа хостов Zabbix *</label>
@@ -2737,7 +2737,7 @@ export function EquipmentPage() {
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-semibold text-white">Сканировать ПК</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Сканировать ПК</h3>
                 <p className="text-sm text-gray-400">
                   По имени или IP через WinRM-шлюз. Учётка AD из настройки интеграции.
                 </p>
@@ -2748,7 +2748,7 @@ export function EquipmentPage() {
                   setScanResult(null);
                   setScanError(null);
                 }}
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all"
+                className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
               >
                 <X className="w-5 h-5" />
               </button>

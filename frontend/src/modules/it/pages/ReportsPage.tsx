@@ -194,7 +194,7 @@ export function ReportsPage() {
   return (
     <section className="space-y-6">
       <div className="glass-card-purple p-6">
-        <h2 className="text-2xl font-bold text-white mb-1">Отчеты</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">Отчеты</h2>
         <p className="text-gray-400">Аналитика по заявкам IT-отдела</p>
       </div>
 
@@ -208,7 +208,7 @@ export function ReportsPage() {
               className={`px-4 py-2 text-sm rounded-xl transition-all ${
                 activePreset === preset
                   ? "bg-accent-purple/20 text-accent-purple border border-accent-purple/30"
-                  : "bg-dark-700/50 text-gray-400 border border-dark-600/50 hover:text-white hover:border-dark-500"
+                  : "bg-white text-gray-400 border border-gray-200 hover:text-gray-900 hover:border-dark-500"
               }`}
             >
               {PRESET_LABELS[preset]}
@@ -290,21 +290,21 @@ export function ReportsPage() {
                 <FileText className="w-5 h-5 text-accent-purple" />
                 <span className="text-sm text-gray-500">Всего заявок</span>
               </div>
-              <div className="text-2xl font-bold text-white">{reportData.summary.total_tickets}</div>
+              <div className="text-2xl font-bold text-gray-900">{reportData.summary.total_tickets}</div>
             </div>
             <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <AlertCircle className="w-5 h-5 text-orange-500" />
                 <span className="text-sm text-gray-500">Открытые</span>
               </div>
-              <div className="text-2xl font-bold text-white">{reportData.summary.open_tickets}</div>
+              <div className="text-2xl font-bold text-gray-900">{reportData.summary.open_tickets}</div>
             </div>
             <div className="glass-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-green-500" />
                 <span className="text-sm text-gray-500">Решено/Закрыто</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-gray-900">
                 {reportData.summary.resolved_tickets + reportData.summary.closed_tickets}
               </div>
             </div>
@@ -313,7 +313,7 @@ export function ReportsPage() {
                 <Clock className="w-5 h-5 text-purple-500" />
                 <span className="text-sm text-gray-500">Ср. время</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-gray-900">
                 {formatResolutionTime(reportData.summary.avg_resolution_time_hours)}
               </div>
             </div>
@@ -322,7 +322,7 @@ export function ReportsPage() {
                 <Star className="w-5 h-5 text-yellow-500" />
                 <span className="text-sm text-gray-500">Ср. оценка</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-gray-900">
                 {reportData.summary.avg_rating != null
                   ? reportData.summary.avg_rating.toFixed(1)
                   : "—"}
@@ -333,7 +333,7 @@ export function ReportsPage() {
           {/* По категориям и приоритетам (как в supporit) */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="glass-card p-5">
-              <h3 className="text-lg font-semibold text-white mb-4">По категориям</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">По категориям</h3>
               <div className="space-y-3">
                 {reportData.by_category.map((item) => (
                   <div key={item.category} className="flex items-center gap-3">
@@ -357,7 +357,7 @@ export function ReportsPage() {
               </div>
             </div>
             <div className="glass-card p-5">
-              <h3 className="text-lg font-semibold text-white mb-4">По приоритетам</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">По приоритетам</h3>
               <div className="space-y-3">
                 {reportData.by_priority.map((item) => (
                   <div key={item.priority} className="flex items-center gap-3">
@@ -387,14 +387,14 @@ export function ReportsPage() {
           {/* Топ пользователей */}
           {reportData.top_creators.length > 0 && (
             <div className="glass-card p-5">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 Топ пользователей по количеству обращений
               </h3>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="border-b border-dark-600/50">
+                    <tr className="border-b border-gray-200">
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ФИО</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Отдел</th>
@@ -438,7 +438,7 @@ export function ReportsPage() {
 
           {/* Заявки по срокам выполнения */}
           <div className="glass-card p-5">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-gray-400" />
               Заявки по срокам выполнения
             </h3>
@@ -446,7 +446,7 @@ export function ReportsPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="border-b border-dark-600/50">
+                    <tr className="border-b border-gray-200">
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Заявка</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категория</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Приоритет</th>
@@ -461,7 +461,7 @@ export function ReportsPage() {
                       <tr
                         key={ticket.id}
                         onClick={() => navigate("/it/tickets")}
-                        className="border-t border-dark-700/50 cursor-pointer hover:bg-dark-700/30 transition-colors"
+                        className="border-t border-dark-700/50 cursor-pointer hover:bg-gray-50 transition-colors"
                       >
                         <td className="px-4 py-3">
                           <div className="max-w-xs">

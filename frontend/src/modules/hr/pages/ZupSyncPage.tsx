@@ -149,7 +149,7 @@ export function ZupSyncPage() {
         <div className="flex items-center gap-3">
           <Database className="w-7 h-7 text-accent-purple" />
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Синхронизация с 1С ЗУП</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Синхронизация с 1С ЗУП</h2>
             <p className="text-gray-400">Односторонняя синхронизация сотрудников, отделов и должностей</p>
           </div>
         </div>
@@ -172,13 +172,13 @@ export function ZupSyncPage() {
           <p className="text-sm text-blue-300 font-medium mb-2">Результат очистки:</p>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <span className="text-gray-400">Объединено дублей:</span>
-            <span className="text-white">{cleanupResult.merged_duplicates}</span>
+            <span className="text-gray-900">{cleanupResult.merged_duplicates}</span>
             <span className="text-gray-400">Удалено уволенных:</span>
-            <span className="text-white">{cleanupResult.deleted_dismissed}</span>
+            <span className="text-gray-900">{cleanupResult.deleted_dismissed}</span>
             <span className="text-gray-400">Удалено HR-заявок:</span>
-            <span className="text-white">{cleanupResult.deleted_hr_requests}</span>
+            <span className="text-gray-900">{cleanupResult.deleted_hr_requests}</span>
             <span className="text-gray-400">Удалено тикетов онбординга:</span>
-            <span className="text-white">{cleanupResult.deleted_tickets}</span>
+            <span className="text-gray-900">{cleanupResult.deleted_tickets}</span>
           </div>
         </div>
       )}
@@ -191,7 +191,7 @@ export function ZupSyncPage() {
         <>
           {/* Статус подключения */}
           <div className="glass-card p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Статус интеграции</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Статус интеграции</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-3">
                 {status?.configured ? (
@@ -201,7 +201,7 @@ export function ZupSyncPage() {
                 )}
                 <div>
                   <div className="text-sm text-gray-400">Настроено</div>
-                  <div className="text-white font-medium">
+                  <div className="text-gray-900 font-medium">
                     {status?.configured ? "Да" : "Нет"}
                   </div>
                 </div>
@@ -215,7 +215,7 @@ export function ZupSyncPage() {
                 )}
                 <div>
                   <div className="text-sm text-gray-400">Включено</div>
-                  <div className="text-white font-medium">
+                  <div className="text-gray-900 font-medium">
                     {status?.enabled ? "Да" : "Нет"}
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export function ZupSyncPage() {
                 <Clock className="w-5 h-5 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-400">Интервал</div>
-                  <div className="text-white font-medium">
+                  <div className="text-gray-900 font-medium">
                     {status?.sync_interval_minutes ?? 60} мин.
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export function ZupSyncPage() {
           {/* Последняя синхронизация */}
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Последняя синхронизация</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Последняя синхронизация</h3>
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={runCleanup}
@@ -299,13 +299,13 @@ export function ZupSyncPage() {
             </div>
 
             <div className="text-sm text-gray-400 mb-4">
-              Время: <span className="text-white">{formatDate(status?.last_sync ?? null)}</span>
+              Время: <span className="text-gray-900">{formatDate(status?.last_sync ?? null)}</span>
             </div>
 
             {r ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Отделы */}
-                <div className="p-4 rounded-lg bg-dark-700/50 border border-dark-600/50">
+                <div className="p-4 rounded-lg bg-white border border-gray-200">
                   <div className="text-sm text-gray-400 mb-2">Отделы</div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
@@ -324,7 +324,7 @@ export function ZupSyncPage() {
                 </div>
 
                 {/* Должности */}
-                <div className="p-4 rounded-lg bg-dark-700/50 border border-dark-600/50">
+                <div className="p-4 rounded-lg bg-white border border-gray-200">
                   <div className="text-sm text-gray-400 mb-2">Должности</div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
@@ -343,7 +343,7 @@ export function ZupSyncPage() {
                 </div>
 
                 {/* Сотрудники */}
-                <div className="p-4 rounded-lg bg-dark-700/50 border border-dark-600/50">
+                <div className="p-4 rounded-lg bg-white border border-gray-200">
                   <div className="text-sm text-gray-400 mb-2">Сотрудники</div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
@@ -363,7 +363,7 @@ export function ZupSyncPage() {
 
                 {/* Кадровые события */}
                 {(emp?.hired || emp?.fired || emp?.position_changed) ? (
-                  <div className="md:col-span-3 p-4 rounded-lg bg-dark-700/50 border border-dark-600/50">
+                  <div className="md:col-span-3 p-4 rounded-lg bg-white border border-gray-200">
                     <div className="text-sm text-gray-400 mb-2">Кадровые события (HR-заявки и IT-тикеты)</div>
                     <div className="flex flex-wrap gap-6 text-sm">
                       {emp?.hired ? (
@@ -414,7 +414,7 @@ export function ZupSyncPage() {
           {/* Результат диагностики */}
           {debugResult && (
             <div className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Результат диагностики</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Результат диагностики</h3>
 
               {(debugResult.connection_error || debugResult.error) && (
                 <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 mb-4">
@@ -426,7 +426,7 @@ export function ZupSyncPage() {
 
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm text-gray-400 mb-1">OData URL: <span className="text-white font-mono">{debugResult.base_url}</span></div>
+                  <div className="text-sm text-gray-400 mb-1">OData URL: <span className="text-gray-900 font-mono">{debugResult.base_url}</span></div>
                   {debugResult.configured_url && debugResult.configured_url !== debugResult.base_url && (
                     <div className="text-sm text-amber-400 mb-1">
                       URL из настроек автоскорректирован: <span className="font-mono line-through text-gray-500">{debugResult.configured_url}</span>
@@ -448,7 +448,7 @@ export function ZupSyncPage() {
                       Доступные сущности OData ({debugResult.entities_count ?? (Array.isArray(debugResult.available_entities) ? debugResult.available_entities.length : "?")}):
                     </div>
                     {Array.isArray(debugResult.available_entities) ? (
-                      <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 max-h-48 overflow-y-auto">
+                      <div className="p-3 rounded-lg bg-white border border-gray-200 max-h-48 overflow-y-auto">
                         <div className="text-xs text-gray-300 font-mono space-y-0.5">
                           {debugResult.available_entities.map((name, i) => (
                             <div key={i} className={
@@ -471,7 +471,7 @@ export function ZupSyncPage() {
                     <div className="text-sm font-medium text-gray-300 mb-2">
                       Ответ сервера (Content-Type: {debugResult.root_content_type}):
                     </div>
-                    <pre className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-xs text-gray-300 font-mono overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
+                    <pre className="p-3 rounded-lg bg-white border border-gray-200 text-xs text-gray-300 font-mono overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
                       {debugResult.root_text_preview}
                     </pre>
                   </div>
@@ -490,8 +490,8 @@ export function ZupSyncPage() {
                           hr_history: "Кадровая история (должности/отделы)",
                         };
                         return (
-                          <div key={group} className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50">
-                            <div className="text-sm font-medium text-white mb-2">{groupLabels[group] || group}</div>
+                          <div key={group} className="p-3 rounded-lg bg-white border border-gray-200">
+                            <div className="text-sm font-medium text-gray-900 mb-2">{groupLabels[group] || group}</div>
                             {Object.entries(variants).map(([name, info]) => (
                               <div key={name} className="mb-3 last:mb-0">
                                 <div className="flex items-center gap-2 text-sm flex-wrap">
@@ -522,7 +522,7 @@ export function ZupSyncPage() {
                                   </div>
                                 )}
                                 {info.sample && (
-                                  <pre className="mt-1 ml-6 text-xs text-gray-400 font-mono overflow-x-auto max-h-32 overflow-y-auto bg-dark-800/50 p-2 rounded">
+                                  <pre className="mt-1 ml-6 text-xs text-gray-400 font-mono overflow-x-auto max-h-32 overflow-y-auto bg-gray-50 p-2 rounded">
                                     {JSON.stringify(info.sample, null, 2)}
                                   </pre>
                                 )}

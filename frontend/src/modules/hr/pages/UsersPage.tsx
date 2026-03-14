@@ -242,7 +242,7 @@ export function UsersPage() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Пользователи</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Пользователи</h2>
             <p className="text-gray-400">Управление учётными записями системы</p>
           </div>
           <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
@@ -275,7 +275,7 @@ export function UsersPage() {
         <div className="glass-card overflow-hidden">
           <table className="min-w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-dark-600/50">
+              <tr className="border-b border-gray-200">
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Email / Логин</th>
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Роли</th>
@@ -284,9 +284,9 @@ export function UsersPage() {
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Действия</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-700/50">
+            <tbody className="divide-y divide-gray-200">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-dark-700/30 transition-colors">
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                       {user.is_superuser && <Shield className="w-4 h-4 text-amber-400" aria-label="Суперпользователь" />}
@@ -308,7 +308,7 @@ export function UsersPage() {
                   <td className="px-4 py-4 text-gray-500 text-xs">{formatDate(user.last_login_at)}</td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(user)} className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать">
+                      <button onClick={() => openEdit(user)} className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all" title="Редактировать">
                         <Edit className="w-4 h-4" />
                       </button>
                       <button onClick={() => openResetPassword(user)} className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Сбросить пароль">
@@ -329,7 +329,7 @@ export function UsersPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
-            <h3 className="text-lg font-semibold text-white">{editingUser ? 'Редактирование пользователя' : 'Новый пользователь'}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{editingUser ? 'Редактирование пользователя' : 'Новый пользователь'}</h3>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">ФИО <span className="text-red-400">*</span></label>
               <input className="glass-input w-full px-4 py-3 text-sm" placeholder="Иванов Иван Иванович" value={form.full_name} onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))} />
@@ -358,8 +358,8 @@ export function UsersPage() {
               <label className="block text-sm font-medium text-gray-400 mb-2">Роли по модулям</label>
               <div className="space-y-3">
                 {Object.entries(MODULE_LABELS).map(([module, moduleLabel]) => (
-                  <div key={module} className="bg-dark-700/30 rounded-xl p-4">
-                    <div className="text-sm font-medium text-white mb-2">{moduleLabel}</div>
+                  <div key={module} className="bg-gray-50 rounded-xl p-4">
+                    <div className="text-sm font-medium text-gray-900 mb-2">{moduleLabel}</div>
                     <div className="flex flex-wrap gap-2">
                       {(MODULE_ROLES[module] || []).map((role) => (
                         <button
@@ -369,7 +369,7 @@ export function UsersPage() {
                           className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-all ${
                             form.roles[module] === role
                               ? 'bg-accent-purple/30 text-accent-purple border border-accent-purple/50'
-                              : 'bg-dark-700/50 border border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500'
+                              : 'bg-white border border-gray-200 text-gray-400 hover:text-gray-900 hover:border-dark-500'
                           }`}
                         >
                           {ROLE_LABELS[role] || role}
@@ -398,7 +398,7 @@ export function UsersPage() {
       {resetPasswordModalOpen && resetPasswordUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">Сброс пароля</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Сброс пароля</h3>
             <p className="text-sm text-gray-400">Сброс пароля для: <strong className="text-white">{resetPasswordUser.full_name}</strong></p>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Новый пароль <span className="text-red-400">*</span></label>

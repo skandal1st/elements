@@ -35,10 +35,10 @@ export function ApprovalRoutesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Маршруты согласования</h2>
+        <h2 className="text-xl font-bold text-gray-900">Маршруты согласования</h2>
         <button
           onClick={() => navigate('/documents/route-editor/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 transition-colors text-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl hover:opacity-90 transition-colors text-sm"
         >
           <Plus className="w-4 h-4" />
           Создать маршрут
@@ -47,11 +47,11 @@ export function ApprovalRoutesPage() {
 
       <div className="grid gap-3">
         {routes.map((r) => (
-          <div key={r.id} className="flex items-center justify-between p-4 bg-dark-800/50 border border-dark-600/50 rounded-xl">
+          <div key={r.id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
             <div className="flex items-center gap-3">
               <Route className="w-5 h-5 text-gray-400" />
               <div>
-                <div className="text-white font-medium">{r.name}</div>
+                <div className="text-gray-900 font-medium">{r.name}</div>
                 {r.description && <p className="text-sm text-gray-400 mt-0.5">{r.description}</p>}
                 <div className="text-xs text-gray-500 mt-1">
                   {r.steps.length} шагов &middot; {r.steps.reduce((sum, s) => sum + s.approvers.length, 0)} согласующих
@@ -61,7 +61,7 @@ export function ApprovalRoutesPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate(`/documents/route-editor/${r.id}`)}
-                className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-900 rounded-lg transition-colors"
               >
                 <Pencil className="w-4 h-4" />
               </button>

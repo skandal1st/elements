@@ -92,7 +92,7 @@ export function DocumentTypesPage() {
 
       <div className="grid gap-3">
         {types.map((t) => (
-          <div key={t.id} className="flex items-center justify-between p-4 bg-dark-800/50 border border-dark-600/50 rounded-xl">
+          <div key={t.id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-white font-medium">{t.name}</span>
@@ -102,7 +102,7 @@ export function DocumentTypesPage() {
               {t.description && <p className="text-sm text-gray-400 mt-1">{t.description}</p>}
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => openEdit(t)} className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors">
+              <button onClick={() => openEdit(t)} className="p-2 text-gray-400 hover:text-gray-900 rounded-lg transition-colors">
                 <Pencil className="w-4 h-4" />
               </button>
               <button onClick={() => handleDelete(t.id)} className="p-2 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
@@ -117,13 +117,13 @@ export function DocumentTypesPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-lg font-semibold text-white mb-4">{editing ? 'Редактировать тип' : 'Новый тип документа'}</h3>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{editing ? 'Редактировать тип' : 'Новый тип документа'}</h3>
             <div className="space-y-3">
-              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Название" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
-              <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Код (латиница)" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
-              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 resize-none" />
-              <select value={form.default_route_id} onChange={(e) => setForm({ ...form, default_route_id: e.target.value })} className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none focus:border-accent-purple/50">
+              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Название" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Код (латиница)" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
+              <select value={form.default_route_id} onChange={(e) => setForm({ ...form, default_route_id: e.target.value })} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none focus:border-brand-green/50">
                 <option value="">Без маршрута по умолчанию</option>
                 {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
@@ -133,7 +133,7 @@ export function DocumentTypesPage() {
               </label>
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-400 hover:text-white text-sm">Отмена</button>
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-400 hover:text-gray-900 text-sm">Отмена</button>
               <button onClick={handleSave} className="px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 text-sm">Сохранить</button>
             </div>
           </div>

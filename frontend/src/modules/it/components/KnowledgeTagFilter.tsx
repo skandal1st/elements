@@ -21,8 +21,8 @@ export function KnowledgeTagFilter({ tags, selectedIds, onToggle }: Props) {
             onClick={() => onToggle(tag.id)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
               isActive
-                ? 'bg-accent-purple/30 text-white border border-accent-purple/50'
-                : 'bg-dark-700/50 text-gray-400 border border-dark-600/50 hover:text-white hover:border-dark-500/50'
+                ? 'bg-brand-green/30 text-gray-900 border border-brand-green/50'
+                : 'bg-white text-gray-400 border border-gray-200 hover:text-gray-900 hover:border-dark-500/50'
             }`}
             style={
               isActive && tag.color

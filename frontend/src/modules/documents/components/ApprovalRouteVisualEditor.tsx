@@ -99,8 +99,8 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
-                        className={`p-4 bg-dark-700/50 border rounded-xl transition-colors ${
-                          snapshot.isDragging ? 'border-accent-purple/50 shadow-lg' : 'border-dark-600/50'
+                        className={`p-4 bg-white border rounded-xl transition-colors ${
+                          snapshot.isDragging ? 'border-accent-purple/50 shadow-lg' : 'border-gray-200'
                         }`}
                       >
                         <div className="flex items-start gap-3">
@@ -115,7 +115,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                                 type="text"
                                 value={step.name}
                                 onChange={(e) => updateStep(index, { name: e.target.value })}
-                                className="flex-1 px-3 py-1.5 bg-dark-800/50 border border-dark-600/30 rounded-lg text-sm text-white focus:outline-none focus:border-accent-purple/50"
+                                className="flex-1 px-3 py-1.5 bg-gray-50 border border-dark-600/30 rounded-lg text-sm text-white focus:outline-none focus:border-brand-green/50"
                                 placeholder="Название шага"
                               />
                               <button
@@ -133,7 +133,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors ${
                                   step.type === 'sequential'
                                     ? 'bg-accent-purple/20 text-accent-purple border border-accent-purple/30'
-                                    : 'text-gray-400 border border-dark-600/30 hover:text-white'
+                                    : 'text-gray-400 border border-dark-600/30 hover:text-gray-900'
                                 }`}
                               >
                                 <User className="w-3.5 h-3.5" />
@@ -144,7 +144,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors ${
                                   step.type === 'parallel'
                                     ? 'bg-accent-purple/20 text-accent-purple border border-accent-purple/30'
-                                    : 'text-gray-400 border border-dark-600/30 hover:text-white'
+                                    : 'text-gray-400 border border-dark-600/30 hover:text-gray-900'
                                 }`}
                               >
                                 <Users className="w-3.5 h-3.5" />
@@ -156,7 +156,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                                   type="number"
                                   value={step.deadline_hours || 48}
                                   onChange={(e) => updateStep(index, { deadline_hours: parseInt(e.target.value) || 48 })}
-                                  className="w-16 px-2 py-1 bg-dark-800/50 border border-dark-600/30 rounded-lg text-xs text-white text-center focus:outline-none"
+                                  className="w-16 px-2 py-1 bg-gray-50 border border-dark-600/30 rounded-lg text-xs text-white text-center focus:outline-none"
                                   min={1}
                                 />
                               </div>
@@ -183,10 +183,10 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                                   value={userSearch[index] || ''}
                                   onChange={(e) => handleUserSearch(index, e.target.value)}
                                   placeholder="Добавить согласующего..."
-                                  className="w-full px-3 py-1.5 bg-dark-800/50 border border-dark-600/30 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+                                  className="w-full px-3 py-1.5 bg-gray-50 border border-dark-600/30 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
                                 />
                                 {(userResults[index]?.length ?? 0) > 0 && (
-                                  <div className="absolute top-full left-0 right-0 mt-1 bg-dark-800 border border-dark-600 rounded-xl shadow-xl z-10 max-h-40 overflow-y-auto">
+                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-10 max-h-40 overflow-y-auto">
                                     {userResults[index].map((u) => (
                                       <button
                                         key={u.id}
@@ -214,7 +214,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
 
         <button
           onClick={addStep}
-          className="flex items-center gap-2 px-4 py-2.5 w-full justify-center text-sm text-gray-400 border border-dashed border-dark-600/50 rounded-xl hover:text-white hover:border-accent-purple/30 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 w-full justify-center text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl hover:text-gray-900 hover:border-brand-green/30 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Добавить шаг
@@ -231,7 +231,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
 
 function ApprovalRoutePreview({ steps }: { steps: RouteStep[] }) {
   return (
-    <div className="p-4 bg-dark-700/30 border border-dark-600/50 rounded-xl">
+    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
       <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Превью маршрута</h4>
       {steps.length === 0 ? (
         <p className="text-xs text-gray-600">Добавьте шаги</p>
@@ -240,7 +240,7 @@ function ApprovalRoutePreview({ steps }: { steps: RouteStep[] }) {
           {steps.map((step, idx) => (
             <div key={idx}>
               <div className={`p-2.5 rounded-lg border text-center ${
-                step.type === 'parallel' ? 'border-blue-500/30 bg-blue-500/5' : 'border-dark-600/50 bg-dark-800/50'
+                step.type === 'parallel' ? 'border-blue-500/30 bg-blue-500/5' : 'border-gray-200 bg-gray-50'
               }`}>
                 <div className="text-xs text-white font-medium truncate">{step.name || `Шаг ${step.order}`}</div>
                 <div className="text-[10px] text-gray-500 mt-0.5">

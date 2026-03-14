@@ -444,7 +444,7 @@ export function TicketsPage() {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 p-3 rounded-xl bg-dark-800/40 border border-dark-600/50 hover:border-dark-500/70 transition-all"
+              className="flex items-center gap-3 p-3 rounded-xl bg-dark-800/40 border border-gray-200 hover:border-dark-500/70 transition-all"
               title="Открыть вложение"
             >
               <div className="w-10 h-10 rounded-lg bg-dark-700/60 flex items-center justify-center flex-shrink-0">
@@ -471,7 +471,7 @@ export function TicketsPage() {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block overflow-hidden rounded-xl border border-dark-600/50 hover:border-dark-500/70 transition-all"
+                className="block overflow-hidden rounded-xl border border-gray-200 hover:border-dark-500/70 transition-all"
                 title="Открыть изображение"
               >
                 <img
@@ -1295,7 +1295,7 @@ export function TicketsPage() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Заявки</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Заявки</h2>
             <p className="text-gray-400">IT-заявки и тикеты</p>
           </div>
           <button
@@ -1318,7 +1318,7 @@ export function TicketsPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -1332,7 +1332,7 @@ export function TicketsPage() {
             setStatusFilter(e.target.value);
             setPage(1);
           }}
-          className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-accent-purple/50 transition-all"
+          className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-brand-green/50 transition-all"
         >
           <option value="">Все статусы</option>
           {STATUSES.map((s) => (
@@ -1347,7 +1347,7 @@ export function TicketsPage() {
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all ${
             sortByPriority
               ? "bg-accent-purple/20 text-accent-purple border-accent-purple/30"
-              : "bg-dark-700/50 text-gray-400 border-dark-600/50 hover:text-white hover:border-dark-500"
+              : "bg-white text-gray-400 border-gray-200 hover:text-gray-900 hover:border-dark-500"
           }`}
         >
           <SortDesc className="w-4 h-4" />
@@ -1359,7 +1359,7 @@ export function TicketsPage() {
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all ${
             hideClosed
               ? "bg-dark-600/50 text-gray-300 border-dark-500/50"
-              : "bg-dark-700/50 text-gray-400 border-dark-600/50 hover:text-white hover:border-dark-500"
+              : "bg-white text-gray-400 border-gray-200 hover:text-gray-900 hover:border-dark-500"
           }`}
         >
           <Filter className="w-4 h-4" />
@@ -1377,7 +1377,7 @@ export function TicketsPage() {
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all ${
               onlyMine
                 ? "bg-accent-blue/20 text-accent-blue border-accent-blue/30"
-                : "bg-dark-700/50 text-gray-400 border-dark-600/50 hover:text-white hover:border-dark-500"
+                : "bg-white text-gray-400 border-gray-200 hover:text-gray-900 hover:border-dark-500"
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -1394,7 +1394,7 @@ export function TicketsPage() {
       ) : (
         <div className="glass-card overflow-hidden">
           {/* Pagination */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-dark-600/50">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
             <div className="text-xs text-gray-500">
               Страница: <span className="text-gray-300">{page}</span>
             </div>
@@ -1402,14 +1402,14 @@ export function TicketsPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="px-3 py-2 text-sm font-medium rounded-xl border border-dark-600/50 text-gray-300 hover:border-dark-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-300 hover:border-dark-500 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Назад
               </button>
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={items.length < PAGE_SIZE}
-                className="px-3 py-2 text-sm font-medium rounded-xl border border-dark-600/50 text-gray-300 hover:border-dark-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-300 hover:border-dark-500 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Вперёд
               </button>
@@ -1417,7 +1417,7 @@ export function TicketsPage() {
           </div>
           <table className="min-w-full">
             <thead>
-              <tr className="border-b border-dark-600/50">
+              <tr className="border-b border-gray-200">
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Заголовок
@@ -1437,11 +1437,11 @@ export function TicketsPage() {
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-700/50">
+            <tbody className="divide-y divide-gray-200">
               {filteredItems.map((t) => (
                 <tr
                   key={t.id}
-                  className="hover:bg-dark-700/30 cursor-pointer transition-colors"
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => openDetail(t.id)}
                 >
                   <td className="px-4 py-4">
@@ -1505,14 +1505,14 @@ export function TicketsPage() {
             <h3 className="text-xl font-semibold text-white">Новая заявка</h3>
 
             <input
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
               placeholder="Заголовок"
               value={form.title}
               onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[100px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[100px] resize-none"
               placeholder="Описание проблемы..."
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
@@ -1526,7 +1526,7 @@ export function TicketsPage() {
                 <div className="relative">
                   <div className="flex gap-2">
                     <input
-                      className="flex-1 px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+                      className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
                       placeholder="Поиск сотрудника..."
                       value={
                         form.for_employee_id
@@ -1553,14 +1553,14 @@ export function TicketsPage() {
                           setSelectedEmployee(null);
                           setCreateRoomEquipment([]);
                         }}
-                        className="px-2 py-2 text-gray-400 hover:text-white transition-colors"
+                        className="px-2 py-2 text-gray-400 hover:text-gray-900 transition-colors"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                   {showCreateEmpDropdown && !form.for_employee_id && (
-                    <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-dark-700 border border-dark-600/50 rounded-xl shadow-lg">
+                    <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-dark-700 border border-gray-200 rounded-xl shadow-lg">
                       {filteredCreateEmployees.map((emp) => (
                         <button
                           key={emp.id}
@@ -1589,7 +1589,7 @@ export function TicketsPage() {
             )}
 
             {userRole === "it" && selectedEmployee && (
-              <div className="p-4 bg-dark-700/30 border border-dark-600/50 rounded-xl space-y-2">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
                 <div className="text-sm font-medium text-white">{selectedEmployee.full_name}</div>
                 {selectedEmployee.position_name && (
                   <div className="text-xs text-gray-400">{selectedEmployee.position_name}</div>
@@ -1628,7 +1628,7 @@ export function TicketsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <select
-                className="px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
+                className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
                 value={form.category}
                 onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
               >
@@ -1640,7 +1640,7 @@ export function TicketsPage() {
               </select>
 
               <select
-                className="px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
+                className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
                 value={form.priority}
                 onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
               >
@@ -1655,7 +1655,7 @@ export function TicketsPage() {
             {userRole === "it" && !form.for_employee_id && (
               <>
                 <select
-                  className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
                   value={selectedBuildingId}
                   onChange={(e) => {
                     setSelectedBuildingId(e.target.value);
@@ -1672,7 +1672,7 @@ export function TicketsPage() {
                 </select>
 
                 <select
-                  className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all disabled:opacity-50"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all disabled:opacity-50"
                   value={selectedRoomId}
                   onChange={(e) => setSelectedRoomId(e.target.value)}
                   disabled={!selectedBuildingId}
@@ -1689,7 +1689,7 @@ export function TicketsPage() {
 
             {(form.room_id || (userRole === "it" && form.for_employee_id && createRoomEquipment.length > 0)) && (
               <select
-                className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
                 value={form.equipment_id}
                 onChange={(e) => setForm((p) => ({ ...p, equipment_id: e.target.value }))}
               >
@@ -1705,7 +1705,7 @@ export function TicketsPage() {
             <div className="flex justify-end gap-3 pt-4">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-900 transition-colors"
               >
                 Отмена
               </button>
@@ -1730,7 +1730,7 @@ export function TicketsPage() {
                 <SourceIcon source={detail.source} />
                 {canEdit ? (
                   <input
-                    className="text-xl font-semibold text-white bg-dark-700/50 border border-dark-600/50 rounded-xl px-3 py-2 flex-1 focus:outline-none focus:border-accent-purple/50 transition-all"
+                    className="text-xl font-semibold text-white bg-white border border-gray-200 rounded-xl px-3 py-2 flex-1 focus:outline-none focus:border-brand-green/50 transition-all"
                     value={editForm.title}
                     onChange={(e) => updateEditField("title", e.target.value)}
                     placeholder="Заголовок заявки"
@@ -1747,7 +1747,7 @@ export function TicketsPage() {
                 )}
                 <button
                   onClick={closeDetail}
-                  className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+                  className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1755,7 +1755,7 @@ export function TicketsPage() {
             </div>
 
             {/* Инициатор */}
-            <div className="p-4 rounded-xl bg-dark-700/20 border border-dark-600/50">
+            <div className="p-4 rounded-xl bg-dark-700/20 border border-gray-200">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-500 mb-1">
@@ -1801,9 +1801,9 @@ export function TicketsPage() {
                 Описание
               </label>
               {canEdit ? (
-                <div className="bg-dark-700/30 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-xl">
                   <textarea
-                    className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[120px] resize-none"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[120px] resize-none"
                     value={editForm.description}
                     onChange={(e) => updateEditField("description", e.target.value)}
                     placeholder="Описание проблемы"
@@ -1815,7 +1815,7 @@ export function TicketsPage() {
                   })}
                 </div>
               ) : (
-                <div className="bg-dark-700/30 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-gray-300 whitespace-pre-wrap">
                     {detail.description}
                   </p>
@@ -1835,7 +1835,7 @@ export function TicketsPage() {
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all"
                     value={editForm.category}
                     onChange={(e) => updateEditField("category", e.target.value)}
                   >
@@ -1858,7 +1858,7 @@ export function TicketsPage() {
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all"
                     value={editForm.priority}
                     onChange={(e) => updateEditField("priority", e.target.value)}
                   >
@@ -1881,7 +1881,7 @@ export function TicketsPage() {
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all"
                     value={detail.status}
                     onChange={(e) => updateStatus(detail.id, e.target.value)}
                   >
@@ -1918,7 +1918,7 @@ export function TicketsPage() {
                     <>
                       <div className="flex gap-2">
                         <input
-                          className="flex-1 px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all"
+                          className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all"
                           placeholder="Поиск исполнителя..."
                           value={
                             detail.assignee_id && !showExecutorDropdown
@@ -1950,14 +1950,14 @@ export function TicketsPage() {
                                 setError((err as Error).message);
                               }
                             }}
-                            className="px-2 py-2 text-gray-400 hover:text-white transition-colors"
+                            className="px-2 py-2 text-gray-400 hover:text-gray-900 transition-colors"
                           >
                             <X className="w-4 h-4" />
                           </button>
                         )}
                       </div>
                       {showExecutorDropdown && (
-                        <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-dark-700 border border-dark-600/50 rounded-xl shadow-lg">
+                        <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-dark-700 border border-gray-200 rounded-xl shadow-lg">
                           {filteredExecutors.map((u) => (
                             <button
                               key={u.id}
@@ -2000,7 +2000,7 @@ export function TicketsPage() {
 
             {/* Location and Equipment (IT only) */}
             {canEdit && (
-              <div className="border-t border-dark-600/50 pt-4 space-y-4">
+              <div className="border-t border-gray-200 pt-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="w-4 h-4 text-accent-purple" />
                   <h4 className="text-sm font-semibold text-white">
@@ -2014,7 +2014,7 @@ export function TicketsPage() {
                       Здание
                     </label>
                     <select
-                      className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
                       value={editBuildingId}
                       onChange={(e) => {
                         setEditBuildingId(e.target.value);
@@ -2045,7 +2045,7 @@ export function TicketsPage() {
                       Кабинет
                     </label>
                     <select
-                      className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all disabled:opacity-50"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all disabled:opacity-50"
                       value={editForm.room_id}
                       onChange={(e) => {
                         const newForm = {
@@ -2079,7 +2079,7 @@ export function TicketsPage() {
                       </label>
                     </div>
                     <select
-                      className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white focus:outline-none focus:border-accent-purple/50 transition-all"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
                       value={editForm.equipment_id}
                       onChange={(e) => updateEditField("equipment_id", e.target.value)}
                     >
@@ -2123,7 +2123,7 @@ export function TicketsPage() {
                               className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
                                 isSelected
                                   ? "bg-accent-blue/20 border-accent-blue/30"
-                                  : "bg-dark-700/30 border-dark-600/50 hover:border-dark-500"
+                                  : "bg-gray-50 border-gray-200 hover:border-dark-500"
                               }`}
                             >
                               <div className="flex items-center gap-3">
@@ -2177,14 +2177,14 @@ export function TicketsPage() {
 
             {/* IT Actions */}
             {canEdit && (
-              <div className="flex flex-wrap gap-2 border-t border-dark-600/50 pt-4">
+              <div className="flex flex-wrap gap-2 border-t border-gray-200 pt-4">
                 {(detail.source === "email" || !!detail.email_sender) && (
                   <button
                     onClick={() => {
                       setReplyEmailText("");
                       setReplyEmailOpen(true);
                     }}
-                    className="px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-dark-700/50 text-gray-300 border border-dark-600/50 hover:text-white"
+                    className="px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-white text-gray-300 border border-gray-200 hover:text-gray-900"
                     title="Ответить отправителю по email"
                   >
                     <Mail className="w-4 h-4" />
@@ -2203,7 +2203,7 @@ export function TicketsPage() {
                       });
                       setKbModalOpen(true);
                     }}
-                    className="px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-dark-700/50 text-gray-300 border border-dark-600/50 hover:text-white"
+                    className="px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all bg-white text-gray-300 border border-gray-200 hover:text-gray-900"
                     title="Создать статью базы знаний из закрытого тикета"
                   >
                     <BookPlusIcon />
@@ -2245,7 +2245,7 @@ export function TicketsPage() {
                   className={`px-4 py-2 text-sm font-medium rounded-xl flex items-center gap-2 transition-all ${
                     showHistory
                       ? "bg-accent-purple/20 text-accent-purple border border-accent-purple/30"
-                      : "bg-dark-700/50 text-gray-400 border border-dark-600/50 hover:text-white"
+                      : "bg-white text-gray-400 border border-gray-200 hover:text-gray-900"
                   }`}
                 >
                   <History className="w-4 h-4" />
@@ -2263,7 +2263,7 @@ export function TicketsPage() {
 
             {/* History */}
             {showHistory && (
-              <div className="border-t border-dark-600/50 pt-4">
+              <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center gap-2 mb-4">
                   <History className="w-4 h-4 text-accent-purple" />
                   <h4 className="text-sm font-semibold text-white">
@@ -2284,7 +2284,7 @@ export function TicketsPage() {
                     {history.map((h) => (
                       <div
                         key={h.id}
-                        className="bg-dark-700/30 rounded-xl p-4 text-sm"
+                        className="bg-gray-50 rounded-xl p-4 text-sm"
                       >
                         <div className="flex justify-between items-start">
                           <div>
@@ -2317,7 +2317,7 @@ export function TicketsPage() {
             )}
 
             {/* Comments */}
-            <div className="border-t border-dark-600/50 pt-4">
+            <div className="border-t border-gray-200 pt-4">
               <div className="flex items-center gap-2 mb-4">
                 <MessageSquare className="w-4 h-4 text-accent-blue" />
                 <h4 className="text-sm font-semibold text-white">
@@ -2336,7 +2336,7 @@ export function TicketsPage() {
               {!commentsLoading && comments.length > 0 && (
                 <div className="space-y-3 mb-4">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="bg-dark-700/30 rounded-xl p-4">
+                    <div key={comment.id} className="bg-gray-50 rounded-xl p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <span className="text-sm font-medium text-white">
@@ -2368,7 +2368,7 @@ export function TicketsPage() {
                       {editingCommentId === comment.id ? (
                         <div className="space-y-3">
                           <textarea
-                            className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-accent-purple/50 transition-all resize-none"
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all resize-none"
                             value={commentForm}
                             onChange={(e) => setCommentForm(e.target.value)}
                             rows={3}
@@ -2382,7 +2382,7 @@ export function TicketsPage() {
                             </button>
                             <button
                               onClick={cancelEditComment}
-                              className="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-white transition-colors"
+                              className="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-900 transition-colors"
                             >
                               Отмена
                             </button>
@@ -2404,7 +2404,7 @@ export function TicketsPage() {
               {editingCommentId === null && (
                 <div className="space-y-3">
                   <textarea
-                    className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all resize-none"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all resize-none"
                     placeholder="Добавить комментарий..."
                     value={commentForm}
                     onChange={(e) => setCommentForm(e.target.value)}
@@ -2439,7 +2439,7 @@ export function TicketsPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
-                    className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
                     placeholder="Поиск (ФИО / email)…"
                     value={
                       selectedEmployeeId
@@ -2461,14 +2461,14 @@ export function TicketsPage() {
                       setSelectedEmployeeId("");
                       setAssignEmpSearch("");
                     }}
-                    className="px-2 py-2 text-gray-400 hover:text-white transition-colors"
+                    className="px-2 py-2 text-gray-400 hover:text-gray-900 transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
               {showAssignEmpDropdown && !selectedEmployeeId && (
-                <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-dark-700 border border-dark-600/50 rounded-xl shadow-lg">
+                <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-dark-700 border border-gray-200 rounded-xl shadow-lg">
                   {filteredAssignEmployees.map((emp) => (
                     <button
                       key={emp.id}
@@ -2493,7 +2493,7 @@ export function TicketsPage() {
             <div className="flex justify-end gap-3 pt-4">
               <button
                 onClick={() => setAssignEmployeeModalOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-900 transition-colors"
               >
                 Отмена
               </button>
@@ -2527,7 +2527,7 @@ export function TicketsPage() {
               </div>
             </div>
 
-            <div className="bg-dark-700/30 rounded-xl p-4">
+            <div className="bg-gray-50 rounded-xl p-4">
               <p className="text-sm text-gray-300 mb-3">
                 Следующие расходники будут списаны со склада:
               </p>
@@ -2535,7 +2535,7 @@ export function TicketsPage() {
                 {ticketConsumables.map((tc) => (
                   <div
                     key={tc.id}
-                    className="flex items-center justify-between bg-dark-800/50 px-4 py-3 rounded-xl border border-dark-600/50"
+                    className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-xl border border-gray-200"
                   >
                     <div>
                       <span className="text-sm font-medium text-white">
@@ -2563,14 +2563,14 @@ export function TicketsPage() {
                   setTicketConsumables([]);
                 }}
                 disabled={writeOffLoading}
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-900 transition-colors disabled:opacity-50"
               >
                 Отмена
               </button>
               <button
                 onClick={handleCloseWithoutWriteOff}
                 disabled={writeOffLoading}
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 border border-dark-600/50 rounded-xl hover:bg-dark-700/50 transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50"
               >
                 Закрыть без списания
               </button>
@@ -2611,14 +2611,14 @@ export function TicketsPage() {
               </div>
               <button
                 onClick={() => setReplyEmailOpen(false)}
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+                className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <textarea
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all resize-none"
               rows={6}
               placeholder="Текст ответа..."
               value={replyEmailText}
@@ -2629,7 +2629,7 @@ export function TicketsPage() {
               <button
                 onClick={() => setReplyEmailOpen(false)}
                 disabled={replyEmailSending}
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-900 transition-colors disabled:opacity-50"
               >
                 Отмена
               </button>
@@ -2676,14 +2676,14 @@ export function TicketsPage() {
               <button
                 onClick={() => setKbModalOpen(false)}
                 disabled={kbSaving}
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all disabled:opacity-50"
+                className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-50"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <input
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
               placeholder="Заголовок статьи"
               value={kbForm.title}
               onChange={(e) =>
@@ -2692,7 +2692,7 @@ export function TicketsPage() {
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[90px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
               placeholder="Описание проблемы"
               value={kbForm.problem}
               onChange={(e) =>
@@ -2701,7 +2701,7 @@ export function TicketsPage() {
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[90px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
               placeholder="Выполненные действия"
               value={kbForm.actions}
               onChange={(e) =>
@@ -2710,7 +2710,7 @@ export function TicketsPage() {
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all min-h-[90px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
               placeholder="Ключевое решение"
               value={kbForm.solution}
               onChange={(e) =>
@@ -2734,7 +2734,7 @@ export function TicketsPage() {
               <button
                 onClick={() => setKbModalOpen(false)}
                 disabled={kbSaving}
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-900 transition-colors disabled:opacity-50"
               >
                 Отмена
               </button>
@@ -2793,7 +2793,7 @@ export function TicketsPage() {
               </div>
               <button
                 onClick={() => setAiModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+                className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                 disabled={aiLoading}
               >
                 <X className="w-5 h-5" />
@@ -2813,7 +2813,7 @@ export function TicketsPage() {
                   return (
                     <div
                       key={`${aid}-${idx}`}
-                      className="bg-dark-700/30 rounded-xl p-4 border border-dark-600/40"
+                      className="bg-gray-50 rounded-xl p-4 border border-dark-600/40"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -2827,7 +2827,7 @@ export function TicketsPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => navigate(`/it/knowledge?open=${aid}`)}
-                            className="px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 bg-dark-700/50 text-gray-300 border border-dark-600/50 hover:text-white"
+                            className="px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 bg-white text-gray-300 border border-gray-200 hover:text-gray-900"
                             title="Открыть статью"
                           >
                             <BookOpen className="w-4 h-4" />
@@ -2877,7 +2877,7 @@ export function TicketsPage() {
                           className={`px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 border transition-all ${
                             voted === "up"
                               ? "bg-green-500/15 text-green-300 border-green-500/25"
-                              : "bg-dark-700/50 text-gray-300 border-dark-600/50 hover:text-white"
+                              : "bg-white text-gray-300 border-gray-200 hover:text-gray-900"
                           }`}
                           title="Помогло (confidence_score +1)"
                         >
@@ -2900,7 +2900,7 @@ export function TicketsPage() {
                           className={`px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 border transition-all ${
                             voted === "down"
                               ? "bg-red-500/10 text-red-300 border-red-500/25"
-                              : "bg-dark-700/50 text-gray-300 border-dark-600/50 hover:text-white"
+                              : "bg-white text-gray-300 border-gray-200 hover:text-gray-900"
                           }`}
                           title="Не помогло (confidence_score -1)"
                         >
@@ -2916,7 +2916,7 @@ export function TicketsPage() {
               <div className="text-sm text-gray-400">
                 Подсказок нет. Проверьте, что:\n- включён флаг LLM_SUGGESTIONS_ENABLED\n- настроен Qdrant и проиндексированы статьи\n- у вас есть нормализованные статьи (status=normalized)
                 {aiRaw ? (
-                  <div className="mt-3 p-3 rounded-xl bg-dark-800/40 border border-dark-600/50">
+                  <div className="mt-3 p-3 rounded-xl bg-dark-800/40 border border-gray-200">
                     <div className="text-xs font-medium text-gray-500 mb-2">
                       Raw response
                     </div>

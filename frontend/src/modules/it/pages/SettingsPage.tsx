@@ -832,7 +832,7 @@ export function SettingsPage() {
   return (
     <section className="space-y-6">
       <div className="glass-card-purple p-6">
-        <h2 className="text-2xl font-bold text-white mb-1">Настройки</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">Настройки</h2>
         <p className="text-gray-400">Системные настройки IT модуля</p>
       </div>
 
@@ -854,7 +854,7 @@ export function SettingsPage() {
         </div>
       ) : (
         <div className="glass-card overflow-hidden">
-          <div className="border-b border-dark-600/50">
+          <div className="border-b border-gray-200">
             <div className="flex flex-wrap">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
@@ -879,7 +879,7 @@ export function SettingsPage() {
           <div className="p-6">
             {activeTab === "general" && (
               <div className="space-y-4 max-w-xl">
-                <h3 className="text-lg font-semibold text-white mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Общие настройки
                 </h3>
                 {renderInput(
@@ -943,7 +943,7 @@ export function SettingsPage() {
                 <div className="glass-card p-5 space-y-4">
                   <div className="flex items-center gap-2">
                     <Bell className="w-4 h-4 text-accent-blue" />
-                    <h3 className="text-lg font-semibold text-white">Уведомления о новых заявках</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Уведомления о новых заявках</h3>
                   </div>
 
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -1055,7 +1055,7 @@ export function SettingsPage() {
                                 <button
                                   type="button"
                                   onClick={() => setShowNotifUserPicker(true)}
-                                  className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-dark-500 bg-dark-700 text-gray-400 hover:border-accent-purple/50 transition-colors"
+                                  className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-dark-500 bg-dark-700 text-gray-400 hover:border-brand-green/50 transition-colors"
                                 >
                                   <Plus className="w-4 h-4" />
                                   Добавить получателя
@@ -1073,7 +1073,7 @@ export function SettingsPage() {
                 <div className="glass-card p-5 space-y-4">
                   <div className="flex items-center gap-2">
                     <Shuffle className="w-4 h-4 text-green-400" />
-                    <h3 className="text-lg font-semibold text-white">Автоматическое распределение заявок</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Автоматическое распределение заявок</h3>
                   </div>
 
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -1162,7 +1162,7 @@ export function SettingsPage() {
 
                       {/* Информация о специалистах */}
                       {ticketSpecialists.length > 0 && (
-                        <div className="bg-dark-700/50 rounded-lg p-3">
+                        <div className="bg-white rounded-lg p-3">
                           <p className="text-xs text-gray-500 mb-2">
                             Все IT-специалисты ({ticketSpecialists.length}):
                           </p>
@@ -1192,8 +1192,8 @@ export function SettingsPage() {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                 <div className="glass-card p-6 w-full max-w-lg max-h-[80vh] flex flex-col">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Выбрать получателей</h3>
-                    <button type="button" onClick={() => setShowNotifUserPicker(false)} className="text-gray-400 hover:text-white">
+                    <h3 className="text-lg font-semibold text-gray-900">Выбрать получателей</h3>
+                    <button type="button" onClick={() => setShowNotifUserPicker(false)} className="text-gray-400 hover:text-gray-900">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -1266,8 +1266,8 @@ export function SettingsPage() {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                 <div className="glass-card p-6 w-full max-w-lg max-h-[80vh] flex flex-col">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Выбрать специалистов для распределения</h3>
-                    <button type="button" onClick={() => setShowDistribSpecialistPicker(false)} className="text-gray-400 hover:text-white">
+                    <h3 className="text-lg font-semibold text-gray-900">Выбрать специалистов для распределения</h3>
+                    <button type="button" onClick={() => setShowDistribSpecialistPicker(false)} className="text-gray-400 hover:text-gray-900">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -1339,7 +1339,7 @@ export function SettingsPage() {
             {activeTab === "sync" && (
               <div className="space-y-6 max-w-xl">
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
                     Синхронизации
                   </h3>
                   <p className="text-sm text-gray-500">
@@ -1389,7 +1389,7 @@ export function SettingsPage() {
             {activeTab === "buildings" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Управление зданиями
                   </h3>
                   <button
@@ -1408,19 +1408,19 @@ export function SettingsPage() {
                     Нет зданий. Добавьте первое здание.
                   </p>
                 ) : (
-                  <div className="rounded-xl overflow-hidden border border-dark-600/50">
+                  <div className="rounded-xl overflow-hidden border border-gray-200">
                     <table className="min-w-full">
                       <thead>
-                        <tr className="border-b border-dark-600/50">
+                        <tr className="border-b border-gray-200">
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Адрес</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-dark-700/50">
+                      <tbody className="divide-y divide-gray-200">
                         {buildings.map((b) => (
-                          <tr key={b.id} className="hover:bg-dark-700/30 transition-colors">
+                          <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3 text-sm font-medium text-white">
                               {b.name}
                             </td>
@@ -1437,7 +1437,7 @@ export function SettingsPage() {
                             <td className="px-4 py-3 text-sm text-right">
                               <button
                                 onClick={() => openBuildingModal(b)}
-                                className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg mr-1 transition-all"
+                                className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg mr-1 transition-all"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
@@ -1461,7 +1461,7 @@ export function SettingsPage() {
             {activeTab === "rooms" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Управление кабинетами
                   </h3>
                   <button
@@ -1499,10 +1499,10 @@ export function SettingsPage() {
                       : "Нет кабинетов. Добавьте первый кабинет."}
                   </p>
                 ) : (
-                  <div className="rounded-xl overflow-hidden border border-dark-600/50">
+                  <div className="rounded-xl overflow-hidden border border-gray-200">
                     <table className="min-w-full">
                       <thead>
-                        <tr className="border-b border-dark-600/50">
+                        <tr className="border-b border-gray-200">
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Кабинет</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Здание</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Этаж</th>
@@ -1510,9 +1510,9 @@ export function SettingsPage() {
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-dark-700/50">
+                      <tbody className="divide-y divide-gray-200">
                         {rooms.map((r) => (
-                          <tr key={r.id} className="hover:bg-dark-700/30 transition-colors">
+                          <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3 text-sm font-medium text-white">{r.name}</td>
                             <td className="px-4 py-3 text-sm text-gray-400">{r.building_name || "—"}</td>
                             <td className="px-4 py-3 text-sm text-gray-400">{r.floor ?? "—"}</td>
@@ -1524,7 +1524,7 @@ export function SettingsPage() {
                             <td className="px-4 py-3 text-sm text-right">
                               <button
                                 onClick={() => openRoomModal(r)}
-                                className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg mr-1 transition-all"
+                                className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg mr-1 transition-all"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
@@ -1548,7 +1548,7 @@ export function SettingsPage() {
             {activeTab === "email" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Настройки SMTP (отправка)
                   </h3>
                   <button
@@ -1602,7 +1602,7 @@ export function SettingsPage() {
             {activeTab === "imap" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Настройки IMAP (получение)
                   </h3>
                   <div className="flex items-center gap-2">
@@ -1633,7 +1633,7 @@ export function SettingsPage() {
                   </div>
                 </div>
                 {checkInboxResult && (
-                  <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-sm text-gray-300">
+                  <div className="p-3 rounded-lg bg-white border border-gray-200 text-sm text-gray-300">
                     <div>Обработано писем: {checkInboxResult.emails_processed}</div>
                     <div>Создано тикетов: {checkInboxResult.tickets_created}</div>
                     <div>Комментариев: {checkInboxResult.comments_created}</div>
@@ -1681,7 +1681,7 @@ export function SettingsPage() {
             {activeTab === "telegram" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Настройки Telegram бота
                   </h3>
                   <button
@@ -1722,7 +1722,7 @@ export function SettingsPage() {
             {activeTab === "rocketchat" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Настройки RocketChat
                   </h3>
                   <button
@@ -1781,7 +1781,7 @@ export function SettingsPage() {
                   "text",
                   "rocket.cat или ID бота",
                 )}
-                <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-sm text-gray-400 space-y-2">
+                <div className="p-3 rounded-lg bg-white border border-gray-200 text-sm text-gray-400 space-y-2">
                   <p className="font-medium text-gray-300">Как это работает:</p>
                   <p className="text-xs">
                     Elements периодически опрашивает канал RocketChat (polling каждые 10 сек). Входящие сообщения автоматически создают заявки.
@@ -1804,7 +1804,7 @@ export function SettingsPage() {
             {/* Zabbix настройки */}
             {activeTab === "zabbix" && (
               <div className="space-y-4 max-w-xl">
-                <h3 className="text-lg font-semibold text-white mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Настройки Zabbix
                 </h3>
                 {renderInput(
@@ -1841,7 +1841,7 @@ export function SettingsPage() {
             {/* LLM / OpenRouter настройки */}
             {activeTab === "llm" && (
               <div className="space-y-4 max-w-xl">
-                <h3 className="text-lg font-semibold text-white mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   LLM / OpenRouter
                 </h3>
                 <p className="text-sm text-gray-500">
@@ -1895,7 +1895,7 @@ export function SettingsPage() {
                   "sk-or-...",
                 )}
 
-                <div className="pt-2 border-t border-dark-600/50" />
+                <div className="pt-2 border-t border-gray-200" />
                 <h4 className="text-sm font-semibold text-white">Qdrant</h4>
                 {renderInput(
                   "Qdrant URL",
@@ -1918,7 +1918,7 @@ export function SettingsPage() {
             {activeTab === "ldap" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Настройки Active Directory / LDAP
                   </h3>
                   <div className="flex items-center gap-2">
@@ -1964,7 +1964,7 @@ export function SettingsPage() {
                   </div>
                 )}
                 {ldapSyncResult && (
-                  <div className="p-3 rounded-lg bg-dark-700/50 border border-dark-600/50 text-sm text-gray-300">
+                  <div className="p-3 rounded-lg bg-white border border-gray-200 text-sm text-gray-300">
                     <div>Всего в AD: {ldapSyncResult.total}</div>
                     <div>Создано сотрудников: {ldapSyncResult.created}</div>
                     <div>Обновлено сотрудников: {ldapSyncResult.updated}</div>
@@ -2026,7 +2026,7 @@ export function SettingsPage() {
                   "text",
                   "(objectClass=user)",
                 )}
-                <div className="pt-4 mt-4 border-t border-dark-600/50">
+                <div className="pt-4 mt-4 border-t border-gray-200">
                   <h4 className="text-sm font-medium text-gray-300 mb-3">
                     Шлюз для сканирования ПК (WinRM)
                   </h4>
@@ -2070,7 +2070,7 @@ export function SettingsPage() {
             {activeTab === "zup" && (
               <div className="space-y-4 max-w-xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Настройки 1С ЗУП
                   </h3>
                   <button
@@ -2122,7 +2122,7 @@ export function SettingsPage() {
 
             {/* Кнопка сохранения - только для вкладок настроек */}
             {!["buildings", "rooms"].includes(activeTab) && (
-              <div className="mt-6 pt-4 border-t border-dark-600/50">
+              <div className="mt-6 pt-4 border-t border-gray-200">
                 <button
                   onClick={saveSettings}
                   disabled={saving}
@@ -2141,7 +2141,7 @@ export function SettingsPage() {
       {buildingModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               {editingBuilding ? "Редактирование здания" : "Новое здание"}
             </h3>
             <div>
@@ -2228,7 +2228,7 @@ export function SettingsPage() {
       {roomModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               {editingRoom ? "Редактирование кабинета" : "Новый кабинет"}
             </h3>
             <div>
@@ -2337,7 +2337,7 @@ export function SettingsPage() {
           <div className="glass-card w-full max-w-5xl p-6 space-y-4 mx-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-lg font-semibold text-white">Синхронизация сотрудников из AD</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Синхронизация сотрудников из AD</h3>
                 <p className="text-sm text-gray-500">
                   Выберите пользователей из Active Directory и синхронизируйте только их.
                 </p>
@@ -2444,7 +2444,7 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="rounded-xl overflow-hidden border border-dark-600/50 max-h-[55vh] overflow-y-auto">
+            <div className="rounded-xl overflow-hidden border border-gray-200 max-h-[55vh] overflow-y-auto">
               {adLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="w-10 h-10 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin" />
@@ -2456,7 +2456,7 @@ export function SettingsPage() {
                 </div>
               ) : (
                 <table className="min-w-full">
-                  <thead className="sticky top-0 bg-dark-800/80 backdrop-blur border-b border-dark-600/50">
+                  <thead className="sticky top-0 bg-dark-800/80 backdrop-blur border-b border-gray-200">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Выбор
@@ -2475,14 +2475,14 @@ export function SettingsPage() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-dark-700/50">
+                  <tbody className="divide-y divide-gray-200">
                     {adUsers.map((u) => {
                       const disabled = !u.enabled;
                       const selected = adSelected.has(u.sAMAccountName);
                       return (
                         <tr
                           key={u.dn || u.sAMAccountName}
-                          className={`hover:bg-dark-700/30 ${
+                          className={`hover:bg-gray-50 ${
                             disabled ? "opacity-60" : selected ? "bg-accent-purple/10" : ""
                           }`}
                         >

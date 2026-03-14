@@ -205,7 +205,7 @@ export function OrgChart() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Оргструктура</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Оргструктура</h2>
             <p className="text-gray-400">Дерево отделов, должностей и сотрудников</p>
           </div>
           <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
@@ -245,7 +245,7 @@ export function OrgChart() {
               <div key={dept.id} className="glass-card p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="text-lg font-semibold text-gray-900">
                       {dept.name}
                       {dept.parent_department_id && (
                         <span className="ml-2 text-sm font-normal text-gray-500">
@@ -258,7 +258,7 @@ export function OrgChart() {
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => deptData && openEdit(deptData)} className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать">
+                    <button onClick={() => deptData && openEdit(deptData)} className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all" title="Редактировать">
                       <Edit className="w-4 h-4" />
                     </button>
                     <button onClick={() => deptData && handleDelete(deptData)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Удалить">
@@ -272,7 +272,7 @@ export function OrgChart() {
                     const pos = orgPos.id != null ? positions.find((p) => p.id === orgPos.id) : null
                     const employees = orgPos.employees || []
                     return (
-                      <div key={orgPos.id ?? 'no-position'} className="pl-4 border-l-2 border-dark-600/50">
+                      <div key={orgPos.id ?? 'no-position'} className="pl-4 border-l-2 border-gray-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Briefcase className="w-4 h-4 text-gray-500" />
@@ -280,7 +280,7 @@ export function OrgChart() {
                           </div>
                           {pos && (
                             <div className="flex items-center gap-1">
-                              <button onClick={() => openEditPosition(pos)} className="p-1.5 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать должность">
+                              <button onClick={() => openEditPosition(pos)} className="p-1.5 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all" title="Редактировать должность">
                                 <Edit className="w-3 h-3" />
                               </button>
                               <button onClick={() => handleDeletePosition(pos)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Удалить должность">
@@ -303,14 +303,14 @@ export function OrgChart() {
                   {positions
                     .filter((pos) => pos.department_id === dept.id && !dept.positions.some(p => p.id === pos.id))
                     .map((pos) => (
-                      <div key={pos.id} className="pl-4 border-l-2 border-dark-600/50">
+                      <div key={pos.id} className="pl-4 border-l-2 border-gray-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Briefcase className="w-4 h-4 text-gray-500 opacity-50" />
                             <span className="text-sm font-medium text-gray-400">{pos.name}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <button onClick={() => openEditPosition(pos)} className="p-1.5 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all" title="Редактировать должность">
+                            <button onClick={() => openEditPosition(pos)} className="p-1.5 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all" title="Редактировать должность">
                               <Edit className="w-3 h-3" />
                             </button>
                             <button onClick={() => handleDeletePosition(pos)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Удалить должность">
@@ -341,7 +341,7 @@ export function OrgChart() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">{editing ? 'Редактирование подразделения' : 'Новое подразделение'}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{editing ? 'Редактирование подразделения' : 'Новое подразделение'}</h3>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Название <span className="text-red-400">*</span></label>
               <input className="glass-input w-full px-4 py-3 text-sm" placeholder="Например: Отдел разработки" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
@@ -371,7 +371,7 @@ export function OrgChart() {
       {positionModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">{editingPosition ? 'Редактирование должности' : 'Новая должность'}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{editingPosition ? 'Редактирование должности' : 'Новая должность'}</h3>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Название <span className="text-red-400">*</span></label>
               <input className="glass-input w-full px-4 py-3 text-sm" placeholder="Например: Ведущий разработчик" value={positionForm.name} onChange={(e) => setPositionForm((p) => ({ ...p, name: e.target.value }))} />

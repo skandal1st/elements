@@ -21,6 +21,7 @@ from backend.modules.mail.services import (
     delete_by_uid_async,
     fetch_emails_async,
     fetch_message_by_uid_async,
+    get_inbox_unread_count_async,
     list_folders_async,
     send_email_async,
     set_seen_by_uid_async,
@@ -78,6 +79,26 @@ async def get_my_mail_account(
     if not account:
         raise HTTPException(status_code=404, detail="Учетная запись не настроена")
     return account
+
+
+@router.get("/unread-count")
+async def get_unread_count(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+):
+    """Количество непрочитанных писем в папке Входящие (для бейджа в сайдбаре)."""
+    user_id = _user_id_from_payload(payload)
+    account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    if not account:
+        return {"unread_count": 0}
+    count = await get_inbox_unread_count_async(
+        host=account.imap_host,
+        port=account.imap_port,
+        login=account.login,
+        password=account.password,
+        ssl=account.imap_ssl,
+    )
+    return {"unread_count": count}
 
 
 @router.get("/folders", response_model=List[MailFolderResponse])

@@ -345,7 +345,7 @@ export function ConsumablesPage() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Расходные материалы</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Расходные материалы</h2>
             <p className="text-gray-400">Учет расходных материалов IT-отдела</p>
           </div>
           {!showFromCatalog && (
@@ -376,7 +376,7 @@ export function ConsumablesPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск..."
@@ -386,7 +386,7 @@ export function ConsumablesPage() {
         <button onClick={handleSearch} className="glass-button-secondary px-4 py-2.5 flex items-center gap-2">
           <Search className="w-4 h-4" /> Найти
         </button>
-        <label className="flex items-center gap-2 px-4 py-2.5 text-sm bg-dark-700/50 border border-dark-600/50 rounded-xl cursor-pointer hover:border-dark-500 text-gray-400 hover:text-white transition-all">
+        <label className="flex items-center gap-2 px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-dark-500 text-gray-400 hover:text-gray-900 transition-all">
           <input
             type="checkbox"
             checked={showFromCatalog}
@@ -408,7 +408,7 @@ export function ConsumablesPage() {
         <div className="glass-card overflow-hidden">
           <table className="min-w-full">
             <thead>
-              <tr className="border-b border-dark-600/50">
+              <tr className="border-b border-gray-200">
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Название
                 </th>
@@ -431,7 +431,7 @@ export function ConsumablesPage() {
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-700/50">
+            <tbody className="divide-y divide-gray-200">
               {showFromCatalog ? (
                 modelConsumables.length === 0 ? (
                   <tr>
@@ -441,7 +441,7 @@ export function ConsumablesPage() {
                   </tr>
                 ) : (
                   modelConsumables.map((item) => (
-                    <tr key={item.id} className="hover:bg-dark-700/30 transition-colors">
+                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-4 text-white font-medium">{item.name}</td>
                       <td className="px-4 py-4 text-gray-400">{(item as any).brand_name || "—"}</td>
                       <td className="px-4 py-4 text-gray-400">{(item as any).type_name || "—"}</td>
@@ -485,7 +485,7 @@ export function ConsumablesPage() {
                 items.map((item) => (
                   <tr
                     key={item.id}
-                    className={`hover:bg-dark-700/30 transition-colors ${isLowStock(item) ? "bg-red-500/10" : ""}`}
+                    className={`hover:bg-gray-50 transition-colors ${isLowStock(item) ? "bg-red-500/10" : ""}`}
                   >
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
@@ -531,7 +531,7 @@ export function ConsumablesPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               {editing ? "Редактирование" : "Новый расходный материал"}
             </h3>
             <input
@@ -671,7 +671,7 @@ export function ConsumablesPage() {
       {issueModalOpen && selectedConsumable && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               Выдача: {selectedConsumable.name}
             </h3>
             <p className="text-sm text-gray-400">
@@ -730,7 +730,7 @@ export function ConsumablesPage() {
       {supplyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               Добавить поставку
             </h3>
             <p className="text-sm text-gray-400">

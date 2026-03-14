@@ -61,53 +61,50 @@ code {
   background: var(--color-dark-400);
 }
 
-/* Glass effect cards */
+/* Light theme cards (Светлое оформление разделов) */
 @layer components {
   .glass-card {
-    @apply bg-dark-800/80 backdrop-blur-xl border border-dark-600/50 rounded-2xl;
+    @apply bg-white border border-gray-200 rounded-2xl shadow-sm;
   }
 
   .glass-card-purple {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.08) 50%, rgba(17, 17, 24, 0.9) 100%);
-    @apply backdrop-blur-xl border border-accent-purple/20 rounded-2xl;
+    @apply bg-white border border-gray-200 rounded-2xl shadow-sm;
   }
 
   .glass-input {
-    @apply bg-dark-700/50 border border-dark-500/50 rounded-xl text-gray-100 placeholder-gray-500
-           focus:border-accent-purple/50 focus:ring-1 focus:ring-accent-purple/30 focus:outline-none
+    @apply bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400
+           focus:border-brand-green/50 focus:ring-1 focus:ring-brand-green/20 focus:outline-none
            transition-all duration-200;
   }
 
   .glass-button {
-    @apply bg-gradient-to-r from-accent-purple to-accent-indigo
-           hover:from-accent-violet hover:to-accent-purple
+    @apply bg-brand-green hover:opacity-90
            text-white font-medium rounded-xl
-           transition-all duration-200 shadow-glow-sm hover:shadow-glow;
+           transition-all duration-200 shadow-sm hover:shadow-md;
   }
 
   .glass-button-secondary {
-    @apply bg-dark-600/50 border border-dark-500/50 text-gray-300
-           hover:bg-dark-500/50 hover:border-dark-400/50
+    @apply bg-gray-100 border border-gray-200 text-gray-700
+           hover:bg-gray-200 hover:border-gray-300
            rounded-xl transition-all duration-200;
   }
 
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400
-           hover:text-white hover:bg-dark-700/50 transition-all duration-200;
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600
+           hover:text-gray-900 hover:bg-gray-100 transition-all duration-200;
   }
 
   .nav-item-active {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-white
-           bg-gradient-to-r from-accent-purple/20 to-transparent
-           border-l-2 border-accent-purple;
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-gray-900
+           bg-brand-green/10 border-l-2 border-brand-green;
   }
 
   .stat-card {
-    @apply glass-card p-5 hover:shadow-card-hover transition-all duration-300;
+    @apply glass-card p-5 hover:shadow-md transition-all duration-300;
   }
 
   .stat-card-primary {
-    @apply glass-card-purple p-5 hover:shadow-glow transition-all duration-300;
+    @apply glass-card p-5 hover:shadow-md transition-all duration-300;
   }
 
   /* Светлая тема (Portal) */

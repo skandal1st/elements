@@ -105,11 +105,11 @@ export function TemplateEditorPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => navigate('/documents/templates')} className="p-2 text-gray-400 hover:text-white rounded-lg">
+        <button onClick={() => navigate('/documents/templates')} className="p-2 text-gray-400 hover:text-gray-900 rounded-lg">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h2 className="text-xl font-bold text-white">{template.name}</h2>
+          <h2 className="text-xl font-bold text-gray-900">{template.name}</h2>
           <p className="text-sm text-gray-400">Выделите текст для создания плейсхолдера</p>
         </div>
       </div>
@@ -127,7 +127,7 @@ export function TemplateEditorPage() {
               }}
             />
           ) : (
-            <div className="p-6 bg-dark-800/50 border border-dark-600/50 rounded-xl text-gray-400 text-sm min-h-[400px] flex items-center justify-center">
+            <div className="p-6 bg-gray-50 border border-gray-200 rounded-xl text-gray-400 text-sm min-h-[400px] flex items-center justify-center">
               Не удалось загрузить содержимое шаблона. Убедитесь, что библиотека python-docx установлена на сервере.
             </div>
           )}
@@ -149,8 +149,8 @@ export function TemplateEditorPage() {
           ) : (
             <div className="space-y-2">
               {template.placeholders.map((p, idx) => (
-                <div key={idx} className="p-3 bg-dark-700/50 border border-dark-600/50 rounded-xl">
-                  <div className="text-sm text-white font-medium">{p.label}</div>
+                <div key={idx} className="p-3 bg-white border border-gray-200 rounded-xl">
+                  <div className="text-sm text-gray-900 font-medium">{p.label}</div>
                   <div className="text-xs text-gray-500 mt-0.5">
                     {`{{${p.key}}}`} &middot; {p.type} {p.required && '&middot; обязательное'}
                   </div>
@@ -164,30 +164,30 @@ export function TemplateEditorPage() {
       {/* Placeholder creation modal */}
       {showPlaceholderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-lg font-semibold text-white mb-2">Создать плейсхолдер</h3>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Создать плейсхолдер</h3>
             <p className="text-sm text-gray-400 mb-4">Выделенный текст: "{selectedText.text}"</p>
             <div className="space-y-3">
-              <input type="text" value={phForm.key} onChange={(e) => setPhForm({ ...phForm, key: e.target.value })} placeholder="Ключ (латиница, например: employee_name)" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
-              <input type="text" value={phForm.label} onChange={(e) => setPhForm({ ...phForm, label: e.target.value })} placeholder="Название (например: ФИО сотрудника)" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
-              <select value={phForm.type} onChange={(e) => setPhForm({ ...phForm, type: e.target.value })} className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none">
+              <input type="text" value={phForm.key} onChange={(e) => setPhForm({ ...phForm, key: e.target.value })} placeholder="Ключ (латиница, например: employee_name)" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <input type="text" value={phForm.label} onChange={(e) => setPhForm({ ...phForm, label: e.target.value })} placeholder="Название (например: ФИО сотрудника)" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <select value={phForm.type} onChange={(e) => setPhForm({ ...phForm, type: e.target.value })} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none">
                 <option value="text">Текст</option>
                 <option value="date">Дата</option>
                 <option value="number">Число</option>
                 <option value="select">Выбор из списка</option>
               </select>
               {phForm.type === 'select' && (
-                <input type="text" value={phForm.options} onChange={(e) => setPhForm({ ...phForm, options: e.target.value })} placeholder="Варианты через запятую" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
+                <input type="text" value={phForm.options} onChange={(e) => setPhForm({ ...phForm, options: e.target.value })} placeholder="Варианты через запятую" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
               )}
-              <input type="text" value={phForm.default_value} onChange={(e) => setPhForm({ ...phForm, default_value: e.target.value })} placeholder="Значение по умолчанию" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
+              <input type="text" value={phForm.default_value} onChange={(e) => setPhForm({ ...phForm, default_value: e.target.value })} placeholder="Значение по умолчанию" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
               <label className="flex items-center gap-2 text-sm text-gray-300">
                 <input type="checkbox" checked={phForm.required} onChange={(e) => setPhForm({ ...phForm, required: e.target.checked })} className="rounded" />
                 Обязательное поле
               </label>
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setShowPlaceholderModal(false)} className="px-4 py-2 text-gray-400 hover:text-white text-sm">Отмена</button>
-              <button onClick={handleSetPlaceholder} disabled={saving} className="px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 text-sm disabled:opacity-50">
+              <button onClick={() => setShowPlaceholderModal(false)} className="px-4 py-2 text-gray-400 hover:text-gray-900 text-sm">Отмена</button>
+              <button onClick={handleSetPlaceholder} disabled={saving} className="px-4 py-2 bg-brand-green text-white rounded-xl hover:opacity-90 text-sm disabled:opacity-50">
                 {saving ? 'Сохранение...' : 'Создать'}
               </button>
             </div>

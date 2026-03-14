@@ -9,7 +9,7 @@ const links = [
 export function SettingsLayout() {
   return (
     <div className="space-y-6">
-      <nav className="flex flex-wrap gap-2 border-b border-dark-600/50 pb-4">
+      <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-4">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -18,7 +18,7 @@ export function SettingsLayout() {
               `flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors ${
                 isActive
                   ? "bg-accent-purple/20 text-accent-purple border border-accent-purple/30"
-                  : "text-gray-400 hover:text-white hover:bg-dark-700/50 border border-transparent"
+                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-100 border border-transparent"
               }`
             }
           >

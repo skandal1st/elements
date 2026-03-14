@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
   Paperclip,
-  CalendarDays,
   FileStack,
   Archive,
   Activity,
   BookOpen,
   Megaphone,
 } from "lucide-react";
+import { DashboardCalendar } from "./DashboardCalendar";
 
 interface Announcement {
   id: string;
@@ -77,11 +75,6 @@ export function Dashboard() {
   const emails = [
     { id: 1, sender: "Иванов Д.В.", subject: "Корпоративный портал", preview: "В 2024 году запланирован...", date: "19 фев", type: "unread", avatar: "ИД" },
     { id: 2, sender: "Дубинина А.А.", subject: "Стажерская программа", preview: "Анна, еще раз здравств...", date: "19 фев", type: "urgent", avatar: "ДА", hasAttachment: true },
-  ];
-
-  const events = [
-    { id: 1, date: "22.02.2024", time: "15:00", title: "Общее совещание", desc: "Утверждение архитектуры\nи функций корпоративного портала", color: "bg-green-100/50" },
-    { id: 2, date: "27.02.2024", time: "12:00", title: "Защита проекта", desc: "Утверждение цели, команды,\nсроков и бюджета", color: "bg-brand-yellow/20" },
   ];
 
   return (
@@ -276,101 +269,9 @@ export function Dashboard() {
 
         </div>
 
-        {/* Right Sidebar (Calendar & Events) */}
-        <div className="w-[320px] space-y-6">
-          <div className="portal-card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-500 font-medium">Общий календарь</h3>
-              <button className="w-6 h-6 rounded-full bg-brand-green text-white flex items-center justify-center">
-                <ChevronRight className="w-4 h-4 rotate-90" />
-              </button>
-            </div>
-            
-            <div className="flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-gray-800 font-medium">Февраль 2024</span>
-                <div className="flex gap-2">
-                  <button className="w-6 h-6 rounded-full bg-brand-green text-white flex items-center justify-center"><ChevronLeft className="w-4 h-4" /></button>
-                  <button className="w-6 h-6 rounded-full bg-brand-green text-white flex items-center justify-center"><ChevronRight className="w-4 h-4" /></button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-7 gap-y-3 gap-x-1 text-center text-sm mb-2">
-                <div className="text-gray-400">Пн</div>
-                <div className="text-gray-400">Вт</div>
-                <div className="text-gray-400">Ср</div>
-                <div className="text-gray-400">Чт</div>
-                <div className="text-gray-400">Пт</div>
-                <div className="text-gray-400">Сб</div>
-                <div className="text-gray-400">Вс</div>
-              </div>
-              
-              <div className="grid grid-cols-7 gap-y-2 gap-x-1 text-center text-sm">
-                 {/* Empty days / Prev month */}
-                 <div className="text-gray-300">29</div>
-                 <div className="text-gray-300">30</div>
-                 <div className="text-gray-300">31</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">1</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">2</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">3</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">4</div>
-                 
-                 {/* Row 2 */}
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">5</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">6</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">7</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">8</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">9</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">10</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">11</div>
-                 
-                 {/* Row 3 */}
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">12</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">13</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">14</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">15</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">16</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">17</div>
-                 <div className="text-gray-400 hover:bg-gray-50 rounded-full py-1 cursor-pointer">18</div>
-                 
-                 {/* Row 4 */}
-                 <div className="text-brand-yellow font-medium hover:bg-yellow-50 rounded-full py-1 cursor-pointer">19</div>
-                 <div className="text-gray-700 font-medium hover:bg-gray-50 rounded-full py-1 cursor-pointer">20</div>
-                 <div className="text-gray-700 font-medium hover:bg-gray-50 rounded-full py-1 cursor-pointer">21</div>
-                 <div className="bg-green-100 text-brand-green font-bold rounded-full py-1 cursor-pointer">22</div>
-                 <div className="text-gray-700 font-medium hover:bg-gray-50 rounded-full py-1 cursor-pointer">23</div>
-                 <div className="text-gray-700 font-medium hover:bg-gray-50 rounded-full py-1 cursor-pointer">24</div>
-                 <div className="text-gray-700 font-medium hover:bg-gray-50 rounded-full py-1 cursor-pointer">25</div>
-                 
-                 {/* Row 5 */}
-                 <div className="text-gray-700 font-medium hover:bg-gray-50 rounded-full py-1 cursor-pointer">26</div>
-                 <div className="bg-brand-yellow text-white font-bold rounded-full py-1 cursor-pointer relative"><span className="absolute top-0 right-1 w-1.5 h-1.5 bg-red-500 rounded-full"></span>27</div>
-                 <div className="text-gray-700 font-medium hover:bg-gray-50 rounded-full py-1 cursor-pointer">28</div>
-                 <div className="text-gray-700 font-medium hover:bg-gray-50 rounded-full py-1 cursor-pointer">29</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {events.map(event => (
-              <div key={event.id} className="portal-card p-5 relative overflow-hidden group hover:border-gray-200 transition-colors cursor-pointer">
-                 <div className="flex items-center justify-between mb-3">
-                   <div className={`px-3 py-1 rounded-full text-xs font-medium text-gray-800 border border-gray-100 ${event.color}`}>{event.date}</div>
-                   <div className="px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-500 bg-white">
-                      {event.time}
-                   </div>
-                 </div>
-                 <h4 className="font-semibold text-gray-900 mb-2">{event.title}</h4>
-                 <p className="text-sm text-gray-500 whitespace-pre-line leading-relaxed">{event.desc}</p>
-                 
-                 {/* Decorative element */}
-                 <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 opacity-0 group-hover:opacity-10 transition-opacity">
-                    <CalendarDays className="w-24 h-24" />
-                 </div>
-              </div>
-            ))}
-          </div>
-
+        {/* Right Sidebar (Calendar + задачи на день) */}
+        <div className="w-[360px] flex-shrink-0">
+          <DashboardCalendar />
         </div>
       </div>
     </div>

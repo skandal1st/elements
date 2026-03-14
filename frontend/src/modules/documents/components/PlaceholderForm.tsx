@@ -50,7 +50,7 @@ export function PlaceholderForm({ placeholders, onSubmit, loading }: Props) {
             <select
               value={values[p.key] || ''}
               onChange={(e) => setValues({ ...values, [p.key]: e.target.value })}
-              className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none focus:border-accent-purple/50"
+              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-brand-green/50"
             >
               <option value="">Выберите...</option>
               {p.options.map((o) => (
@@ -62,21 +62,21 @@ export function PlaceholderForm({ placeholders, onSubmit, loading }: Props) {
               type="date"
               value={values[p.key] || ''}
               onChange={(e) => setValues({ ...values, [p.key]: e.target.value })}
-              className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none focus:border-accent-purple/50"
+              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-brand-green/50"
             />
           ) : p.type === 'number' ? (
             <input
               type="number"
               value={values[p.key] || ''}
               onChange={(e) => setValues({ ...values, [p.key]: e.target.value })}
-              className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none focus:border-accent-purple/50"
+              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-brand-green/50"
             />
           ) : (
             <input
               type="text"
               value={values[p.key] || ''}
               onChange={(e) => setValues({ ...values, [p.key]: e.target.value })}
-              className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
               placeholder={p.label}
             />
           )}
@@ -86,7 +86,7 @@ export function PlaceholderForm({ placeholders, onSubmit, loading }: Props) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full px-4 py-2.5 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 transition-colors text-sm font-medium disabled:opacity-50"
+        className="w-full px-4 py-2.5 bg-brand-green text-white rounded-xl hover:opacity-90 transition-colors text-sm font-medium disabled:opacity-50"
       >
         {loading ? 'Генерация...' : 'Создать документ'}
       </button>

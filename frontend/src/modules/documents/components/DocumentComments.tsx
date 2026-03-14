@@ -51,7 +51,7 @@ export function DocumentComments({ documentId }: Props) {
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Написать комментарий..."
-          className="flex-1 px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+          className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
         />
         <button
           type="submit"
@@ -70,7 +70,7 @@ export function DocumentComments({ documentId }: Props) {
       ) : (
         <div className="space-y-3">
           {comments.map((c) => (
-            <div key={c.id} className="p-3 bg-dark-700/50 rounded-xl border border-dark-600/50">
+            <div key={c.id} className="p-3 bg-white rounded-xl border border-gray-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-white">{c.user_name || 'Пользователь'}</span>
                 <span className="text-xs text-gray-500">{formatDate(c.created_at)}</span>

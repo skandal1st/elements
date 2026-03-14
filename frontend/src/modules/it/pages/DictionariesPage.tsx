@@ -179,7 +179,7 @@ export function DictionariesPage() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Справочники</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Справочники</h2>
             <p className="text-gray-400">Управление справочниками системы</p>
           </div>
           <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
@@ -222,7 +222,7 @@ export function DictionariesPage() {
         <div className="space-y-6">
           {Object.entries(grouped).map(([type, items]) => (
             <div key={type} className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 {dictionaryTypeLabel[type] || type}
               </h3>
               <div className="space-y-2">
@@ -231,8 +231,8 @@ export function DictionariesPage() {
                     key={item.id}
                     className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
                       item.is_active
-                        ? "bg-dark-700/30 border-dark-600/50"
-                        : "bg-dark-800/50 border-dark-700/50 opacity-60"
+                        ? "bg-gray-50 border-gray-200"
+                        : "bg-gray-50 border-dark-700/50 opacity-60"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -265,7 +265,7 @@ export function DictionariesPage() {
                       )}
                       <button
                         onClick={() => openEdit(item)}
-                        className="p-2 text-gray-400 hover:text-accent-purple hover:bg-dark-700/50 rounded-lg transition-all"
+                        className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -290,7 +290,7 @@ export function DictionariesPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               {editing ? "Редактирование элемента" : "Новый элемент справочника"}
             </h3>
             {editing && editing.is_system && (

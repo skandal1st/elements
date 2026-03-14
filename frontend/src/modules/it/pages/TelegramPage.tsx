@@ -153,7 +153,7 @@ export function TelegramPage() {
         <div className="flex items-center gap-3">
           <MessageCircle className="w-7 h-7 text-accent-purple" />
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Telegram</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Telegram</h2>
             <p className="text-gray-400">
               Привяжите Telegram для получения уведомлений о заявках
             </p>
@@ -181,7 +181,7 @@ export function TelegramPage() {
               <MessageCircle className="w-6 h-6 text-gray-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Telegram интеграция отключена
               </h3>
               <p className="text-gray-400 text-sm">
@@ -203,7 +203,7 @@ export function TelegramPage() {
                 <Link2 className="w-6 h-6 text-accent-purple" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Привязка Telegram аккаунта
                 </h3>
                 <p className="text-gray-400 text-sm">
@@ -228,7 +228,7 @@ export function TelegramPage() {
               </button>
             ) : (
               <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-dark-700/50 border border-dark-600/50">
+                <div className="p-4 rounded-xl bg-white border border-gray-200">
                   <p className="text-sm text-gray-400 mb-3">
                     Ваш код привязки:
                   </p>
@@ -238,7 +238,7 @@ export function TelegramPage() {
                     </span>
                     <button
                       onClick={copyCode}
-                      className="p-2 text-gray-400 hover:text-white hover:bg-dark-600/50 rounded-lg transition-all"
+                      className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                       title="Скопировать код"
                     >
                       {copied ? (
@@ -268,7 +268,7 @@ export function TelegramPage() {
                     href={`https://t.me/${linkCode.bot_username}?start=${linkCode.code}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-accent-purple hover:text-white bg-accent-purple/10 hover:bg-accent-purple/20 rounded-lg transition-all"
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-accent-purple hover:text-gray-900 bg-accent-purple/10 hover:bg-accent-purple/20 rounded-lg transition-all"
                   >
                     <ExternalLink className="w-4 h-4" />
                     Открыть @{linkCode.bot_username}
@@ -298,7 +298,7 @@ export function TelegramPage() {
                 <MessageCircle className="w-6 h-6 text-green-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
                   Telegram привязан
                 </h3>
                 <p className="text-gray-400 text-sm">

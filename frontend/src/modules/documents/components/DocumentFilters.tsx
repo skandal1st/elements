@@ -30,13 +30,13 @@ export function DocumentFilters({ search, onSearchChange, statusFilter, onStatus
           placeholder="Поиск документов..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
         />
       </div>
       <select
         value={statusFilter}
         onChange={(e) => onStatusChange(e.target.value)}
-        className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none focus:border-accent-purple/50"
+        className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none focus:border-brand-green/50"
       >
         {statusOptions.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -45,7 +45,7 @@ export function DocumentFilters({ search, onSearchChange, statusFilter, onStatus
       <select
         value={typeFilter}
         onChange={(e) => onTypeChange(e.target.value)}
-        className="px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none focus:border-accent-purple/50"
+        className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none focus:border-brand-green/50"
       >
         <option value="">Все типы</option>
         {types.map((t) => (

@@ -47,7 +47,7 @@ export function DocumentAttachments({ documentId, attachments, canUpload, onUpda
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white border border-dark-600/50 hover:border-accent-purple/30 rounded-xl transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-gray-900 border border-gray-200 hover:border-brand-green/30 rounded-xl transition-colors disabled:opacity-50"
           >
             <Upload className="w-4 h-4" />
             {uploading ? 'Загрузка...' : 'Добавить вложение'}
@@ -60,10 +60,10 @@ export function DocumentAttachments({ documentId, attachments, canUpload, onUpda
       ) : (
         <div className="space-y-2">
           {attachments.map((a) => (
-            <div key={a.id} className="flex items-center gap-3 p-3 bg-dark-700/50 rounded-xl border border-dark-600/50">
+            <div key={a.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200">
               <Paperclip className="w-4 h-4 text-gray-400" />
               <div className="flex-1 min-w-0">
-                <div className="text-sm text-white truncate">{a.file_name}</div>
+                <div className="text-sm text-gray-900 truncate">{a.file_name}</div>
                 <div className="text-xs text-gray-500">{formatFileSize(a.file_size)}</div>
               </div>
             </div>

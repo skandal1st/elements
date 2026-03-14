@@ -140,7 +140,7 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
   const parentOptions = categories.filter((c) => c.id !== editingId)
 
   const inputCls =
-    'px-2.5 py-1.5 bg-dark-700/50 border border-dark-600/50 rounded-lg text-sm text-white focus:outline-none focus:border-accent-purple/50 transition-all'
+    'px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-white focus:outline-none focus:border-brand-green/50 transition-all'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -150,7 +150,7 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
           <h3 className="text-xl font-semibold text-white">Управление категориями</h3>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+            className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
           >
             <X className="w-5 h-5" />
           </button>
@@ -170,7 +170,7 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
-                <tr className="border-b border-dark-600/50">
+                <tr className="border-b border-gray-200">
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Цвет</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Название</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Описание</th>
@@ -180,7 +180,7 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
                   <th className="px-3 py-2 w-24" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-dark-700/50">
+              <tbody className="divide-y divide-gray-200">
                 {categories.map((cat) =>
                   editingId === cat.id ? (
                     <tr key={cat.id} className="bg-dark-700/20">
@@ -257,10 +257,10 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
                       </td>
                     </tr>
                   ) : (
-                    <tr key={cat.id} className="hover:bg-dark-700/20 transition-colors">
+                    <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-3 py-2">
                         <div
-                          className="w-5 h-5 rounded-full border border-dark-600/50"
+                          className="w-5 h-5 rounded-full border border-gray-200"
                           style={{ backgroundColor: cat.color || '#8b5cf6' }}
                         />
                       </td>
@@ -279,7 +279,7 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
                         <div className="flex gap-1">
                           <button
                             onClick={() => startEdit(cat)}
-                            className="p-1.5 text-gray-400 hover:text-white hover:bg-dark-600/50 rounded-lg transition-all"
+                            className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                             title="Редактировать"
                           >
                             <Pencil className="w-4 h-4" />
@@ -391,7 +391,7 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
         )}
 
         {/* Footer */}
-        <div className="flex justify-between items-center pt-2 border-t border-dark-600/50">
+        <div className="flex justify-between items-center pt-2 border-t border-gray-200">
           {!creating ? (
             <button
               onClick={() => setCreating(true)}
@@ -404,7 +404,7 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
           )}
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-900 transition-colors"
           >
             Закрыть
           </button>

@@ -145,7 +145,7 @@ function SearchableSelect<T>({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-left text-gray-300 hover:border-dark-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-left text-gray-300 hover:border-dark-500 focus:outline-none focus:border-brand-green/50 transition-all"
       >
         <span className={value ? "text-white" : "text-gray-500"}>
           {value ? selectedLabel || "Выбрано" : placeholder}
@@ -161,7 +161,7 @@ function SearchableSelect<T>({
               placeholder="Поиск..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-2 bg-dark-700/50 border border-dark-600/50 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
             />
           </div>
           <div className="max-h-48 overflow-y-auto">
@@ -465,7 +465,7 @@ export function LicensesPage() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Лицензии ПО</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Лицензии ПО</h2>
             <p className="text-gray-400">Учет лицензий программного обеспечения</p>
           </div>
           <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
@@ -489,7 +489,7 @@ export function LicensesPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -518,7 +518,7 @@ export function LicensesPage() {
         <div className="glass-card overflow-hidden">
           <table className="min-w-full">
             <thead>
-              <tr className="border-b border-dark-600/50">
+              <tr className="border-b border-gray-200">
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ПО</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Производитель</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Использовано</th>
@@ -527,11 +527,11 @@ export function LicensesPage() {
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-700/50">
+            <tbody className="divide-y divide-gray-200">
               {items.map((lic) => (
                 <tr
                   key={lic.id}
-                  className={`hover:bg-dark-700/30 transition-colors ${
+                  className={`hover:bg-gray-50 transition-colors ${
                     isExpired(lic) ? "bg-red-500/10" : isLowAvailable(lic) ? "bg-amber-500/10" : ""
                   }`}
                 >
@@ -585,7 +585,7 @@ export function LicensesPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               {editing ? "Редактирование лицензии" : "Новая лицензия ПО"}
             </h3>
             <input
@@ -726,7 +726,7 @@ export function LicensesPage() {
           <div className="glass-card w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-lg font-semibold text-gray-900">
                   {selectedLicense.software_name}
                 </h3>
                 <p className="text-sm text-gray-400">
@@ -804,7 +804,7 @@ export function LicensesPage() {
             </div>
 
             {/* Привязки */}
-            <div className="border-t border-dark-600/50 pt-4">
+            <div className="border-t border-gray-200 pt-4">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="text-sm font-semibold text-white">Привязки лицензий</h4>
                 <button
@@ -822,7 +822,7 @@ export function LicensesPage() {
                   {selectedLicense.assignments.map((assignment) => (
                     <div
                       key={assignment.id}
-                      className="bg-dark-700/30 rounded-xl p-3 flex justify-between items-center"
+                      className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"
                     >
                       <div className="text-sm">
                         {(assignment.employee_name || assignment.user_name) && (
@@ -882,7 +882,7 @@ export function LicensesPage() {
       {assignModalOpen && selectedLicense && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               Назначить лицензию: {selectedLicense.software_name}
             </h3>
             <p className="text-sm text-gray-400">
@@ -901,7 +901,7 @@ export function LicensesPage() {
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
                     assignType === "equipment"
                       ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
-                      : "bg-dark-700/50 border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500"
+                      : "bg-white border-gray-200 text-gray-400 hover:text-gray-900 hover:border-dark-500"
                   }`}
                 >
                   <Monitor className="w-4 h-4" />
@@ -913,7 +913,7 @@ export function LicensesPage() {
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
                     assignType === "employee"
                       ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
-                      : "bg-dark-700/50 border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500"
+                      : "bg-white border-gray-200 text-gray-400 hover:text-gray-900 hover:border-dark-500"
                   }`}
                 >
                   <User className="w-4 h-4" />
@@ -925,7 +925,7 @@ export function LicensesPage() {
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-xl border transition-all ${
                     assignType === "saas"
                       ? "bg-accent-purple/20 border-accent-purple/50 text-accent-purple"
-                      : "bg-dark-700/50 border-dark-600/50 text-gray-400 hover:text-white hover:border-dark-500"
+                      : "bg-white border-gray-200 text-gray-400 hover:text-gray-900 hover:border-dark-500"
                   }`}
                 >
                   <Cloud className="w-4 h-4" />

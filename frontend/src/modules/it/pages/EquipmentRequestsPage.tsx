@@ -328,7 +328,7 @@ export function EquipmentRequestsPage() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Заявки на оборудование</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Заявки на оборудование</h2>
             <p className="text-gray-400">Заявки сотрудников на новое оборудование или замену</p>
           </div>
           <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
@@ -352,7 +352,7 @@ export function EquipmentRequestsPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            className="w-full pl-10 pr-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -372,7 +372,7 @@ export function EquipmentRequestsPage() {
         <div className="glass-card overflow-hidden">
           <table className="min-w-full">
             <thead>
-              <tr className="border-b border-dark-600/50">
+              <tr className="border-b border-gray-200">
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категория</th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
@@ -382,9 +382,9 @@ export function EquipmentRequestsPage() {
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-700/50">
+            <tbody className="divide-y divide-gray-200">
               {items.map((req) => (
-                <tr key={req.id} className="hover:bg-dark-700/30 transition-colors">
+                <tr key={req.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4">
                     <span className="text-white font-medium">{req.title}</span>
                   </td>
@@ -435,7 +435,7 @@ export function EquipmentRequestsPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               {editing
                 ? "Редактирование заявки"
                 : "Новая заявка на оборудование"}
@@ -586,7 +586,7 @@ export function EquipmentRequestsPage() {
           <div className="glass-card w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-lg font-semibold text-gray-900">
                   {selectedRequest.title}
                 </h3>
                 <p className="text-sm text-gray-500">
@@ -697,7 +697,7 @@ export function EquipmentRequestsPage() {
       {reviewModalOpen && selectedRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               Рассмотрение заявки
             </h3>
             <p className="text-sm text-gray-700">{selectedRequest.title}</p>

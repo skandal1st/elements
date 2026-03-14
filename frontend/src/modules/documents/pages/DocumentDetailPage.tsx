@@ -85,12 +85,12 @@ export function DocumentDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <button onClick={() => navigate('/documents/list')} className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors mt-0.5">
+        <button onClick={() => navigate('/documents/list')} className="p-2 text-gray-400 hover:text-gray-900 rounded-lg transition-colors mt-0.5">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-white">{doc.title}</h2>
+            <h2 className="text-xl font-bold text-gray-900">{doc.title}</h2>
             <DocumentStatusBadge status={doc.status} />
           </div>
           <div className="text-sm text-gray-400 mt-1">
@@ -111,7 +111,7 @@ export function DocumentDetailPage() {
       />
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-dark-600/50 pb-3">
+      <div className="flex gap-2 border-b border-gray-200 pb-3">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -119,7 +119,7 @@ export function DocumentDetailPage() {
             className={`px-4 py-2 text-sm rounded-xl transition-colors ${
               activeTab === t.key
                 ? 'bg-accent-purple/20 text-accent-purple border border-accent-purple/30'
-                : 'text-gray-400 hover:text-white border border-transparent'
+                : 'text-gray-400 hover:text-gray-900 border border-transparent'
             }`}
           >
             {t.label}
@@ -136,7 +136,7 @@ export function DocumentDetailPage() {
               <button
                 onClick={() => versionFileRef.current?.click()}
                 disabled={uploadingVersion}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white border border-dark-600/50 hover:border-accent-purple/30 rounded-xl transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-gray-900 border border-gray-200 hover:border-brand-green/30 rounded-xl transition-colors disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
                 {uploadingVersion ? 'Загрузка...' : 'Загрузить новую версию'}

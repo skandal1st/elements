@@ -41,7 +41,7 @@ export function DocumentVersionsList({ documentId, versions }: Props) {
   return (
     <div className="space-y-2">
       {versions.map((v) => (
-        <div key={v.id} className="flex items-center justify-between p-3 bg-dark-700/50 rounded-xl border border-dark-600/50">
+        <div key={v.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200">
           <div className="flex items-center gap-3">
             <FileText className="w-5 h-5 text-gray-400" />
             <div>
@@ -61,7 +61,7 @@ export function DocumentVersionsList({ documentId, versions }: Props) {
           </div>
           <button
             onClick={() => handleDownload(v.version)}
-            className="p-2 text-gray-400 hover:text-white hover:bg-dark-600 rounded-lg transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-900 hover:bg-dark-600 rounded-lg transition-colors"
             title="Скачать"
           >
             <Download className="w-4 h-4" />

@@ -199,7 +199,7 @@ export function HRPanel() {
       <div className="glass-card-purple p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">HR-панель</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">HR-панель</h2>
             <p className="text-gray-400">Создание заявок на прием или увольнение</p>
           </div>
           <button
@@ -223,7 +223,7 @@ export function HRPanel() {
       )}
 
       <div className="glass-card p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-white">Увольнение сотрудника</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Увольнение сотрудника</h3>
         <div className="flex flex-wrap gap-3 items-center">
           <input
             className="glass-input px-4 py-2.5 text-sm"
@@ -257,7 +257,7 @@ export function HRPanel() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <h3 className="px-6 py-4 text-lg font-semibold text-white border-b border-dark-600/50">
+        <h3 className="px-6 py-4 text-lg font-semibold text-gray-900 border-b border-gray-200">
           Заявки
         </h3>
         {loading ? (
@@ -267,7 +267,7 @@ export function HRPanel() {
         ) : (
           <table className="min-w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-dark-600/50">
+              <tr className="border-b border-gray-200">
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Сотрудник</th>
@@ -275,9 +275,9 @@ export function HRPanel() {
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-700/50">
+            <tbody className="divide-y divide-gray-200">
               {requests.map((r) => (
-                <tr key={r.id} className="hover:bg-dark-700/30 transition-colors">
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4 text-gray-400">{r.id}</td>
                   <td className="px-4 py-4 text-white">{r.type === 'hire' ? 'Прием' : 'Увольнение'}</td>
                   <td className="px-4 py-4 text-gray-300">{empName(r.employee_id)}</td>
@@ -294,7 +294,7 @@ export function HRPanel() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-white">Новый сотрудник (прием)</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Новый сотрудник (прием)</h3>
               <button onClick={() => setIsModalOpen(false)} className="glass-button-secondary px-3 py-2 text-sm font-medium">
                 Закрыть
               </button>

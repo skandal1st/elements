@@ -592,7 +592,7 @@ export function MailPage() {
         <div className="absolute bottom-0 right-8 w-[500px] h-[600px] bg-white rounded-t-xl shadow-2xl border border-gray-200 flex flex-col z-50">
           <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white rounded-t-xl">
             <h3 className="text-sm font-medium">Новое сообщение</h3>
-            <button onClick={() => setIsComposing(false)} className="text-gray-400 hover:text-white transition-colors">
+            <button onClick={() => setIsComposing(false)} className="text-gray-400 hover:text-gray-900 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>

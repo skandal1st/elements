@@ -30,7 +30,7 @@ function CategoryNode({
         className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${
           isSelected
             ? 'bg-accent-purple/20 text-white'
-            : 'text-gray-400 hover:bg-dark-700/50 hover:text-white'
+            : 'text-gray-400 hover:bg-gray-100 hover:text-gray-900'
         }`}
         style={{ paddingLeft: `${12 + depth * 16}px` }}
         onClick={() => onSelect(isSelected ? null : cat.id)}
@@ -83,7 +83,7 @@ export function KnowledgeCategorySidebar({ categories, selectedId, onSelect, onM
           className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${
             selectedId === null
               ? 'bg-accent-purple/20 text-white'
-              : 'text-gray-400 hover:bg-dark-700/50 hover:text-white'
+              : 'text-gray-400 hover:bg-gray-100 hover:text-gray-900'
           }`}
           onClick={() => onSelect(null)}
         >
@@ -93,7 +93,7 @@ export function KnowledgeCategorySidebar({ categories, selectedId, onSelect, onM
         {onManageClick && (
           <button
             onClick={onManageClick}
-            className="p-1.5 text-gray-500 hover:text-white hover:bg-dark-700/50 rounded-lg transition-all"
+            className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
             title="Управление категориями"
           >
             <Settings className="w-4 h-4" />

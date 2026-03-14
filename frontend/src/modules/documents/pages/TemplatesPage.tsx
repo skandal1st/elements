@@ -86,8 +86,8 @@ export function TemplatesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Шаблоны документов</h2>
-        <button onClick={() => setShowUploadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 transition-colors text-sm">
+        <h2 className="text-xl font-bold text-gray-900">Шаблоны документов</h2>
+        <button onClick={() => setShowUploadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl hover:opacity-90 transition-colors text-sm">
           <Plus className="w-4 h-4" />
           Загрузить шаблон
         </button>
@@ -95,12 +95,12 @@ export function TemplatesPage() {
 
       <div className="grid gap-3">
         {templates.map((t) => (
-          <div key={t.id} className="flex items-center justify-between p-4 bg-dark-800/50 border border-dark-600/50 rounded-xl">
+          <div key={t.id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-gray-400" />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-white font-medium">{t.name}</span>
+                  <span className="text-gray-900 font-medium">{t.name}</span>
                   <span className="text-xs text-gray-500">v{t.version}</span>
                   {!t.is_active && <span className="text-xs text-red-400">Неактивен</span>}
                 </div>
@@ -113,14 +113,14 @@ export function TemplatesPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate(`/documents/template-editor/${t.id}`)}
-                className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-900 rounded-lg transition-colors"
                 title="Настроить плейсхолдеры"
               >
                 <Settings className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleDownload(t.id)}
-                className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-900 rounded-lg transition-colors"
                 title="Скачать"
               >
                 <Download className="w-4 h-4" />
@@ -141,25 +141,25 @@ export function TemplatesPage() {
       {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-lg font-semibold text-white mb-4">Загрузить шаблон .docx</h3>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Загрузить шаблон .docx</h3>
             <div className="space-y-3">
-              <input type="text" value={uploadName} onChange={(e) => setUploadName(e.target.value)} placeholder="Название шаблона *" className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50" />
-              <textarea value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple/50 resize-none" />
-              <select value={uploadTypeId} onChange={(e) => setUploadTypeId(e.target.value)} className="w-full px-4 py-2.5 bg-dark-700/50 border border-dark-600/50 rounded-xl text-sm text-white focus:outline-none">
+              <input type="text" value={uploadName} onChange={(e) => setUploadName(e.target.value)} placeholder="Название шаблона *" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <textarea value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
+              <select value={uploadTypeId} onChange={(e) => setUploadTypeId(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none">
                 <option value="">Тип документа (необязательно)</option>
                 {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
               <div>
                 <input ref={fileRef} type="file" accept=".docx" className="hidden" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
-                <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-3 w-full justify-center text-sm text-gray-400 border border-dashed border-dark-600 rounded-xl hover:text-white transition-colors">
+                <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-3 w-full justify-center text-sm text-gray-400 border border-dashed border-dark-600 rounded-xl hover:text-gray-900 transition-colors">
                   {uploadFile ? uploadFile.name : 'Выберите .docx файл'}
                 </button>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setShowUploadModal(false)} className="px-4 py-2 text-gray-400 hover:text-white text-sm">Отмена</button>
-              <button onClick={handleUpload} disabled={uploading} className="px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 text-sm disabled:opacity-50">
+              <button onClick={() => setShowUploadModal(false)} className="px-4 py-2 text-gray-400 hover:text-gray-900 text-sm">Отмена</button>
+              <button onClick={handleUpload} disabled={uploading} className="px-4 py-2 bg-brand-green text-white rounded-xl hover:opacity-90 text-sm disabled:opacity-50">
                 {uploading ? 'Загрузка...' : 'Загрузить'}
               </button>
             </div>
