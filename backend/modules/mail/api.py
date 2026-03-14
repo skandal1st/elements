@@ -103,10 +103,11 @@ async def get_unread_count(
 
 @router.get("/folders", response_model=List[MailFolderResponse])
 async def get_folders(
+    include_stats: bool = True,
     db: Session = Depends(get_db),
     payload: dict = Depends(get_token_payload),
 ):
-    """Получить список папок почты (Входящие, Отправленные и т.д.) из IMAP."""
+    """Получить список папок почты с опциональными счётчиками total и unread."""
     user_id = _user_id_from_payload(payload)
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
@@ -117,6 +118,7 @@ async def get_folders(
         login=account.login,
         password=account.password,
         ssl=account.imap_ssl,
+        include_stats=include_stats,
     )
     if not folders:
         return [MailFolderResponse(name="INBOX", display_name="Входящие")]

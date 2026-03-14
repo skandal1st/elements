@@ -290,7 +290,7 @@ export function UsersPage() {
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                       {user.is_superuser && <Shield className="w-4 h-4 text-amber-400" aria-label="Суперпользователь" />}
-                      <span className="font-medium text-white">{user.full_name}</span>
+                      <span className="font-medium text-gray-900">{user.full_name}</span>
                     </div>
                   </td>
                   <td className="px-4 py-4">
@@ -399,7 +399,7 @@ export function UsersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
             <h3 className="text-lg font-semibold text-gray-900">Сброс пароля</h3>
-            <p className="text-sm text-gray-400">Сброс пароля для: <strong className="text-white">{resetPasswordUser.full_name}</strong></p>
+            <p className="text-sm text-gray-400">Сброс пароля для: <strong className="text-gray-900">{resetPasswordUser.full_name}</strong></p>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Новый пароль <span className="text-red-400">*</span></label>
               <input className="glass-input w-full px-4 py-3 text-sm" type="password" placeholder="Минимум 6 символов" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />

@@ -104,7 +104,7 @@ export function DocumentCreatePage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h2 className="text-xl font-bold text-white">Создание документа</h2>
+      <h2 className="text-xl font-bold text-gray-900">Создание документа</h2>
 
       {/* Mode toggle */}
       <div className="flex gap-2">
@@ -134,14 +134,14 @@ export function DocumentCreatePage() {
 
       {mode === 'upload' ? (
         <div className="space-y-4 p-6 bg-gray-50 border border-gray-200 rounded-2xl">
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название документа *" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название документа *" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
           <div className="grid grid-cols-2 gap-3">
-            <select value={typeId} onChange={(e) => setTypeId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
+            <select value={typeId} onChange={(e) => setTypeId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none">
               <option value="">Тип документа</option>
               {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <select value={routeId} onChange={(e) => setRouteId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
+            <select value={routeId} onChange={(e) => setRouteId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none">
               <option value="">Маршрут согласования</option>
               {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
@@ -153,27 +153,27 @@ export function DocumentCreatePage() {
               {file ? file.name : 'Выберите файл'}
             </button>
           </div>
-          <button onClick={handleUpload} disabled={loading || !file || !title.trim()} className="w-full px-4 py-2.5 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 text-sm font-medium disabled:opacity-50">
+          <button onClick={handleUpload} disabled={loading || !file || !title.trim()} className="w-full px-4 py-2.5 bg-brand-green text-white rounded-xl hover:opacity-90 text-sm font-medium disabled:opacity-50">
             {loading ? 'Загрузка...' : 'Создать документ'}
           </button>
         </div>
       ) : (
         <div className="space-y-4 p-6 bg-gray-50 border border-gray-200 rounded-2xl">
-          <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
+          <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none">
             <option value="">Выберите шаблон</option>
             {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
 
           {selectedTemplate && (
             <>
-              <input type="text" value={templateTitle} onChange={(e) => setTemplateTitle(e.target.value)} placeholder="Название документа *" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
-              <textarea value={templateDescription} onChange={(e) => setTemplateDescription(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
+              <input type="text" value={templateTitle} onChange={(e) => setTemplateTitle(e.target.value)} placeholder="Название документа *" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <textarea value={templateDescription} onChange={(e) => setTemplateDescription(e.target.value)} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
               <div className="grid grid-cols-2 gap-3">
-                <select value={templateTypeId} onChange={(e) => setTemplateTypeId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
+                <select value={templateTypeId} onChange={(e) => setTemplateTypeId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none">
                   <option value="">Тип документа</option>
                   {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                <select value={templateRouteId} onChange={(e) => setTemplateRouteId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none">
+                <select value={templateRouteId} onChange={(e) => setTemplateRouteId(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none">
                   <option value="">Маршрут согласования</option>
                   {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
@@ -189,7 +189,7 @@ export function DocumentCreatePage() {
                   />
                 </div>
               ) : (
-                <button onClick={() => handleFromTemplate({})} disabled={loading || !templateTitle.trim()} className="w-full px-4 py-2.5 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 text-sm font-medium disabled:opacity-50">
+                <button onClick={() => handleFromTemplate({})} disabled={loading || !templateTitle.trim()} className="w-full px-4 py-2.5 bg-brand-green text-white rounded-xl hover:opacity-90 text-sm font-medium disabled:opacity-50">
                   {loading ? 'Генерация...' : 'Создать документ'}
                 </button>
               )}

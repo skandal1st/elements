@@ -115,7 +115,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                                 type="text"
                                 value={step.name}
                                 onChange={(e) => updateStep(index, { name: e.target.value })}
-                                className="flex-1 px-3 py-1.5 bg-gray-50 border border-dark-600/30 rounded-lg text-sm text-white focus:outline-none focus:border-brand-green/50"
+                                className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-brand-green/50"
                                 placeholder="Название шага"
                               />
                               <button
@@ -156,7 +156,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                                   type="number"
                                   value={step.deadline_hours || 48}
                                   onChange={(e) => updateStep(index, { deadline_hours: parseInt(e.target.value) || 48 })}
-                                  className="w-16 px-2 py-1 bg-gray-50 border border-dark-600/30 rounded-lg text-xs text-white text-center focus:outline-none"
+                                  className="w-16 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 text-center focus:outline-none"
                                   min={1}
                                 />
                               </div>
@@ -166,7 +166,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                             <div className="space-y-2">
                               <div className="flex flex-wrap gap-2">
                                 {step.approvers.map((a) => (
-                                  <span key={a.user_id} className="flex items-center gap-1.5 px-2.5 py-1 bg-dark-600/50 rounded-lg text-xs text-white">
+                                  <span key={a.user_id} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-200 rounded-lg text-xs text-gray-900">
                                     {a.name}
                                     <button
                                       onClick={() => removeApprover(index, a.user_id)}
@@ -183,7 +183,7 @@ export function ApprovalRouteVisualEditor({ steps, onChange }: Props) {
                                   value={userSearch[index] || ''}
                                   onChange={(e) => handleUserSearch(index, e.target.value)}
                                   placeholder="Добавить согласующего..."
-                                  className="w-full px-3 py-1.5 bg-gray-50 border border-dark-600/30 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
+                                  className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
                                 />
                                 {(userResults[index]?.length ?? 0) > 0 && (
                                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-10 max-h-40 overflow-y-auto">
@@ -242,7 +242,7 @@ function ApprovalRoutePreview({ steps }: { steps: RouteStep[] }) {
               <div className={`p-2.5 rounded-lg border text-center ${
                 step.type === 'parallel' ? 'border-blue-500/30 bg-blue-500/5' : 'border-gray-200 bg-gray-50'
               }`}>
-                <div className="text-xs text-white font-medium truncate">{step.name || `Шаг ${step.order}`}</div>
+                <div className="text-xs text-gray-900 font-medium truncate">{step.name || `Шаг ${step.order}`}</div>
                 <div className="text-[10px] text-gray-500 mt-0.5">
                   {step.type === 'parallel' ? 'Параллельный' : 'Последовательный'}
                   {step.approvers.length > 0 && ` (${step.approvers.length})`}

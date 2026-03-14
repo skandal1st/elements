@@ -140,14 +140,14 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
   const parentOptions = categories.filter((c) => c.id !== editingId)
 
   const inputCls =
-    'px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-white focus:outline-none focus:border-brand-green/50 transition-all'
+    'px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="glass-card w-full max-w-4xl p-6 space-y-4 mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-white">Управление категориями</h3>
+          <h3 className="text-xl font-semibold text-gray-900">Управление категориями</h3>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
@@ -264,7 +264,7 @@ export function KnowledgeCategoryManager({ onClose, onCategoriesChanged }: Props
                           style={{ backgroundColor: cat.color || '#8b5cf6' }}
                         />
                       </td>
-                      <td className="px-3 py-2 text-white text-sm font-medium">{cat.name}</td>
+                      <td className="px-3 py-2 text-gray-900 text-sm font-medium">{cat.name}</td>
                       <td className="px-3 py-2 text-gray-400 text-sm truncate max-w-[200px]">
                         {cat.description || '—'}
                       </td>

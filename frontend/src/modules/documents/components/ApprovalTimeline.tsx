@@ -27,7 +27,7 @@ export function ApprovalTimeline({ instances }: Props) {
       {instances.map((inst) => (
         <div key={inst.id} className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-medium text-gray-900">
               Попытка #{inst.attempt}
             </span>
             <span className={`text-xs px-2 py-0.5 rounded-lg ${
@@ -52,7 +52,7 @@ export function ApprovalTimeline({ instances }: Props) {
                   </div>
                   <div className="ml-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-white">{step.approver_name || 'Согласующий'}</span>
+                      <span className="text-sm text-gray-900">{step.approver_name || 'Согласующий'}</span>
                       <span className="text-xs text-gray-500">Шаг {step.step_order}</span>
                       {step.carry_over && (
                         <span className="text-xs text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">перенос</span>

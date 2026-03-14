@@ -49,6 +49,8 @@ class MailAccountResponse(BaseModel):
 class MailFolderResponse(BaseModel):
     name: str  # IMAP folder name for SELECT (e.g. INBOX, Sent)
     display_name: str  # Human-readable name for UI
+    total: Optional[int] = None  # всего писем в папке
+    unread: Optional[int] = None  # непрочитанных
 
 
 class MailMessageResponse(BaseModel):

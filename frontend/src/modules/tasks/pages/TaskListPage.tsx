@@ -418,7 +418,7 @@ export function TaskListPage() {
                             return (
                               <span
                                 key={labelId}
-                                className="px-1.5 py-0.5 rounded text-white"
+                                className="px-1.5 py-0.5 rounded text-gray-900"
                                 style={{ backgroundColor: label.color }}
                               >
                                 {label.name}

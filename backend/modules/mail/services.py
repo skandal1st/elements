@@ -63,8 +63,8 @@ class ImapClient:
             except Exception:
                 pass
 
-    def list_folders(self) -> List[Dict]:
-        """Return list of IMAP folders. LIST format: (flags) "delim" "mailbox" or (flags) "delim" mailbox."""
+    def list_folders(self, include_stats: bool = False) -> List[Dict]:
+        """Return list of IMAP folders. If include_stats=True, adds total and unread for each."""
         if not self.mail and not self.connect():
             return []
         try:
@@ -87,7 +87,13 @@ class ImapClient:
             if not result:
                 logger.debug("IMAP LIST returned no folders, using INBOX fallback")
                 return [{"name": "INBOX", "display_name": "Входящие"}]
-            return self._sort_folders(result)
+            result = self._sort_folders(result)
+            if include_stats:
+                for r in result:
+                    st = self.get_folder_stats(r["name"])
+                    r["total"] = st["total"]
+                    r["unread"] = st["unread"]
+            return result
         except Exception as e:
             logger.error("IMAP list failed: %s", e)
             return []
@@ -350,12 +356,34 @@ class ImapClient:
             logger.debug("get_inbox_unread_count failed: %s", e)
             return 0
 
+    def get_folder_stats(self, folder: str) -> Dict:
+        """Возвращает { total, unread } для папки (EXISTS из SELECT и SEARCH UNSEEN)."""
+        out = {"total": 0, "unread": 0}
+        if not self.mail and not self.connect():
+            return out
+        try:
+            status, data = self.mail.select(folder, readonly=True)
+            if status != "OK" or not data:
+                return out
+            out["total"] = int(data[0].decode("ascii"))
+            status, data = self.mail.search(None, "UNSEEN")
+            if status != "OK" or not data:
+                return out
+            msg_ids = data[0]
+            if isinstance(msg_ids, bytes):
+                msg_ids = msg_ids.decode()
+            parts = msg_ids.split()
+            out["unread"] = len(parts) if parts and parts[0] else 0
+        except Exception as e:
+            logger.debug("get_folder_stats failed for %r: %s", folder, e)
+        return out
 
-async def list_folders_async(host, port, login, password, ssl=True):
+
+async def list_folders_async(host, port, login, password, ssl=True, include_stats: bool = False):
     def _list():
         client = ImapClient(host, port, login, password, ssl)
         try:
-            return client.list_folders()
+            return client.list_folders(include_stats=include_stats)
         finally:
             client.close()
 

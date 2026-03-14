@@ -1232,7 +1232,7 @@ export function SettingsPage() {
                             }}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
                               isSelected
-                                ? "bg-accent-purple/10 border border-accent-purple/30 text-white"
+                                ? "bg-brand-green/10 border border-brand-green/30 text-gray-900"
                                 : "hover:bg-dark-600 text-gray-300"
                             }`}
                           >
@@ -1252,7 +1252,7 @@ export function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => { setShowNotifUserPicker(false); setTicketUserSearch(""); }}
-                      className="px-4 py-2 bg-accent-purple text-white rounded-lg text-sm hover:bg-accent-purple/80"
+                      className="px-4 py-2 bg-brand-green text-white rounded-lg text-sm hover:opacity-90"
                     >
                       Готово
                     </button>
@@ -1306,7 +1306,7 @@ export function SettingsPage() {
                             }}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
                               isSelected
-                                ? "bg-green-500/10 border border-green-500/30 text-white"
+                                ? "bg-green-500/10 border border-green-500/30 text-gray-900"
                                 : "hover:bg-dark-600 text-gray-300"
                             }`}
                           >
@@ -1326,7 +1326,7 @@ export function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => { setShowDistribSpecialistPicker(false); setTicketSpecialistSearch(""); }}
-                      className="px-4 py-2 bg-accent-purple text-white rounded-lg text-sm hover:bg-accent-purple/80"
+                      className="px-4 py-2 bg-brand-green text-white rounded-lg text-sm hover:opacity-90"
                     >
                       Готово
                     </button>
@@ -1350,7 +1350,7 @@ export function SettingsPage() {
                 <div className="glass-card p-5 space-y-3">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-accent-blue" />
-                    <h4 className="text-sm font-semibold text-white">
+                    <h4 className="text-sm font-semibold text-gray-900">
                       Email (входящие письма и уведомления)
                     </h4>
                   </div>
@@ -1368,7 +1368,7 @@ export function SettingsPage() {
                 <div className="glass-card p-5 space-y-3">
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-accent-purple" />
-                    <h4 className="text-sm font-semibold text-white">
+                    <h4 className="text-sm font-semibold text-gray-900">
                       Active Directory (LDAP)
                     </h4>
                   </div>
@@ -1421,7 +1421,7 @@ export function SettingsPage() {
                       <tbody className="divide-y divide-gray-200">
                         {buildings.map((b) => (
                           <tr key={b.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 text-sm font-medium text-white">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
                               {b.name}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-400">
@@ -1513,7 +1513,7 @@ export function SettingsPage() {
                       <tbody className="divide-y divide-gray-200">
                         {rooms.map((r) => (
                           <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 text-sm font-medium text-white">{r.name}</td>
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{r.name}</td>
                             <td className="px-4 py-3 text-sm text-gray-400">{r.building_name || "—"}</td>
                             <td className="px-4 py-3 text-sm text-gray-400">{r.floor ?? "—"}</td>
                             <td className="px-4 py-3 text-sm">
@@ -1896,7 +1896,7 @@ export function SettingsPage() {
                 )}
 
                 <div className="pt-2 border-t border-gray-200" />
-                <h4 className="text-sm font-semibold text-white">Qdrant</h4>
+                <h4 className="text-sm font-semibold text-gray-900">Qdrant</h4>
                 {renderInput(
                   "Qdrant URL",
                   "llm",
@@ -2496,7 +2496,7 @@ export function SettingsPage() {
                             />
                           </td>
                           <td className="px-4 py-3">
-                            <div className="text-sm font-medium text-white">{u.displayName || u.sAMAccountName}</div>
+                            <div className="text-sm font-medium text-gray-900">{u.displayName || u.sAMAccountName}</div>
                             <div className="text-xs text-gray-500">{u.sAMAccountName}</div>
                             {u.title && <div className="text-xs text-gray-500">{u.title}</div>}
                           </td>

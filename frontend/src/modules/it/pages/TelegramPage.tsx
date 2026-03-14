@@ -233,7 +233,7 @@ export function TelegramPage() {
                     Ваш код привязки:
                   </p>
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl font-mono font-bold text-white tracking-widest">
+                    <span className="text-3xl font-mono font-bold text-gray-900 tracking-widest">
                       {linkCode.code}
                     </span>
                     <button
@@ -303,7 +303,7 @@ export function TelegramPage() {
                 </h3>
                 <p className="text-gray-400 text-sm">
                   Аккаунт:{" "}
-                  <span className="text-white font-medium">
+                  <span className="text-gray-900 font-medium">
                     @{status.telegram_username || "—"}
                   </span>
                 </p>
@@ -324,7 +324,7 @@ export function TelegramPage() {
                   <BellOff className="w-5 h-5 text-gray-400" />
                 )}
                 <div>
-                  <h4 className="text-sm font-medium text-white">
+                  <h4 className="text-sm font-medium text-gray-900">
                     Уведомления
                   </h4>
                   <p className="text-xs text-gray-400">

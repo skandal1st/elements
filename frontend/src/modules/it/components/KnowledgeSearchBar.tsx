@@ -90,7 +90,7 @@ export function KnowledgeSearchBar({ onSearch, onClear }: Props) {
           onKeyDown={handleKeyDown}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           placeholder="Поиск по базе знаний…"
-          className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
+          className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
         />
         {query && (
           <button
@@ -109,7 +109,7 @@ export function KnowledgeSearchBar({ onSearch, onClear }: Props) {
               key={s}
               className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
                 i === activeIndex
-                  ? 'bg-accent-purple/20 text-white'
+                  ? 'bg-brand-green/20 text-gray-900'
                   : 'text-gray-300 hover:bg-gray-100 hover:text-gray-900'
               }`}
               onMouseEnter={() => setActiveIndex(i)}

@@ -147,7 +147,7 @@ function SearchableSelect<T>({
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-left text-gray-300 hover:border-dark-500 focus:outline-none focus:border-brand-green/50 transition-all"
       >
-        <span className={value ? "text-white" : "text-gray-500"}>
+        <span className={value ? "text-gray-900" : "text-gray-500"}>
           {value ? selectedLabel || "Выбрано" : placeholder}
         </span>
         <ChevronDown className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -161,7 +161,7 @@ function SearchableSelect<T>({
               placeholder="Поиск..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
             />
           </div>
           <div className="max-h-48 overflow-y-auto">
@@ -544,7 +544,7 @@ export function LicensesPage() {
                   </td>
                   <td className="px-4 py-4 text-gray-400">{lic.vendor || "—"}</td>
                   <td className="px-4 py-4 text-gray-400">
-                    <span className="font-medium text-white">{lic.used_licenses}</span> / {lic.total_licenses}
+                    <span className="font-medium text-gray-900">{lic.used_licenses}</span> / {lic.total_licenses}
                   </td>
                   <td className="px-4 py-4">
                     <span className={`font-medium ${(lic.available_licenses ?? 0) === 0 ? "text-red-400" : "text-gray-300"}`}>
@@ -806,7 +806,7 @@ export function LicensesPage() {
             {/* Привязки */}
             <div className="border-t border-gray-200 pt-4">
               <div className="flex justify-between items-center mb-3">
-                <h4 className="text-sm font-semibold text-white">Привязки лицензий</h4>
+                <h4 className="text-sm font-semibold text-gray-900">Привязки лицензий</h4>
                 <button
                   onClick={() => { setDetailModalOpen(false); openAssign(selectedLicense); }}
                   className="px-3 py-2 text-sm font-medium text-green-400 bg-green-500/20 border border-green-500/30 rounded-xl hover:bg-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -975,7 +975,7 @@ export function LicensesPage() {
                 <div className="flex items-start gap-3">
                   <Cloud className="w-5 h-5 text-accent-purple mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-white">SaaS / Облачный сервис</p>
+                    <p className="text-sm font-medium text-gray-900">SaaS / Облачный сервис</p>
                     <p className="text-xs text-gray-400 mt-1">
                       Лицензия будет отмечена как используемая без привязки к конкретному оборудованию.
                       Подходит для облачных сервисов и подписок.

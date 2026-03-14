@@ -36,6 +36,8 @@ type CalendarItem = {
   start_at: string | null;
   end_at: string | null;
   is_all_day: boolean;
+  /** true = показывать в сетке по времени; false/нет = только в виджете «Задачи на день» */
+  has_time?: boolean;
   type: "event" | "task";
   color?: string;
   status?: string;
@@ -151,6 +153,12 @@ export function DashboardCalendar() {
     return itemsByDay.get(key) ?? [];
   }, [selectedDate, itemsByDay]);
 
+  /** В слотах дня показываем только события/задачи с указанным временем */
+  const dayViewItemsWithTime = useMemo(
+    () => dayViewItems.filter((item) => item.has_time === true),
+    [dayViewItems]
+  );
+
   const timeSlots = useMemo(() => {
     const slots: Date[] = [];
     for (let h = DAY_START_HOUR; h < DAY_END_HOUR; h++) {
@@ -165,13 +173,13 @@ export function DashboardCalendar() {
         setHours(slotStart, getHours(slotStart) + 1),
         getMinutes(slotStart)
       );
-      return dayViewItems.filter((item) => {
+      return dayViewItemsWithTime.filter((item) => {
         const start = item.start_at ? parseISO(item.start_at) : null;
         if (!start) return false;
         return isWithinInterval(start, { start: slotStart, end: slotEnd });
       });
     },
-    [dayViewItems]
+    [dayViewItemsWithTime]
   );
 
   const handlePrevMonth = () => setCurrentMonth((m) => subMonths(m, 1));
@@ -355,8 +363,8 @@ export function DashboardCalendar() {
             await createTask(data);
             setShowCreateTask(false);
             setCreateTaskSlot(null);
-            fetchCalendar();
-            fetchTodayTasks(selectedDate);
+            await fetchCalendar();
+            await fetchTodayTasks(selectedDate);
           }}
         />
       )}

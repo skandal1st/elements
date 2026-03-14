@@ -241,7 +241,7 @@ export function DictionariesPage() {
                         <div className="w-4 h-4 rounded" style={{ backgroundColor: item.color }} />
                       )}
                       <div>
-                        <div className="font-medium text-white">{item.label}</div>
+                        <div className="font-medium text-gray-900">{item.label}</div>
                         <div className="text-xs text-gray-500">{item.key}</div>
                       </div>
                       {item.is_active ? (

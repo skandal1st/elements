@@ -40,6 +40,8 @@ interface MailMessageDetail {
 interface MailFolder {
   name: string;
   display_name: string;
+  total?: number;
+  unread?: number;
 }
 
 export function MailPage() {
@@ -406,7 +408,9 @@ export function MailPage() {
             folders.map((f) => {
               const Icon = folderIcon(f.name);
               const isActive = activeFolder === f.name;
-              const count = isActive ? emails.length : undefined;
+              const total = f.total ?? 0;
+              const unread = f.unread ?? 0;
+              const hasCount = total > 0 || unread > 0;
               return (
                 <button
                   key={f.name}
@@ -417,9 +421,16 @@ export function MailPage() {
                     <Icon className="w-4 h-4 flex-shrink-0" />
                     <span className="truncate">{f.display_name}</span>
                   </div>
-                  {count !== undefined && count > 0 && (
-                    <span className="bg-brand-green/10 text-brand-green py-0.5 px-2 rounded-full text-[10px] font-bold flex-shrink-0">
-                      {count}
+                  {hasCount && (
+                    <span className="flex items-center gap-1.5 flex-shrink-0 text-[10px]">
+                      {unread > 0 && (
+                        <span className="bg-brand-green text-white font-bold min-w-[18px] h-5 px-1.5 rounded-full flex items-center justify-center">
+                          {unread > 99 ? "99+" : unread}
+                        </span>
+                      )}
+                      <span className="text-gray-400 font-medium">
+                        {total > 99 ? "99+" : total}
+                      </span>
                     </span>
                   )}
                 </button>

@@ -327,7 +327,7 @@ export function Phonebook() {
             <tbody className="divide-y divide-gray-200">
               {items.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4 font-medium text-white">{item.full_name}</td>
+                  <td className="px-4 py-4 font-medium text-gray-900">{item.full_name}</td>
                   <td className="px-4 py-4 text-gray-400">{departments.find((d) => d.id === item.department_id)?.name ?? '-'}</td>
                   <td className="px-4 py-4 text-gray-400">{positions.find((p) => p.id === item.position_id)?.name ?? '-'}</td>
                   <td className="px-4 py-4 text-gray-400">{item.internal_phone ?? '-'}</td>
@@ -431,7 +431,7 @@ export function Phonebook() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto mx-4">
             <h3 className="text-lg font-semibold text-gray-900">Перевод сотрудника</h3>
-            <p className="text-sm text-gray-400">Перевод: <strong className="text-white">{transferEmployee.full_name}</strong></p>
+            <p className="text-sm text-gray-400">Перевод: <strong className="text-gray-900">{transferEmployee.full_name}</strong></p>
             <div className="bg-gray-50 rounded-xl p-4 text-sm">
               <div className="text-gray-500 mb-2">Текущее назначение:</div>
               <div className="text-gray-400"><strong className="text-gray-300">Подразделение:</strong> {departments.find((d) => d.id === transferEmployee.department_id)?.name ?? 'Не указано'}</div>

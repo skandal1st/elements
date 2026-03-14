@@ -386,7 +386,7 @@ export function EquipmentRequestsPage() {
               {items.map((req) => (
                 <tr key={req.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4">
-                    <span className="text-white font-medium">{req.title}</span>
+                    <span className="text-gray-900 font-medium">{req.title}</span>
                   </td>
                   <td className="px-4 py-4 text-gray-400">{categoryLabel[req.equipment_category] || req.equipment_category}</td>
                   <td className="px-4 py-4 text-gray-400">{requestTypeLabel[req.request_type] || req.request_type}</td>

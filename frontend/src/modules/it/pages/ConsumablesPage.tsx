@@ -442,7 +442,7 @@ export function ConsumablesPage() {
                 ) : (
                   modelConsumables.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 text-white font-medium">{item.name}</td>
+                      <td className="px-4 py-4 text-gray-900 font-medium">{item.name}</td>
                       <td className="px-4 py-4 text-gray-400">{(item as any).brand_name || "—"}</td>
                       <td className="px-4 py-4 text-gray-400">{(item as any).type_name || "—"}</td>
                       <td className="px-4 py-4 text-gray-400">{(item as any).model_name || "—"}</td>
@@ -490,7 +490,7 @@ export function ConsumablesPage() {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
                         {isLowStock(item) && <TrendingDown className="w-4 h-4 text-red-400" />}
-                        <span className="text-white font-medium">{item.name}</span>
+                        <span className="text-gray-900 font-medium">{item.name}</span>
                       </div>
                     </td>
                     <td className="px-4 py-4 text-gray-400">{item.consumable_type ? (CONSUMABLE_TYPE_LABELS[item.consumable_type] || item.consumable_type) : "—"}</td>

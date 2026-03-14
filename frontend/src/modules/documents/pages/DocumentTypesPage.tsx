@@ -83,8 +83,8 @@ export function DocumentTypesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Типы документов</h2>
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-xl hover:bg-accent-purple/80 transition-colors text-sm">
+        <h2 className="text-xl font-bold text-gray-900">Типы документов</h2>
+        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl hover:opacity-90 transition-colors text-sm">
           <Plus className="w-4 h-4" />
           Добавить тип
         </button>
@@ -95,7 +95,7 @@ export function DocumentTypesPage() {
           <div key={t.id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-white font-medium">{t.name}</span>
+                <span className="text-gray-900 font-medium">{t.name}</span>
                 <span className="text-xs text-gray-500 bg-dark-700 px-2 py-0.5 rounded">{t.code}</span>
                 {!t.is_active && <span className="text-xs text-red-400">Неактивен</span>}
               </div>
@@ -120,10 +120,10 @@ export function DocumentTypesPage() {
           <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">{editing ? 'Редактировать тип' : 'Новый тип документа'}</h3>
             <div className="space-y-3">
-              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Название" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
-              <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Код (латиница)" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
-              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
-              <select value={form.default_route_id} onChange={(e) => setForm({ ...form, default_route_id: e.target.value })} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white focus:outline-none focus:border-brand-green/50">
+              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Название" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Код (латиница)" className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50" />
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Описание" rows={2} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 resize-none" />
+              <select value={form.default_route_id} onChange={(e) => setForm({ ...form, default_route_id: e.target.value })} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-brand-green/50">
                 <option value="">Без маршрута по умолчанию</option>
                 {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>

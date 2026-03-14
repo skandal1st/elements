@@ -1427,7 +1427,7 @@ export function EquipmentPage() {
                 >
                   <td className="px-4 py-4 text-gray-300">{e.inventory_number}</td>
                   <td className="px-4 py-4">
-                    <span className="text-white font-medium">{e.name}</span>
+                    <span className="text-gray-900 font-medium">{e.name}</span>
                   </td>
                   <td className="px-4 py-4 text-gray-400">
                     {(e as any).owner_name || "—"}
@@ -2005,7 +2005,7 @@ export function EquipmentPage() {
             {/* Заголовок */}
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-gray-900">
                   {detailEquipment.name}
                 </h3>
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-400">
@@ -2096,7 +2096,7 @@ export function EquipmentPage() {
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Основная информация */}
                   <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                       <Monitor className="w-4 h-4 text-gray-500" />
                       Основная информация
                     </h4>
@@ -2140,7 +2140,7 @@ export function EquipmentPage() {
                     {/* Мониторинг Zabbix — принтеры, сетевое, компьютеры/серверы */}
                     {["printer", "network", "computer", "server"].includes(detailEquipment.category) && (detailEquipment.ip_address || (detailEquipment as EquipmentDetail).zabbix_host_id) && (
                       <div className="mt-4">
-                        <h4 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
+                        <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-2">
                           <Server className="w-4 h-4 text-gray-500" />
                           Мониторинг Zabbix
                         </h4>
@@ -2205,7 +2205,7 @@ export function EquipmentPage() {
                     )}
 
                     {/* Ответственный */}
-                    <h4 className="text-sm font-semibold text-white flex items-center gap-2 mt-4">
+                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mt-4">
                       <User className="w-4 h-4 text-gray-500" />
                       Ответственный
                     </h4>
@@ -2214,7 +2214,7 @@ export function EquipmentPage() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-accent-purple rounded-full flex items-center justify-center">
-                              <User className="w-4 h-4 text-white" />
+                              <User className="w-4 h-4 text-gray-900" />
                             </div>
                             <div>
                               <p className="text-sm font-medium">{detailEquipment.owner_name}</p>
@@ -2230,7 +2230,7 @@ export function EquipmentPage() {
                     </div>
 
                     {/* Расположение */}
-                    <h4 className="text-sm font-semibold text-white flex items-center gap-2 mt-4">
+                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mt-4">
                       <MapPin className="w-4 h-4 text-gray-500" />
                       Расположение
                     </h4>
@@ -2263,7 +2263,7 @@ export function EquipmentPage() {
 
                   {/* Характеристики */}
                   <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                       <Cpu className="w-4 h-4 text-gray-500" />
                       Характеристики
                     </h4>
@@ -2333,7 +2333,7 @@ export function EquipmentPage() {
                         >
                           <div className="flex justify-between items-start">
                             <div>
-                              <h5 className="font-medium text-white">{lic.software_name}</h5>
+                              <h5 className="font-medium text-gray-900">{lic.software_name}</h5>
                               {lic.vendor && (
                                 <p className="text-sm text-gray-500">{lic.vendor}</p>
                               )}
@@ -2387,7 +2387,7 @@ export function EquipmentPage() {
                               <Package className="w-5 h-5 text-blue-600" />
                             </div>
                             <div>
-                              <h5 className="font-medium text-white">{consumable.name}</h5>
+                              <h5 className="font-medium text-gray-900">{consumable.name}</h5>
                               <p className="text-sm text-gray-500">
                                 {consumable.consumable_type && (
                                   <span>{consumableTypeLabel[consumable.consumable_type] || consumable.consumable_type}</span>
@@ -2672,7 +2672,7 @@ export function EquipmentPage() {
             <div className="flex flex-col items-center py-4" ref={qrRef}>
               <QRCodeSVG value={getQrValue(qrEquipment)} size={200} level="H" includeMargin={true} />
               <div className="mt-4 text-center">
-                <p className="text-lg font-bold text-white">Инв. № {qrEquipment.inventory_number}</p>
+                <p className="text-lg font-bold text-gray-900">Инв. № {qrEquipment.inventory_number}</p>
                 {qrEquipment.serial_number && <p className="text-sm text-gray-400">S/N: {qrEquipment.serial_number}</p>}
               </div>
             </div>

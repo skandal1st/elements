@@ -451,7 +451,7 @@ export function TicketsPage() {
                 <PaperclipIcon isImage={isImageAttachment(p)} />
               </div>
               <div className="min-w-0">
-                <div className="text-sm text-white truncate">
+                <div className="text-sm text-gray-900 truncate">
                   {p.split("/").pop()}
                 </div>
                 <div className="text-xs text-gray-500 truncate">{url}</div>
@@ -1448,7 +1448,7 @@ export function TicketsPage() {
                     <SourceIcon source={t.source} />
                   </td>
                   <td className="px-4 py-4">
-                    <span className="text-white font-medium">{t.title}</span>
+                    <span className="text-gray-900 font-medium">{t.title}</span>
                     {t.status === "pending_user" && t.email_sender && (
                       <span className="ml-2 text-xs text-gray-500">
                         ({t.email_sender})
@@ -1502,17 +1502,17 @@ export function TicketsPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-lg p-6 space-y-4 mx-4">
-            <h3 className="text-xl font-semibold text-white">Новая заявка</h3>
+            <h3 className="text-xl font-semibold text-gray-900">Новая заявка</h3>
 
             <input
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
               placeholder="Заголовок"
               value={form.title}
               onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[100px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[100px] resize-none"
               placeholder="Описание проблемы..."
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
@@ -1526,7 +1526,7 @@ export function TicketsPage() {
                 <div className="relative">
                   <div className="flex gap-2">
                     <input
-                      className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
+                      className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50"
                       placeholder="Поиск сотрудника..."
                       value={
                         form.for_employee_id
@@ -1565,7 +1565,7 @@ export function TicketsPage() {
                         <button
                           key={emp.id}
                           type="button"
-                          className="w-full px-4 py-2.5 text-left text-white hover:bg-dark-600/50 transition-colors"
+                          className="w-full px-4 py-2.5 text-left text-gray-900 hover:bg-gray-100 transition-colors"
                           onClick={() => {
                             setForm((p) => ({ ...p, for_employee_id: String(emp.id), room_id: "", equipment_id: "" }));
                             setCreateEmpSearch(emp.full_name);
@@ -1590,7 +1590,7 @@ export function TicketsPage() {
 
             {userRole === "it" && selectedEmployee && (
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
-                <div className="text-sm font-medium text-white">{selectedEmployee.full_name}</div>
+                <div className="text-sm font-medium text-gray-900">{selectedEmployee.full_name}</div>
                 {selectedEmployee.position_name && (
                   <div className="text-xs text-gray-400">{selectedEmployee.position_name}</div>
                 )}
@@ -1628,7 +1628,7 @@ export function TicketsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <select
-                className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
+                className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all"
                 value={form.category}
                 onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
               >
@@ -1640,7 +1640,7 @@ export function TicketsPage() {
               </select>
 
               <select
-                className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
+                className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all"
                 value={form.priority}
                 onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
               >
@@ -1655,7 +1655,7 @@ export function TicketsPage() {
             {userRole === "it" && !form.for_employee_id && (
               <>
                 <select
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all"
                   value={selectedBuildingId}
                   onChange={(e) => {
                     setSelectedBuildingId(e.target.value);
@@ -1672,7 +1672,7 @@ export function TicketsPage() {
                 </select>
 
                 <select
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all disabled:opacity-50"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all disabled:opacity-50"
                   value={selectedRoomId}
                   onChange={(e) => setSelectedRoomId(e.target.value)}
                   disabled={!selectedBuildingId}
@@ -1689,7 +1689,7 @@ export function TicketsPage() {
 
             {(form.room_id || (userRole === "it" && form.for_employee_id && createRoomEquipment.length > 0)) && (
               <select
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all"
                 value={form.equipment_id}
                 onChange={(e) => setForm((p) => ({ ...p, equipment_id: e.target.value }))}
               >
@@ -1730,13 +1730,13 @@ export function TicketsPage() {
                 <SourceIcon source={detail.source} />
                 {canEdit ? (
                   <input
-                    className="text-xl font-semibold text-white bg-white border border-gray-200 rounded-xl px-3 py-2 flex-1 focus:outline-none focus:border-brand-green/50 transition-all"
+                    className="text-xl font-semibold text-gray-900 bg-white border border-gray-200 rounded-xl px-3 py-2 flex-1 focus:outline-none focus:border-brand-green/50 transition-all"
                     value={editForm.title}
                     onChange={(e) => updateEditField("title", e.target.value)}
                     placeholder="Заголовок заявки"
                   />
                 ) : (
-                  <h3 className="text-xl font-semibold text-white">
+                  <h3 className="text-xl font-semibold text-gray-900">
                     {detail.title}
                   </h3>
                 )}
@@ -1803,7 +1803,7 @@ export function TicketsPage() {
               {canEdit ? (
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <textarea
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[120px] resize-none"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[120px] resize-none"
                     value={editForm.description}
                     onChange={(e) => updateEditField("description", e.target.value)}
                     placeholder="Описание проблемы"
@@ -1835,7 +1835,7 @@ export function TicketsPage() {
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-brand-green/50 transition-all"
                     value={editForm.category}
                     onChange={(e) => updateEditField("category", e.target.value)}
                   >
@@ -1858,7 +1858,7 @@ export function TicketsPage() {
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-brand-green/50 transition-all"
                     value={editForm.priority}
                     onChange={(e) => updateEditField("priority", e.target.value)}
                   >
@@ -1881,7 +1881,7 @@ export function TicketsPage() {
                 </label>
                 {canEdit ? (
                   <select
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-brand-green/50 transition-all"
                     value={detail.status}
                     onChange={(e) => updateStatus(detail.id, e.target.value)}
                   >
@@ -1918,7 +1918,7 @@ export function TicketsPage() {
                     <>
                       <div className="flex gap-2">
                         <input
-                          className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all"
+                          className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-brand-green/50 transition-all"
                           placeholder="Поиск исполнителя..."
                           value={
                             detail.assignee_id && !showExecutorDropdown
@@ -1975,7 +1975,7 @@ export function TicketsPage() {
                                   setError((err as Error).message);
                                 }
                               }}
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-dark-600/50 text-white transition-colors"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-gray-900 transition-colors"
                             >
                               {u.full_name}
                               {u.email && <span className="ml-2 text-xs text-gray-400">{u.email}</span>}
@@ -2003,7 +2003,7 @@ export function TicketsPage() {
               <div className="border-t border-gray-200 pt-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="w-4 h-4 text-accent-purple" />
-                  <h4 className="text-sm font-semibold text-white">
+                  <h4 className="text-sm font-semibold text-gray-900">
                     Местоположение и оборудование
                   </h4>
                 </div>
@@ -2014,7 +2014,7 @@ export function TicketsPage() {
                       Здание
                     </label>
                     <select
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all"
                       value={editBuildingId}
                       onChange={(e) => {
                         setEditBuildingId(e.target.value);
@@ -2045,7 +2045,7 @@ export function TicketsPage() {
                       Кабинет
                     </label>
                     <select
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all disabled:opacity-50"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all disabled:opacity-50"
                       value={editForm.room_id}
                       onChange={(e) => {
                         const newForm = {
@@ -2079,7 +2079,7 @@ export function TicketsPage() {
                       </label>
                     </div>
                     <select
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white focus:outline-none focus:border-brand-green/50 transition-all"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-brand-green/50 transition-all"
                       value={editForm.equipment_id}
                       onChange={(e) => updateEditField("equipment_id", e.target.value)}
                     >
@@ -2099,7 +2099,7 @@ export function TicketsPage() {
                   <div className="p-4 rounded-xl bg-accent-blue/10 border border-accent-blue/20">
                     <div className="flex items-center gap-2 mb-3">
                       <Package className="w-5 h-5 text-accent-blue" />
-                      <h4 className="font-medium text-white">
+                      <h4 className="font-medium text-gray-900">
                         Расходные материалы
                       </h4>
                     </div>
@@ -2135,7 +2135,7 @@ export function TicketsPage() {
                                   }
                                   className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-accent-purple focus:ring-accent-purple/30"
                                 />
-                                <span className="text-sm text-white">
+                                <span className="text-sm text-gray-900">
                                   {consumable.consumable_name}
                                   {consumable.consumable_model &&
                                     ` (${consumable.consumable_model})`}
@@ -2266,7 +2266,7 @@ export function TicketsPage() {
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center gap-2 mb-4">
                   <History className="w-4 h-4 text-accent-purple" />
-                  <h4 className="text-sm font-semibold text-white">
+                  <h4 className="text-sm font-semibold text-gray-900">
                     История изменений
                   </h4>
                 </div>
@@ -2288,7 +2288,7 @@ export function TicketsPage() {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-medium text-white">
+                            <span className="font-medium text-gray-900">
                               {fieldLabel[h.field] || h.field}
                             </span>
                             <span className="text-gray-500"> изменено </span>
@@ -2320,7 +2320,7 @@ export function TicketsPage() {
             <div className="border-t border-gray-200 pt-4">
               <div className="flex items-center gap-2 mb-4">
                 <MessageSquare className="w-4 h-4 text-accent-blue" />
-                <h4 className="text-sm font-semibold text-white">
+                <h4 className="text-sm font-semibold text-gray-900">
                   Комментарии
                 </h4>
               </div>
@@ -2339,7 +2339,7 @@ export function TicketsPage() {
                     <div key={comment.id} className="bg-gray-50 rounded-xl p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <span className="text-sm font-medium text-white">
+                          <span className="text-sm font-medium text-gray-900">
                             {comment.user_name || "Пользователь"}
                           </span>
                           <span className="text-xs text-gray-500 ml-2">
@@ -2368,7 +2368,7 @@ export function TicketsPage() {
                       {editingCommentId === comment.id ? (
                         <div className="space-y-3">
                           <textarea
-                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-white text-sm focus:outline-none focus:border-brand-green/50 transition-all resize-none"
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-brand-green/50 transition-all resize-none"
                             value={commentForm}
                             onChange={(e) => setCommentForm(e.target.value)}
                             rows={3}
@@ -2404,7 +2404,7 @@ export function TicketsPage() {
               {editingCommentId === null && (
                 <div className="space-y-3">
                   <textarea
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all resize-none"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all resize-none"
                     placeholder="Добавить комментарий..."
                     value={commentForm}
                     onChange={(e) => setCommentForm(e.target.value)}
@@ -2428,7 +2428,7 @@ export function TicketsPage() {
       {assignEmployeeModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-md p-6 space-y-4 mx-4">
-            <h3 className="text-xl font-semibold text-white">
+            <h3 className="text-xl font-semibold text-gray-900">
               Привязать к сотруднику
             </h3>
             <p className="text-sm text-gray-400">
@@ -2439,7 +2439,7 @@ export function TicketsPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
                     placeholder="Поиск (ФИО / email)…"
                     value={
                       selectedEmployeeId
@@ -2473,7 +2473,7 @@ export function TicketsPage() {
                     <button
                       key={emp.id}
                       type="button"
-                      className="w-full px-4 py-2.5 text-left text-white hover:bg-dark-600/50 transition-colors"
+                      className="w-full px-4 py-2.5 text-left text-gray-900 hover:bg-gray-100 transition-colors"
                       onClick={() => {
                         setSelectedEmployeeId(emp.id);
                         setAssignEmpSearch(emp.full_name);
@@ -2518,7 +2518,7 @@ export function TicketsPage() {
                 <Package className="w-6 h-6 text-orange-400" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-gray-900">
                   Списание расходников
                 </h3>
                 <p className="text-sm text-gray-400">
@@ -2538,7 +2538,7 @@ export function TicketsPage() {
                     className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-xl border border-gray-200"
                   >
                     <div>
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-gray-900">
                         {tc.consumable_name}
                       </span>
                       {tc.consumable_model && (
@@ -2602,7 +2602,7 @@ export function TicketsPage() {
           <div className="glass-card w-full max-w-lg p-6 space-y-4 mx-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-gray-900">
                   Ответить по email
                 </h3>
                 <p className="text-sm text-gray-400">
@@ -2618,7 +2618,7 @@ export function TicketsPage() {
             </div>
 
             <textarea
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all resize-none"
               rows={6}
               placeholder="Текст ответа..."
               value={replyEmailText}
@@ -2665,7 +2665,7 @@ export function TicketsPage() {
           <div className="glass-card w-full max-w-lg p-6 space-y-4 mx-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-gray-900">
                   Добавить в базу знаний
                 </h3>
                 <p className="text-sm text-gray-400">
@@ -2683,7 +2683,7 @@ export function TicketsPage() {
             </div>
 
             <input
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all"
               placeholder="Заголовок статьи"
               value={kbForm.title}
               onChange={(e) =>
@@ -2692,7 +2692,7 @@ export function TicketsPage() {
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
               placeholder="Описание проблемы"
               value={kbForm.problem}
               onChange={(e) =>
@@ -2701,7 +2701,7 @@ export function TicketsPage() {
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
               placeholder="Выполненные действия"
               value={kbForm.actions}
               onChange={(e) =>
@@ -2710,7 +2710,7 @@ export function TicketsPage() {
             />
 
             <textarea
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-green/50 transition-all min-h-[90px] resize-none"
               placeholder="Ключевое решение"
               value={kbForm.solution}
               onChange={(e) =>
@@ -2783,7 +2783,7 @@ export function TicketsPage() {
           <div className="glass-card w-full max-w-3xl p-6 space-y-4 mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-gray-900">
                   Подсказки по тикету
                 </h3>
                 <p className="text-sm text-gray-400">
@@ -2817,7 +2817,7 @@ export function TicketsPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-white truncate">
+                          <div className="text-sm font-semibold text-gray-900 truncate">
                             {s.title || "Статья базы знаний"}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">

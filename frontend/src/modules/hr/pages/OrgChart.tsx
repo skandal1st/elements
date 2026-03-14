@@ -276,7 +276,7 @@ export function OrgChart() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Briefcase className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm font-medium text-white">{orgPos.name}</span>
+                            <span className="text-sm font-medium text-gray-900">{orgPos.name}</span>
                           </div>
                           {pos && (
                             <div className="flex items-center gap-1">

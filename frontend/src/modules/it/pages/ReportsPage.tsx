@@ -348,7 +348,7 @@ export function ReportsPage() {
                         }}
                       />
                     </div>
-                    <span className="w-10 text-right text-sm font-medium text-white">{item.count}</span>
+                    <span className="w-10 text-right text-sm font-medium text-gray-900">{item.count}</span>
                   </div>
                 ))}
                 {reportData.by_category.length === 0 && (
@@ -374,7 +374,7 @@ export function ReportsPage() {
                         }}
                       />
                     </div>
-                    <span className="w-10 text-right text-sm font-medium text-white">{item.count}</span>
+                    <span className="w-10 text-right text-sm font-medium text-gray-900">{item.count}</span>
                   </div>
                 ))}
                 {reportData.by_priority.length === 0 && (
@@ -420,7 +420,7 @@ export function ReportsPage() {
                             {index + 1}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-medium text-white">{creator.user_name}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">{creator.user_name}</td>
                         <td className="px-4 py-3 text-gray-400">{creator.department || "—"}</td>
                         <td className="px-4 py-3 text-gray-500">{creator.user_email}</td>
                         <td className="px-4 py-3 text-right">

@@ -136,6 +136,7 @@ class PortalService:
                 "start_at": e.start_at.isoformat() if e.start_at else None,
                 "end_at": e.end_at.isoformat() if e.end_at else None,
                 "is_all_day": e.is_all_day,
+                "has_time": not e.is_all_day,
                 "color": e.color or "#3B82F6",
                 "type": "event",
             }
@@ -171,6 +172,14 @@ class PortalService:
             start = t.start_date or t.due_date
             if not start:
                 continue
+            end = t.due_date or t.start_date
+            # Задачи с указанным временем (не полночь) показываются в календаре по слотам
+            has_time = (
+                getattr(start, "hour", 0) != 0
+                or getattr(start, "minute", 0) != 0
+                or getattr(start, "second", 0) != 0
+                or getattr(start, "microsecond", 0) != 0
+            )
             result.append({
                 "id": str(t.id),
                 "title": t.title,
@@ -178,6 +187,7 @@ class PortalService:
                 "start_at": start.isoformat() if start else None,
                 "end_at": end.isoformat() if end else None,
                 "is_all_day": False,
+                "has_time": has_time,
                 "status": t.status,
                 "priority": t.priority,
                 "project_id": str(t.project_id),
