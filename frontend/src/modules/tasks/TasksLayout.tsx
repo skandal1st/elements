@@ -10,7 +10,7 @@ const links = [
 export function TasksLayout() {
   return (
     <div className="space-y-4">
-      <nav className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-3">
+      <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -19,7 +19,7 @@ export function TasksLayout() {
               `flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                 isActive
                   ? "bg-brand-green/20 text-brand-green border border-brand-green/30"
-                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                  : "text-gray-600 hover:bg-gray-100"
               }`
             }
           >

@@ -21,7 +21,6 @@ import {
   setHours,
   setMinutes,
   parseISO,
-  isWithinInterval,
   getHours,
   getMinutes,
 } from "date-fns";
@@ -176,7 +175,8 @@ export function DashboardCalendar() {
       return dayViewItemsWithTime.filter((item) => {
         const start = item.start_at ? parseISO(item.start_at) : null;
         if (!start) return false;
-        return isWithinInterval(start, { start: slotStart, end: slotEnd });
+        // Показываем только в слоте, где начало события: [slotStart, slotEnd), конец исключён — иначе одно и то же событие попадает в два соседних слота
+        return start >= slotStart && start < slotEnd;
       });
     },
     [dayViewItemsWithTime]

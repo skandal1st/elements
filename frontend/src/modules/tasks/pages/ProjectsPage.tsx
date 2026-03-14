@@ -290,7 +290,7 @@ export function ProjectsPage() {
   if (projectsLoading && projects.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500 dark:text-gray-400">Загрузка проектов...</div>
+        <div className="text-gray-500">Загрузка проектов...</div>
       </div>
     );
   }
@@ -300,18 +300,18 @@ export function ProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Проекты</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900">Проекты</h1>
+          <p className="text-sm text-gray-500 mt-1">
             Управление проектами и задачами
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
             <input
               type="checkbox"
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600"
+              className="rounded border-gray-300"
             />
             Показать архив
           </label>
@@ -320,7 +320,7 @@ export function ProjectsPage() {
               setCreateError(null);
               setShowCreateModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:opacity-90 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Новый проект
@@ -329,7 +329,7 @@ export function ProjectsPage() {
       </div>
 
       {projectsError && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg">
           {projectsError}
         </div>
       )}
@@ -339,7 +339,7 @@ export function ProjectsPage() {
         {filteredProjects.map((project) => (
           <div
             key={project.id}
-            className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
+            className="relative bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => handleOpenProject(project)}
           >
             {/* Color bar */}
@@ -352,11 +352,11 @@ export function ProjectsPage() {
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                  <h3 className="font-semibold text-gray-900 truncate">
                     {project.title}
                   </h3>
                   {project.description && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">
                       {project.description}
                     </p>
                   )}
@@ -367,12 +367,12 @@ export function ProjectsPage() {
                       e.stopPropagation();
                       setMenuOpenId(menuOpenId === project.id ? null : project.id);
                     }}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    className="p-1 hover:bg-gray-100 rounded"
                   >
                     <MoreVertical className="w-4 h-4 text-gray-500" />
                   </button>
                   {menuOpenId === project.id && (
-                    <div className="absolute right-0 top-8 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                    <div className="absolute right-0 top-8 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                       {(project.user_permission === "owner" ||
                         project.user_permission === "admin") && (
                         <button
@@ -381,7 +381,7 @@ export function ProjectsPage() {
                             openEditProject(project);
                             setMenuOpenId(null);
                           }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
                         >
                           Редактировать
                         </button>
@@ -393,7 +393,7 @@ export function ProjectsPage() {
                             e.stopPropagation();
                             void openShareModal(project);
                           }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
                         >
                           <Users className="w-4 h-4" />
                           Доступ
@@ -404,7 +404,7 @@ export function ProjectsPage() {
                           e.stopPropagation();
                           handleArchiveProject(project.id);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
                       >
                         <Archive className="w-4 h-4" />
                         {project.is_archived ? "Разархивировать" : "Архивировать"}
@@ -415,7 +415,7 @@ export function ProjectsPage() {
                             e.stopPropagation();
                             handleDeleteProject(project.id);
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                         >
                           Удалить
                         </button>
@@ -426,7 +426,7 @@ export function ProjectsPage() {
               </div>
 
               {/* Stats */}
-              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-4 text-sm text-gray-500">
                 {project.total_tasks !== undefined && (
                   <div className="flex items-center gap-1">
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -458,7 +458,7 @@ export function ProjectsPage() {
               {/* Progress bar */}
               {project.total_tasks !== undefined && project.total_tasks > 0 && (
                 <div className="mt-3">
-                  <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-green-500 rounded-full transition-all"
                       style={{
@@ -472,12 +472,12 @@ export function ProjectsPage() {
               {/* Tags */}
               <div className="flex items-center gap-2 mt-3">
                 {project.is_personal && (
-                  <span className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
+                  <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
                     Личный
                   </span>
                 )}
                 {project.user_permission && project.user_permission !== "owner" && (
-                  <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">
+                  <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded">
                     {project.user_permission === "admin"
                       ? "Администратор"
                       : project.user_permission === "edit"
@@ -492,7 +492,7 @@ export function ProjectsPage() {
 
         {/* Empty state */}
         {filteredProjects.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+          <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
             <FolderKanban className="w-12 h-12 mb-4 opacity-50" />
             <p className="text-lg font-medium">Нет проектов</p>
             <p className="text-sm mt-1">
@@ -507,21 +507,21 @@ export function ProjectsPage() {
       {/* Create Project Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
             <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 Новый проект
               </h2>
 
               {createError && (
-                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+                <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
                   {createError}
                 </div>
               )}
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Название
                   </label>
                   <input
@@ -530,14 +530,14 @@ export function ProjectsPage() {
                     onChange={(e) =>
                       setNewProject({ ...newProject, title: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-brand-green focus:border-transparent"
                     placeholder="Мой проект"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Описание
                   </label>
                   <textarea
@@ -545,14 +545,14 @@ export function ProjectsPage() {
                     onChange={(e) =>
                       setNewProject({ ...newProject, description: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-brand-green focus:border-transparent"
                     rows={3}
                     placeholder="Описание проекта..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Цвет
                   </label>
                   <div className="flex gap-2">
@@ -562,7 +562,7 @@ export function ProjectsPage() {
                         onClick={() => setNewProject({ ...newProject, color })}
                         className={`w-8 h-8 rounded-full transition-transform ${
                           newProject.color === color
-                            ? "ring-2 ring-offset-2 ring-blue-500 scale-110"
+                            ? "ring-2 ring-offset-2 ring-brand-green scale-110"
                             : ""
                         }`}
                         style={{ backgroundColor: color }}
@@ -579,11 +579,11 @@ export function ProjectsPage() {
                     onChange={(e) =>
                       setNewProject({ ...newProject, is_personal: e.target.checked })
                     }
-                    className="rounded border-gray-300 dark:border-gray-600"
+                    className="rounded border-gray-300"
                   />
                   <label
                     htmlFor="is_personal"
-                    className="text-sm text-gray-700 dark:text-gray-300"
+                    className="text-sm text-gray-700"
                   >
                     Личный проект
                   </label>
@@ -591,20 +591,20 @@ export function ProjectsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
               <button
                 onClick={() => {
                   setShowCreateModal(false);
                   setCreateError(null);
                 }}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={handleCreateProject}
                 disabled={!newProject.title.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-brand-green text-white rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Создать
               </button>
@@ -616,21 +616,21 @@ export function ProjectsPage() {
       {/* Edit Project Modal */}
       {showEditModal && editingProject && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
             <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 Редактирование проекта
               </h2>
 
               {editError && (
-                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+                <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
                   {editError}
                 </div>
               )}
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Название
                   </label>
                   <input
@@ -639,14 +639,14 @@ export function ProjectsPage() {
                     onChange={(e) =>
                       setEditProject({ ...editProject, title: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-brand-green focus:border-transparent"
                     placeholder="Название проекта"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Описание
                   </label>
                   <textarea
@@ -657,14 +657,14 @@ export function ProjectsPage() {
                         description: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-brand-green focus:border-transparent"
                     rows={3}
                     placeholder="Описание проекта..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Цвет
                   </label>
                   <div className="flex gap-2">
@@ -674,7 +674,7 @@ export function ProjectsPage() {
                         onClick={() => setEditProject({ ...editProject, color })}
                         className={`w-8 h-8 rounded-full transition-transform ${
                           editProject.color === color
-                            ? "ring-2 ring-offset-2 ring-blue-500 scale-110"
+                            ? "ring-2 ring-offset-2 ring-brand-green scale-110"
                             : ""
                         }`}
                         style={{ backgroundColor: color }}
@@ -694,11 +694,11 @@ export function ProjectsPage() {
                         is_personal: e.target.checked,
                       })
                     }
-                    className="rounded border-gray-300 dark:border-gray-600"
+                    className="rounded border-gray-300"
                   />
                   <label
                     htmlFor="edit_is_personal"
-                    className="text-sm text-gray-700 dark:text-gray-300"
+                    className="text-sm text-gray-700"
                   >
                     Личный проект
                   </label>
@@ -706,21 +706,21 @@ export function ProjectsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
               <button
                 onClick={() => {
                   setShowEditModal(false);
                   setEditingProject(null);
                   setEditError(null);
                 }}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={handleUpdateProject}
                 disabled={!editProject.title.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-brand-green text-white rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Сохранить
               </button>
@@ -732,22 +732,22 @@ export function ProjectsPage() {
       {/* Share / Access Modal */}
       {shareModalOpen && shareProject && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl mx-4">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-start justify-between">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4">
+            <div className="p-6 border-b border-gray-200 flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-xl font-semibold text-gray-900">
                   Доступ к проекту
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-gray-500 mt-1">
                   {shareProject.title}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Личные проекты видит только владелец, если доступ не выдан явно.
                 </p>
               </div>
               <button
                 onClick={closeShareModal}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="p-2 rounded-lg hover:bg-gray-100"
                 title="Закрыть"
               >
                 <X className="w-5 h-5 text-gray-500" />
@@ -756,16 +756,16 @@ export function ProjectsPage() {
 
             <div className="p-6 space-y-6">
               {sharesError && (
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
                   {sharesError}
                 </div>
               )}
 
               {/* Add user */}
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+              <div className="rounded-lg border border-gray-200 p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <UserPlus className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <UserPlus className="w-4 h-4 text-gray-600" />
+                  <h3 className="text-sm font-semibold text-gray-900">
                     Выдать доступ пользователю
                   </h3>
                 </div>
@@ -776,12 +776,12 @@ export function ProjectsPage() {
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
                       placeholder="Поиск пользователя (ФИО / email)"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                     />
                     <select
                       value={selectedUserId}
                       onChange={(e) => setSelectedUserId(e.target.value)}
-                      className="w-full mt-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                       disabled={usersLoading}
                     >
                       <option value="">
@@ -795,7 +795,7 @@ export function ProjectsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    <label className="block text-xs text-gray-500 mb-1">
                       Права
                     </label>
                     <select
@@ -803,7 +803,7 @@ export function ProjectsPage() {
                       onChange={(e) =>
                         setSelectedPermission(e.target.value as "view" | "edit" | "admin")
                       }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                     >
                       <option value="view">Просмотр</option>
                       <option value="edit">Редактирование</option>
@@ -812,7 +812,7 @@ export function ProjectsPage() {
                     <button
                       onClick={handleAddShare}
                       disabled={!selectedUserId}
-                      className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full mt-3 px-4 py-2 bg-brand-green text-white rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Выдать доступ
                     </button>
@@ -821,20 +821,20 @@ export function ProjectsPage() {
               </div>
 
               {/* Existing shares */}
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+              <div className="rounded-lg border border-gray-200 p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <h3 className="text-sm font-semibold text-gray-900">
                     Пользователи с доступом
                   </h3>
                   {sharesLoading && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs text-gray-500">
                       Загрузка...
                     </span>
                   )}
                 </div>
 
                 {shares.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-gray-500">
                     Доступы не выданы.
                   </p>
                 ) : (
@@ -844,14 +844,14 @@ export function ProjectsPage() {
                       .map((s) => (
                         <div
                           key={s.id}
-                          className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40"
+                          className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-lg bg-gray-50/40"
                         >
                           <div className="min-w-0">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            <div className="text-sm font-medium text-gray-900 truncate">
                               {s.target_name || s.target_id}
                             </div>
                             {s.target_email && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              <div className="text-xs text-gray-500 truncate">
                                 {s.target_email}
                               </div>
                             )}
@@ -865,7 +865,7 @@ export function ProjectsPage() {
                                   e.target.value as "view" | "edit" | "admin",
                                 )
                               }
-                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm"
                             >
                               <option value="view">Просмотр</option>
                               <option value="edit">Редактирование</option>
@@ -873,7 +873,7 @@ export function ProjectsPage() {
                             </select>
                             <button
                               onClick={() => void handleRemoveShare(s.id)}
-                              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
                             >
                               Убрать
                             </button>

@@ -229,7 +229,7 @@ export function TaskListPage() {
   if (tasksLoading && tasks.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500 dark:text-gray-400">Загрузка задач...</div>
+        <div className="text-gray-500">Загрузка задач...</div>
       </div>
     );
   }
@@ -239,10 +239,10 @@ export function TaskListPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900">
             Мои задачи
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Задачи, назначенные мне или созданные мной
           </p>
         </div>
@@ -252,7 +252,7 @@ export function TaskListPage() {
             <select
               value={statusFilter || ""}
               onChange={(e) => setStatusFilter(e.target.value || null)}
-              className="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg text-gray-900"
             >
               <option value="">Все статусы</option>
               <option value="todo">К выполнению</option>
@@ -260,18 +260,18 @@ export function TaskListPage() {
               <option value="review">На проверке</option>
             </select>
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
             <input
               type="checkbox"
               checked={showCompleted}
               onChange={(e) => setShowCompleted(e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600"
+              className="rounded border-gray-300"
             />
             Показать завершённые
           </label>
           <button
             onClick={() => setShowQuickAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:opacity-90 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Добавить
@@ -280,20 +280,20 @@ export function TaskListPage() {
       </div>
 
       {tasksError && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg">
           {tasksError}
         </div>
       )}
 
       {/* Quick Add */}
       {showQuickAdd && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex gap-3">
             <input
               type="text"
               value={quickAddTitle}
               onChange={(e) => setQuickAddTitle(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
               placeholder="Название задачи..."
               autoFocus
               onKeyDown={(e) => {
@@ -304,7 +304,7 @@ export function TaskListPage() {
             <select
               value={quickAddProject}
               onChange={(e) => setQuickAddProject(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
             >
               <option value="">Выберите проект</option>
               {projects
@@ -319,19 +319,19 @@ export function TaskListPage() {
               type="date"
               value={quickAddDueDate}
               onChange={(e) => setQuickAddDueDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
               title="Дата выполнения"
             />
             <button
               onClick={handleQuickAdd}
               disabled={!quickAddTitle.trim() || !quickAddProject}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-brand-green text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Добавить
             </button>
             <button
               onClick={() => setShowQuickAdd(false)}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
             >
               Отмена
             </button>
@@ -350,12 +350,12 @@ export function TaskListPage() {
           return (
             <div
               key={groupId}
-              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+              className="bg-white rounded-lg border border-gray-200 overflow-hidden"
             >
               {/* Group Header */}
               <button
                 onClick={() => toggleGroup(groupId)}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                className="w-full flex items-center justify-between p-4 hover:bg-gray-50/50"
               >
                 <div className="flex items-center gap-3">
                   {isExpanded ? (
@@ -364,7 +364,7 @@ export function TaskListPage() {
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   )}
                   <span className={`font-medium ${color}`}>{title}</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-sm text-gray-500">
                     ({groupTasks.length})
                   </span>
                 </div>
@@ -372,11 +372,11 @@ export function TaskListPage() {
 
               {/* Group Tasks */}
               {isExpanded && (
-                <div className="border-t border-gray-200 dark:border-gray-700">
+                <div className="border-t border-gray-200">
                   {groupTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700/50 last:border-b-0"
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50/50 border-b border-gray-100/50 last:border-b-0"
                       onClick={() => setEditingTask(task)}
                     >
                       {/* Checkbox */}
@@ -399,12 +399,12 @@ export function TaskListPage() {
                           className={`text-sm ${
                             task.status === "done"
                               ? "text-gray-400 line-through"
-                              : "text-gray-900 dark:text-white"
+                              : "text-gray-900"
                           }`}
                         >
                           {task.title}
                         </p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
                           <span className="truncate max-w-[150px]">
                             {projects.find((p) => p.id === task.project_id)?.title}
                           </span>
@@ -434,7 +434,7 @@ export function TaskListPage() {
                           className={`flex items-center gap-1 text-sm ${
                             groupId === "overdue"
                               ? "text-red-500"
-                              : "text-gray-500 dark:text-gray-400"
+                              : "text-gray-500"
                           }`}
                         >
                           <Calendar className="w-4 h-4" />
@@ -451,7 +451,7 @@ export function TaskListPage() {
 
         {/* Empty State */}
         {Object.values(taskGroups).every((g) => g.length === 0) && (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
             <CheckCircle2 className="w-12 h-12 mb-4 opacity-50" />
             <p className="text-lg font-medium">Нет задач</p>
             <p className="text-sm mt-1">Все задачи выполнены или не назначены</p>
@@ -570,50 +570,50 @@ function TaskEditModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">
             Задача
           </h2>
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
           >
             Закрыть
           </button>
         </div>
         <div className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Название
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Описание
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
               rows={4}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Статус
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
               >
                 {columns.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -623,7 +623,7 @@ function TaskEditModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Приоритет
               </label>
               <select
@@ -631,7 +631,7 @@ function TaskEditModal({
                 onChange={(e) =>
                   setFormData({ ...formData, priority: e.target.value as Task["priority"] })
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
               >
                 <option value="low">Низкий</option>
                 <option value="medium">Средний</option>
@@ -641,20 +641,20 @@ function TaskEditModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Срок выполнения
             </label>
             <input
               type="date"
               value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
             />
           </div>
 
           {/* Assignee picker */}
           <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Исполнитель
             </label>
             <div className="flex gap-2">
@@ -671,7 +671,7 @@ function TaskEditModal({
                   setShowAssigneeDropdown(true);
                 }}
                 onFocus={() => setShowAssigneeDropdown(true)}
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                 placeholder="Поиск по имени..."
               />
               {formData.assignee_id && (
@@ -688,7 +688,7 @@ function TaskEditModal({
               )}
             </div>
             {showAssigneeDropdown && !formData.assignee_id && (
-              <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+              <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-lg">
                 {filteredUsers.map((u) => (
                   <button
                     key={u.id}
@@ -698,7 +698,7 @@ function TaskEditModal({
                       setAssigneeSearch(u.full_name);
                       setShowAssigneeDropdown(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-gray-900"
                   >
                     {u.full_name}
                     {u.email && (
@@ -716,7 +716,7 @@ function TaskEditModal({
           {/* Labels multi-select */}
           {projectLabels.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Метки
               </label>
               <div className="flex flex-wrap gap-2">
@@ -736,8 +736,8 @@ function TaskEditModal({
                       }}
                       className={`px-2 py-1 text-xs rounded-full border transition-colors ${
                         selected
-                          ? "text-white border-transparent"
-                          : "text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600"
+                          ? "text-gray-900 border-transparent bg-brand-green/10"
+                          : "text-gray-700 border-gray-300"
                       }`}
                       style={selected ? { backgroundColor: label.color } : {}}
                     >
@@ -755,7 +755,7 @@ function TaskEditModal({
               <button
                 type="button"
                 onClick={() => setShowNewLabel(true)}
-                className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                className="text-xs text-brand-green hover:opacity-80 flex items-center gap-1"
               >
                 <Tag className="w-3 h-3" /> Создать метку
               </button>
@@ -765,14 +765,14 @@ function TaskEditModal({
                   type="text"
                   value={newLabelName}
                   onChange={(e) => setNewLabelName(e.target.value)}
-                  className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-900"
                   placeholder="Название метки"
                 />
                 <input
                   type="color"
                   value={newLabelColor}
                   onChange={(e) => setNewLabelColor(e.target.value)}
-                  className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                  className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
                 />
                 <button
                   type="button"
@@ -783,7 +783,7 @@ function TaskEditModal({
                     setNewLabelColor("#6B7280");
                     setShowNewLabel(false);
                   }}
-                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-2 py-1 text-xs bg-brand-green text-white rounded hover:opacity-90"
                 >
                   <Check className="w-3 h-3" />
                 </button>
@@ -798,17 +798,17 @@ function TaskEditModal({
             )}
           </div>
         </div>
-        <div className="flex justify-end gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-3 px-4 py-3 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
           >
             Отмена
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !formData.title.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-brand-green text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Сохранение..." : "Сохранить"}
           </button>
