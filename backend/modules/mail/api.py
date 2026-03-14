@@ -9,6 +9,7 @@ from backend.modules.mail.schemas import (
     MailAccountCreate,
     MailAccountResponse,
     MailAccountUpdate,
+    MailFolderResponse,
     MailMessageDetailResponse,
     MailMessageResponse,
     MailSendRequest,
@@ -16,6 +17,7 @@ from backend.modules.mail.schemas import (
 from backend.modules.mail.services import (
     fetch_emails_async,
     fetch_message_by_uid_async,
+    list_folders_async,
     send_email_async,
     set_seen_by_uid_async,
 )
@@ -58,26 +60,47 @@ async def get_my_mail_account(
         raise HTTPException(status_code=404, detail="Учетная запись не настроена")
     return account
 
+@router.get("/folders", response_model=List[MailFolderResponse])
+async def get_folders(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+):
+    """Получить список папок почты (Входящие, Отправленные и т.д.) из IMAP."""
+    user_id = payload.get("sub")
+    account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    folders = await list_folders_async(
+        host=account.imap_host,
+        port=account.imap_port,
+        login=account.login,
+        password=account.password,
+        ssl=account.imap_ssl,
+    )
+    return folders
+
+
 @router.get("/inbox", response_model=List[MailMessageResponse])
 async def get_inbox_messages(
+    folder: str = "INBOX",
     limit: int = 50,
     db: Session = Depends(get_db),
-    payload: dict = Depends(get_token_payload)
+    payload: dict = Depends(get_token_payload),
 ):
-    """Получить последние письма через IMAP"""
+    """Получить письма из указанной папки через IMAP (folder=INBOX по умолчанию)."""
     user_id = payload.get("sub")
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
 
-    # Fetch directly using IMAP client
     emails = await fetch_emails_async(
         host=account.imap_host,
         port=account.imap_port,
         login=account.login,
         password=account.password,
         ssl=account.imap_ssl,
-        limit=limit
+        folder=folder,
+        limit=limit,
     )
     
     result = []
@@ -101,10 +124,11 @@ async def get_inbox_messages(
 @router.get("/inbox/{uid}", response_model=MailMessageDetailResponse)
 async def get_inbox_message(
     uid: int,
+    folder: str = "INBOX",
     db: Session = Depends(get_db),
     payload: dict = Depends(get_token_payload),
 ):
-    """Получить полное тело письма по IMAP UID (текст и HTML)."""
+    """Получить полное тело письма по IMAP UID из указанной папки (текст и HTML)."""
     user_id = payload.get("sub")
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
@@ -116,6 +140,7 @@ async def get_inbox_message(
         password=account.password,
         ssl=account.imap_ssl,
         uid=uid,
+        folder=folder,
     )
     if not msg:
         raise HTTPException(status_code=404, detail="Письмо не найдено")
@@ -125,10 +150,11 @@ async def get_inbox_message(
 @router.post("/inbox/{uid}/mark-read", status_code=status.HTTP_200_OK)
 async def mark_inbox_message_read(
     uid: int,
+    folder: str = "INBOX",
     db: Session = Depends(get_db),
     payload: dict = Depends(get_token_payload),
 ):
-    """Отметить письмо как прочитанное (установить флаг \\Seen в IMAP)."""
+    """Отметить письмо как прочитанное (установить флаг \\Seen в IMAP) в указанной папке."""
     user_id = payload.get("sub")
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
@@ -140,6 +166,7 @@ async def mark_inbox_message_read(
         password=account.password,
         ssl=account.imap_ssl,
         uid=uid,
+        folder=folder,
     )
     if not ok:
         raise HTTPException(status_code=502, detail="Не удалось установить флаг прочтения")

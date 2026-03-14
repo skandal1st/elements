@@ -46,6 +46,11 @@ class MailAccountResponse(BaseModel):
     class Config:
         orm_mode = True
 
+class MailFolderResponse(BaseModel):
+    name: str  # IMAP folder name for SELECT (e.g. INBOX, Sent)
+    display_name: str  # Human-readable name for UI
+
+
 class MailMessageResponse(BaseModel):
     id: str  # string representation of uid for list compatibility
     uid: int  # IMAP UID for fetching body and marking read

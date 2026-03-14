@@ -36,13 +36,19 @@ interface MailMessageDetail {
   html_body: string;
 }
 
+interface MailFolder {
+  name: string;
+  display_name: string;
+}
+
 export function MailPage() {
   const [emails, setEmails] = useState<MailMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmail, setSelectedEmail] = useState<MailMessage | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<MailMessageDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [activeFolder, setActiveFolder] = useState("inbox");
+  const [folders, setFolders] = useState<MailFolder[]>([]);
+  const [activeFolder, setActiveFolder] = useState<string>("INBOX");
   const [isComposing, setIsComposing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -64,20 +70,50 @@ export function MailPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    fetchInbox();
+    fetchFolders();
   }, []);
 
-  const fetchInbox = async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (folders.length > 0 && activeFolder) {
+      fetchMessages();
+    }
+  }, [activeFolder, folders]);
+
+  const fetchFolders = async () => {
+    const token = localStorage.getItem("token");
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/v1/mail/inbox?limit=50", {
+      const res = await fetch("/api/v1/mail/folders", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
+        setFolders(Array.isArray(data) ? data : []);
+        if (data.length > 0 && activeFolder === "INBOX") {
+          const hasInbox = data.some((f: MailFolder) => f.name === "INBOX" || f.name.toUpperCase() === "INBOX");
+          if (!hasInbox) setActiveFolder(data[0].name);
+        }
+      } else if (res.status === 400) {
+        setShowSettings(true);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchMessages = async () => {
+    setLoading(true);
+    setSelectedEmail(null);
+    setSelectedDetail(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `/api/v1/mail/inbox?folder=${encodeURIComponent(activeFolder)}&limit=50`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
         setEmails(data);
-        if (data.length > 0 && !selectedEmail) {
+        if (data.length > 0) {
           selectEmail(data[0]);
         }
       } else if (res.status === 400) {
@@ -90,16 +126,18 @@ export function MailPage() {
     }
   };
 
+
   const selectEmail = async (email: MailMessage) => {
     setSelectedEmail(email);
     setSelectedDetail(null);
     setDetailLoading(true);
     const token = localStorage.getItem("token");
+    const folderParam = encodeURIComponent(activeFolder);
     try {
-      await fetch(`/api/v1/mail/inbox/${email.uid}/mark-read`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await fetch(
+        `/api/v1/mail/inbox/${email.uid}/mark-read?folder=${folderParam}`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+      );
       setEmails((prev) =>
         prev.map((e) => (e.uid === email.uid ? { ...e, is_read: true } : e))
       );
@@ -107,9 +145,10 @@ export function MailPage() {
       // ignore
     }
     try {
-      const res = await fetch(`/api/v1/mail/inbox/${email.uid}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch(
+        `/api/v1/mail/inbox/${email.uid}?folder=${folderParam}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       if (res.ok) {
         const detail = await res.json();
         setSelectedDetail(detail);
@@ -135,7 +174,7 @@ export function MailPage() {
       });
       if (res.ok) {
         setShowSettings(false);
-        fetchInbox();
+        fetchFolders();
       } else {
         alert("Ошибка при сохранении настроек почты");
       }
@@ -177,13 +216,16 @@ export function MailPage() {
     }
   };
 
-  const folders = [
-    { id: "inbox", label: "Входящие", icon: Inbox, count: emails.length > 0 ? emails.length : undefined },
-    { id: "sent", label: "Отправленные", icon: Send },
-    { id: "drafts", label: "Черновики", icon: FileText },
-    { id: "spam", label: "Спам", icon: AlertCircle },
-    { id: "trash", label: "Корзина", icon: Trash2 }
-  ];
+  const folderIcon = (name: string) => {
+    const n = name.toUpperCase();
+    if (n === "INBOX") return Inbox;
+    if (n.includes("SENT") || n.includes("ОТПРАВЛЕН")) return Send;
+    if (n.includes("DRAFT") || n.includes("ЧЕРНОВИК")) return FileText;
+    if (n.includes("SPAM") || n.includes("СПАМ")) return AlertCircle;
+    if (n.includes("TRASH") || n.includes("КОРЗИН") || n.includes("УДАЛЕН")) return Trash2;
+    return Mail;
+  };
+  const currentFolderLabel = folders.find((f) => f.name === activeFolder)?.display_name ?? activeFolder;
 
   return (
     <div className="flex w-full h-full relative">
@@ -198,24 +240,33 @@ export function MailPage() {
             Написать письмо
           </button>
         </div>
-        <div className="flex-1 py-2 px-3 space-y-1">
-          {folders.map(f => (
-            <button
-              key={f.id}
-              onClick={() => setActiveFolder(f.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${activeFolder === f.id ? 'bg-white text-brand-green shadow-sm font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <div className="flex items-center gap-3">
-                <f.icon className="w-4 h-4" />
-                {f.label}
-              </div>
-              {f.count && (
-                <span className="bg-brand-green/10 text-brand-green py-0.5 px-2 rounded-full text-[10px] font-bold">
-                  {f.count}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">
+          {folders.length === 0 && !loading ? (
+            <p className="text-sm text-gray-500 px-3 py-2">Настройте почту</p>
+          ) : (
+            folders.map((f) => {
+              const Icon = folderIcon(f.name);
+              const isActive = activeFolder === f.name;
+              const count = isActive ? emails.length : undefined;
+              return (
+                <button
+                  key={f.name}
+                  onClick={() => setActiveFolder(f.name)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? "bg-white text-brand-green shadow-sm font-medium" : "text-gray-600 hover:bg-gray-100"}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">{f.display_name}</span>
+                  </div>
+                  {count !== undefined && count > 0 && (
+                    <span className="bg-brand-green/10 text-brand-green py-0.5 px-2 rounded-full text-[10px] font-bold flex-shrink-0">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          )}
         </div>
         <div className="p-4 border-t border-gray-100">
            <button onClick={() => setShowSettings(true)} className="w-full text-sm text-gray-500 hover:text-gray-800 transition-colors text-left font-medium flex items-center gap-2">
@@ -228,9 +279,9 @@ export function MailPage() {
       <div className="w-80 border-r border-gray-100 flex flex-col bg-white">
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Входящие</h2>
-            <button onClick={fetchInbox} className="p-2 -mr-2 text-gray-400 hover:text-brand-green transition-colors rounded-full hover:bg-gray-50">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-brand-green' : ''}`} />
+            <h2 className="text-lg font-semibold text-gray-800 truncate">{currentFolderLabel}</h2>
+            <button onClick={fetchMessages} className="p-2 -mr-2 text-gray-400 hover:text-brand-green transition-colors rounded-full hover:bg-gray-50">
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-brand-green" : ""}`} />
             </button>
           </div>
           <div className="relative">

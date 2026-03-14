@@ -37,16 +37,46 @@ class ImapClient:
         if self.mail:
             try:
                 self.mail.logout()
-            except:
+            except Exception:
                 pass
 
-    def fetch_inbox(self, limit: int = 50) -> List[Dict]:
-        if not self.mail:
-            if not self.connect():
-                return []
-        
+    def list_folders(self) -> List[Dict]:
+        """Return list of IMAP folders. Each item: {name, display_name}."""
+        if not self.mail and not self.connect():
+            return []
         try:
-            self.mail.select("INBOX", readonly=True)
+            status, data = self.mail.list()
+            if status != "OK" or not data:
+                return []
+            result = []
+            for line in data:
+                line_str = line.decode("utf-8", errors="replace") if isinstance(line, bytes) else str(line)
+                matches = re.findall(r'"([^"]*)"', line_str)
+                if not matches:
+                    continue
+                name = matches[-1]
+                display_name = self._decode_imap_folder_name(name)
+                result.append({"name": name, "display_name": display_name})
+            return result
+        except Exception as e:
+            logger.error("IMAP list failed: %s", e)
+            return []
+
+    def _decode_imap_folder_name(self, name: str) -> str:
+        """Decode IMAP modified UTF-7 folder name to Unicode where possible."""
+        if not name or "&" not in name or "-" not in name:
+            return name
+        try:
+            return imaplib.IMAP4._decode_utf7(name)
+        except Exception:
+            return name
+
+    def fetch_folder(self, folder: str, limit: int = 50) -> List[Dict]:
+        """Fetch messages from the given folder (e.g. INBOX, Sent)."""
+        if not self.mail and not self.connect():
+            return []
+        try:
+            self.mail.select(folder, readonly=True)
             status, messages_data = self.mail.search(None, "ALL")
             if status != "OK":
                 return []
@@ -90,11 +120,11 @@ class ImapClient:
                     "is_read": is_read,
                     "is_flagged": is_flagged,
                     "has_attachments": has_attachments,
-                    "folder": "INBOX",
+                    "folder": folder,
                 })
             return emails
         except Exception as e:
-            logger.error(f"IMAP fetch failed: {e}")
+            logger.error("IMAP fetch failed: %s", e)
             return []
 
     def _decode_str(self, s: str) -> str:
@@ -152,12 +182,12 @@ class ImapClient:
                 pass
         return (text_body or "", html_body or "")
 
-    def fetch_message_by_uid(self, uid: int) -> Optional[Dict]:
-        """Fetch a single message by IMAP UID and return full body (text + html)."""
+    def fetch_message_by_uid(self, uid: int, folder: str = "INBOX") -> Optional[Dict]:
+        """Fetch a single message by IMAP UID from the given folder."""
         if not self.mail and not self.connect():
             return None
         try:
-            self.mail.select("INBOX", readonly=True)
+            self.mail.select(folder, readonly=True)
             status, data = self.mail.uid("FETCH", str(uid), "(BODY.PEEK[])")
             if status != "OK" or not data or not data[0]:
                 return None
@@ -179,12 +209,12 @@ class ImapClient:
             logger.error("fetch_message_by_uid failed: %s", e)
             return None
 
-    def set_seen_by_uid(self, uid: int) -> bool:
-        """Set \\Seen flag for the message with given UID."""
+    def set_seen_by_uid(self, uid: int, folder: str = "INBOX") -> bool:
+        """Set \\Seen flag for the message with given UID in the given folder."""
         if not self.mail and not self.connect():
             return False
         try:
-            self.mail.select("INBOX", readonly=False)
+            self.mail.select(folder, readonly=False)
             status, _ = self.mail.uid("STORE", str(uid), "+FLAGS", "\\Seen")
             return status == "OK"
         except Exception as e:
@@ -192,33 +222,44 @@ class ImapClient:
             return False
 
 
-async def fetch_emails_async(host, port, login, password, ssl=True, limit=50):
+async def list_folders_async(host, port, login, password, ssl=True):
+    def _list():
+        client = ImapClient(host, port, login, password, ssl)
+        try:
+            return client.list_folders()
+        finally:
+            client.close()
+
+    return await asyncio.to_thread(_list)
+
+
+async def fetch_emails_async(host, port, login, password, ssl=True, folder="INBOX", limit=50):
     def _fetch():
         client = ImapClient(host, port, login, password, ssl)
         try:
-            return client.fetch_inbox(limit)
+            return client.fetch_folder(folder, limit)
         finally:
             client.close()
 
     return await asyncio.to_thread(_fetch)
 
 
-async def fetch_message_by_uid_async(host, port, login, password, ssl, uid: int):
+async def fetch_message_by_uid_async(host, port, login, password, ssl, uid: int, folder: str = "INBOX"):
     def _fetch():
         client = ImapClient(host, port, login, password, ssl)
         try:
-            return client.fetch_message_by_uid(uid)
+            return client.fetch_message_by_uid(uid, folder)
         finally:
             client.close()
 
     return await asyncio.to_thread(_fetch)
 
 
-async def set_seen_by_uid_async(host, port, login, password, ssl, uid: int):
+async def set_seen_by_uid_async(host, port, login, password, ssl, uid: int, folder: str = "INBOX"):
     def _store():
         client = ImapClient(host, port, login, password, ssl)
         try:
-            return client.set_seen_by_uid(uid)
+            return client.set_seen_by_uid(uid, folder)
         finally:
             client.close()
 
