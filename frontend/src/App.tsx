@@ -44,6 +44,8 @@ import { TemplatesPage } from "./modules/documents/pages/TemplatesPage";
 import { TemplateEditorPage } from "./modules/documents/pages/TemplateEditorPage";
 import { ApprovalRoutesPage } from "./modules/documents/pages/ApprovalRoutesPage";
 import { ApprovalRouteEditorPage } from "./modules/documents/pages/ApprovalRouteEditorPage";
+import { MailLayout } from "./modules/mail/MailLayout";
+import { MailPage } from "./modules/mail/pages/MailPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token);
@@ -196,10 +198,10 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     <>
       <Sidebar />
       <div
-        className={`transition-all duration-300 ${sidebarCollapsed ? "md:ml-20" : "md:ml-72"}`}
+        className={`transition-all duration-300 ${sidebarCollapsed ? "md:ml-20" : "md:ml-[280px]"}`}
       >
         <Header />
-        <main className="p-6 bg-dark-900 min-h-[calc(100vh-73px)]">{children}</main>
+        <main className="p-6 bg-brand-light min-h-[calc(100vh-73px)]">{children}</main>
       </div>
     </>
   );
@@ -233,6 +235,18 @@ function AppRoutes() {
           <Route path="org" element={<OrgChart />} />
           <Route path="requests" element={<HRPanel />} />
           <Route path="zup-sync" element={<ZupSyncPage />} />
+        </Route>
+        <Route
+          path="/mail"
+          element={
+            <ProtectedRoute>
+              <ModuleRoute module="portal">
+                <MailLayout />
+              </ModuleRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<MailPage />} />
         </Route>
         <Route
           path="/it"
@@ -379,7 +393,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-dark-900 transition-colors">
+      <div className="min-h-screen bg-brand-light text-gray-900 transition-colors">
         <AppRoutes />
       </div>
     </BrowserRouter>

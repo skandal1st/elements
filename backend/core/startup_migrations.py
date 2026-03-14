@@ -374,6 +374,28 @@ def ensure_documents_tables() -> None:
             logger.warning("startup table create skipped (%s): %s", t.name, e)
 
 
+def ensure_mail_tables() -> None:
+    """
+    Создаёт таблицы модуля почты, если их ещё нет.
+    """
+    try:
+        from backend.modules.mail.models import MailAccount, MailMessage, MailAttachment
+    except Exception as e:
+        logger.warning("Mail models import failed: %s", e)
+        return
+
+    tables = [
+        MailAccount.__table__,
+        MailMessage.__table__,
+        MailAttachment.__table__,
+    ]
+
+    for t in tables:
+        try:
+            t.create(bind=engine, checkfirst=True)
+        except Exception as e:
+            logger.warning("startup table create skipped (%s): %s", t.name, e)
+
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
     try:
@@ -383,12 +405,11 @@ def apply_startup_migrations() -> None:
         ensure_knowledge_core_article_extensions()
         ensure_zabbix_integration_columns()
         ensure_equipment_category_network()
-        ensure_rocketchat_columns()
-        ensure_rustdesk_column()
-        ensure_license_assignments_employee_id()
         ensure_documents_tables()
+        ensure_portal_tables()
+        ensure_mail_tables()
         logger.info(
-            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat и rustdesk колонки готовы"
+            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat, rustdesk, portal, documents и mail готовы"
         )
     except Exception as e:
         # Не блокируем запуск приложения, но логируем проблему.

@@ -110,11 +110,11 @@ export function Header() {
   const updatedLabel = formatRelative(lastEmailCheckAt);
 
   return (
-    <header className="sticky top-0 z-30 bg-dark-900/80 backdrop-blur-xl border-b border-dark-700/50">
+    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm">
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-white">{currentPageName}</h1>
-          <span className="text-sm text-accent-purple bg-accent-purple/10 px-3 py-1 rounded-full">
+          <h1 className="text-xl font-semibold text-gray-900">{currentPageName}</h1>
+          <span className="text-sm text-brand-green bg-green-50 px-3 py-1 rounded-full">
             Обновлено {updatedLabel}
           </span>
         </div>
@@ -122,7 +122,7 @@ export function Header() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="p-2.5 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all"
+            className="p-2.5 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
             title="Поиск"
           >
             <Search className="w-5 h-5" />
@@ -133,37 +133,37 @@ export function Header() {
           {isSuperuser && (
             <Link
               to="/settings"
-              className="p-2.5 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all"
+              className="p-2.5 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
               title="Настройки проекта"
             >
               <Settings className="w-5 h-5" />
             </Link>
           )}
 
-          <div className="w-px h-8 bg-dark-600 mx-1" />
+          <div className="w-px h-8 bg-gray-200 mx-1" />
 
           <div className="relative" ref={userRef}>
             <button
               type="button"
               onClick={() => setUserOpen(!userOpen)}
-              className="flex items-center gap-3 px-3 py-2 hover:bg-dark-700/50 rounded-xl transition-all"
+              className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-xl transition-all"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center">
-                <span className="text-sm font-semibold text-white">{avatarInitials}</span>
+              <div className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
+                <span className="text-sm font-semibold text-gray-600">{avatarInitials}</span>
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-white">{displayName}</p>
+                <p className="text-sm font-semibold text-gray-900">{displayName}</p>
                 <p className="text-xs text-gray-500 truncate max-w-[160px]">{email || "—"}</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${userOpen ? "rotate-180" : ""}`} />
             </button>
 
             {userOpen && (
-              <div className="absolute right-0 mt-2 w-56 py-1 bg-dark-800 rounded-xl shadow-xl border border-dark-600 z-50">
+              <div className="absolute right-0 mt-2 w-56 py-1 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 z-50">
                 <Link
                   to="/profile"
                   onClick={() => setUserOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-dark-700/50 hover:text-white transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 >
                   <User className="w-4 h-4" />
                   <span className="text-sm">Настройки пользователя</span>
@@ -174,7 +174,7 @@ export function Header() {
                     setUserOpen(false);
                     logout();
                   }}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                  className="flex items-center gap-3 w-full px-4 py-3 text-gray-600 hover:bg-red-50 hover:text-red-500 transition-colors font-medium border-t border-gray-100"
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="text-sm">Выход</span>

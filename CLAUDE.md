@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Elements Platform is a modular corporate automation platform. Backend: FastAPI (Python 3.11+). Frontend: React 19 + TypeScript + Vite. Database: PostgreSQL 14+ with SQLAlchemy 2.0. Styling: Tailwind CSS.
 
-**Modules:** HR (employees, org structure, LDAP/AD), IT (helpdesk tickets, equipment, integrations), Tasks (projects, kanban boards), Knowledge Core (LLM-powered KB with Qdrant), Portal (dashboard/aggregation), Finance (placeholder).
+**Modules:** HR (employees, org structure, LDAP/AD), IT (helpdesk tickets, equipment, integrations), Tasks (projects, kanban boards), Knowledge Core (LLM-powered KB with Qdrant), Documents (internal document workflow, .docx templates, approval routes), Portal (dashboard/aggregation), Finance (placeholder).
 
 ## Development Commands
 
@@ -18,6 +18,9 @@ pip install -r requirements.txt
 python scripts/init_db.py          # Initialize DB, seed admin (admin@elements.local / admin123)
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 # API docs: http://localhost:8000/api/v1/docs
+
+# Run tests (minimal test suite in backend/tests/)
+pytest tests/
 ```
 
 ### Frontend
@@ -30,7 +33,7 @@ npm run build     # tsc -b && vite build → dist/
 npm run lint      # ESLint
 ```
 
-No test framework is configured for frontend. Backend has minimal tests in `backend/tests/`.
+No test framework is configured for frontend. Backend has minimal integration tests in `backend/tests/` (run with `pytest`).
 
 ### Docker
 
@@ -42,7 +45,13 @@ docker-compose exec backend python scripts/init_db.py  # Init DB in Docker
 
 ### Required Environment Variables
 
-See `.env.example`. Key vars: `DATABASE_URL`, `SECRET_KEY` (min 32 chars), `REDIS_URL`, `ENABLED_MODULES` (comma-separated: `hr,it,tasks`), `LICENSE_SERVER_URL`, `COMPANY_ID`.
+See `.env.example`. Key vars:
+- `DATABASE_URL` - PostgreSQL connection string
+- `JWT_SECRET` (alias: `SECRET_KEY`) - min 32 chars, generate with `openssl rand -hex 32`
+- `REDIS_URL` - Redis connection string
+- `ENABLED_MODULES` - comma-separated list: `hr,it,tasks,documents`
+- `LICENSE_SERVER_URL`, `COMPANY_ID` - License server config
+- `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` - Initial admin credentials (created by `init_db.py`)
 
 **Important:** `ACCESS_TOKEN_EXPIRE_MINUTES=10080` (7 days). Setting this to 30 causes frequent logouts.
 
@@ -64,6 +73,14 @@ backend/modules/{module}/
 **Module registration:** All module routers are unconditionally imported and included in `backend/main.py`. The `ENABLED_MODULES` env var controls feature availability at runtime, not router mounting.
 
 Routes are prefixed with `/api/v1/{module}`. Auth routes are in `backend/core/auth_routes.py`.
+
+**Available modules:**
+- `hr` - Employee management, org structure, LDAP sync, documents
+- `it` - Tickets, equipment, knowledge base, integrations (Telegram, RocketChat, Email IMAP, Zabbix)
+- `tasks` - Projects and task boards
+- `documents` - Document workflow with .docx templates and approval routes
+- `portal` - Aggregated dashboard
+- `finance` - Placeholder (not implemented)
 
 ### Frontend Structure
 
@@ -112,6 +129,23 @@ All integrations use **polling** (not webhooks). Started in `main.py` on_startup
 - **Zabbix:** Minimal (GET hosts only)
 
 Configuration stored in `system_settings` DB table. API: `GET /api/v1/it/settings`. Sensitive values masked as `"********"` in responses.
+
+### Static Files & Uploads
+
+- **Upload directory:** `uploads/` (configurable via `UPLOAD_DIR` env var)
+- **Mounted in backend:** `app.mount("/uploads", StaticFiles(...))` in `main.py`
+- **Subdirectories:** Auto-served (e.g., `/uploads/tickets/`, `/uploads/documents/`)
+- **Frontend proxy:** Vite dev server proxies `/uploads` → backend (see `vite.config.ts`)
+- **File URLs in DB:** Store as `/uploads/{subdir}/{filename}`, served directly by backend/nginx
+
+### Knowledge Core & LLM Integration
+
+- **Vector DB:** Qdrant for semantic search (config: `QDRANT_URL`, `QDRANT_COLLECTION`)
+- **LLM Provider:** OpenRouter (config: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`)
+- **Optional features:** Both disabled by default
+  - `LLM_NORMALIZATION_ENABLED=false` - LLM-powered content normalization
+  - `LLM_SUGGESTIONS_ENABLED=false` - AI suggestions
+- **System is fully functional with LLM features disabled**
 
 ### Other Top-Level Directories
 

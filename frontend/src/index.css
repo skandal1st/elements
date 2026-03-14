@@ -110,6 +110,25 @@ code {
     @apply glass-card-purple p-5 hover:shadow-glow transition-all duration-300;
   }
 
+  /* Светлая тема (Portal) */
+  .portal-card {
+    @apply bg-white rounded-3xl p-6 shadow-[0px_8px_24px_rgba(149,157,165,0.1)] border border-gray-100;
+  }
+
+  .portal-button-primary {
+    @apply bg-brand-green text-white font-medium rounded-2xl px-5 py-2.5 
+           hover:bg-green-800 transition-all duration-200 shadow-[0_4px_14px_0_rgba(0,107,61,0.39)];
+  }
+
+  .portal-button-outline {
+    @apply border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 
+           font-medium rounded-2xl px-5 py-2.5 transition-all duration-200;
+  }
+
+  .portal-icon-bg {
+    @apply bg-gray-50 flex items-center justify-center rounded-2xl;
+  }
+
   .table-row {
     @apply bg-dark-800/40 hover:bg-dark-700/60 transition-colors duration-150;
   }
