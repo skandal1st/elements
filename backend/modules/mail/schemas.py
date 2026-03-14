@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Any
 from uuid import UUID
 from datetime import datetime
@@ -82,7 +82,12 @@ class MailMessageDetailResponse(BaseModel):
     attachments: List[MailAttachmentDetail] = []
 
 class MailSendRequest(BaseModel):
-    to_email: EmailStr
+    to_emails: List[EmailStr] = Field(..., min_length=1, description="Минимум один получатель")
     subject: str
     text_body: str
     html_body: Optional[str] = None
+
+
+class AddressbookEntry(BaseModel):
+    email: str
+    name: str

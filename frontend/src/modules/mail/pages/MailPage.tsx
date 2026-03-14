@@ -14,8 +14,11 @@ import {
   Archive,
   Paperclip,
   Download,
-  X
+  X,
+  Building2,
+  ChevronDown
 } from "lucide-react";
+import { useCallback, useRef } from "react";
 
 interface MailMessage {
   id: string;
@@ -53,6 +56,30 @@ interface MailFolder {
   unread?: number;
 }
 
+interface Recipient {
+  email: string;
+  label?: string;
+}
+
+interface PhonebookEntry {
+  id: number;
+  full_name: string;
+  email: string | null;
+  department_id: number | null;
+  internal_phone?: string | null;
+  external_phone?: string | null;
+}
+
+interface DepartmentOut {
+  id: number;
+  name: string;
+}
+
+interface MailcowEntry {
+  email: string;
+  name: string;
+}
+
 export function MailPage() {
   const [emails, setEmails] = useState<MailMessage[]>([]);
   const [foldersLoading, setFoldersLoading] = useState(true);
@@ -80,10 +107,68 @@ export function MailPage() {
   const [settingsLoading, setSettingsLoading] = useState(false);
 
   // Form compose state
-  const [toEmail, setToEmail] = useState("");
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [composeSearch, setComposeSearch] = useState("");
+  const [phonebookSuggestions, setPhonebookSuggestions] = useState<PhonebookEntry[]>([]);
+  const [phonebookLoading, setPhonebookLoading] = useState(false);
+  const [showSuggestionsDropdown, setShowSuggestionsDropdown] = useState(false);
+  const [departments, setDepartments] = useState<DepartmentOut[]>([]);
+  const [showDeptPicker, setShowDeptPicker] = useState(false);
+  const [mailcowAddressbook, setMailcowAddressbook] = useState<MailcowEntry[]>([]);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const composeSearchRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Поиск по ФИО в адресной книге (debounce 300 ms)
+  useEffect(() => {
+    if (!isComposing) return;
+    const q = composeSearch.trim();
+    if (q.length < 2) {
+      setPhonebookSuggestions([]);
+      setShowSuggestionsDropdown(false);
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      debounceRef.current = null;
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      setPhonebookLoading(true);
+      try {
+        const res = await fetch(`/api/v1/hr/phonebook?q=${encodeURIComponent(q)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data: PhonebookEntry[] = await res.json();
+          const withEmail = data.filter((e) => e.email);
+          setPhonebookSuggestions(withEmail);
+          setShowSuggestionsDropdown(withEmail.length > 0);
+        } else {
+          setPhonebookSuggestions([]);
+        }
+      } catch {
+        setPhonebookSuggestions([]);
+      } finally {
+        setPhonebookLoading(false);
+      }
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [isComposing, composeSearch]);
+
+  // Загрузка глобальной адресной книги Mailcow при открытии формы написания
+  useEffect(() => {
+    if (!isComposing) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch("/api/v1/mail/addressbook/mailcow", { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: MailcowEntry[]) => setMailcowAddressbook(Array.isArray(data) ? data : []))
+      .catch(() => setMailcowAddressbook([]));
+  }, [isComposing]);
 
   // При загрузке страницы: сначала проверяем, есть ли учётная запись почты, затем синхронизируем
   useEffect(() => {
@@ -393,8 +478,84 @@ export function MailPage() {
     }
   };
 
+  const addRecipient = useCallback((email: string, label?: string) => {
+    const norm = email.trim().toLowerCase();
+    if (!norm) return;
+    setRecipients((prev) => {
+      if (prev.some((r) => r.email.toLowerCase() === norm)) return prev;
+      return [...prev, { email: email.trim(), label: label || undefined }];
+    });
+  }, []);
+
+  const addRecipientsFromDepartment = useCallback(async (departmentId: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setPhonebookLoading(true);
+    setShowDeptPicker(false);
+    try {
+      const res = await fetch(`/api/v1/hr/phonebook?department_id=${departmentId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data: PhonebookEntry[] = await res.json();
+      const withEmail = data.filter((e) => e.email);
+      setRecipients((prev) => {
+        const existing = new Set(prev.map((r) => r.email.toLowerCase()));
+        const next = [...prev];
+        for (const e of withEmail) {
+          const em = (e.email as string).trim().toLowerCase();
+          if (!existing.has(em)) {
+            existing.add(em);
+            next.push({ email: e.email as string, label: e.full_name });
+          }
+        }
+        return next;
+      });
+    } finally {
+      setPhonebookLoading(false);
+    }
+  }, []);
+
+  const removeRecipient = useCallback((email: string) => {
+    setRecipients((prev) => prev.filter((r) => r.email !== email));
+  }, []);
+
+  const addManualEmails = useCallback((raw: string) => {
+    const parts = raw.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+    const emailLike = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    for (const part of parts) {
+      if (emailLike.test(part)) addRecipient(part);
+    }
+  }, [addRecipient]);
+
+  const openDeptPicker = useCallback(async () => {
+    if (departments.length > 0) {
+      setShowDeptPicker(true);
+      return;
+    }
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/v1/hr/departments/", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data: DepartmentOut[] = await res.json();
+        setDepartments(data);
+        setShowDeptPicker(true);
+      }
+    } catch {
+      setShowDeptPicker(false);
+    }
+  }, [departments.length]);
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emails = recipients.map((r) => r.email);
+    if (emails.length === 0) {
+      alert("Добавьте хотя бы одного получателя");
+      return;
+    }
     setSending(true);
     try {
       const token = localStorage.getItem("token");
@@ -405,16 +566,19 @@ export function MailPage() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          to_email: toEmail,
+          to_emails: emails,
           subject,
           text_body: body
         })
       });
       if (res.ok) {
         setIsComposing(false);
-        setToEmail("");
+        setRecipients([]);
+        setComposeSearch("");
         setSubject("");
         setBody("");
+        setShowSuggestionsDropdown(false);
+        setShowDeptPicker(false);
       } else {
         alert("Ошибка при отправке");
       }
@@ -699,15 +863,153 @@ export function MailPage() {
             </button>
           </div>
           <form onSubmit={handleSend} className="flex-1 flex flex-col">
-            <div className="px-4 py-2 border-b border-gray-100 flex items-center">
-              <span className="text-sm text-gray-500 w-12">Кому</span>
-              <input
-                type="email"
-                required
-                value={toEmail}
-                onChange={e => setToEmail(e.target.value)}
-                className="flex-1 text-sm outline-none"
-              />
+            <div className="px-4 py-2 border-b border-gray-100 relative">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-gray-500 shrink-0">Кому</span>
+                <div className="flex-1 min-w-0 relative flex items-center gap-1 flex-wrap">
+                  {recipients.map((r) => (
+                    <span
+                      key={r.email}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-green/10 text-brand-green text-xs font-medium"
+                    >
+                      {r.label || r.email}
+                      <button
+                        type="button"
+                        onClick={() => removeRecipient(r.email)}
+                        className="hover:bg-brand-green/20 rounded p-0.5"
+                        aria-label="Удалить"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    ref={composeSearchRef}
+                    type="text"
+                    value={composeSearch}
+                    onChange={(e) => setComposeSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (composeSearch.trim()) {
+                          addManualEmails(composeSearch);
+                          setComposeSearch("");
+                          setShowSuggestionsDropdown(false);
+                        }
+                      }
+                    }}
+                    onFocus={() => phonebookSuggestions.length > 0 && setShowSuggestionsDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestionsDropdown(false), 180)}
+                    placeholder={recipients.length === 0 ? "Поиск по ФИО или введите email (несколько через запятую)..." : ""}
+                    className="flex-1 min-w-[120px] text-sm outline-none py-0.5"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={openDeptPicker}
+                  className="shrink-0 flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                  title="Добавить отдел"
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Отдел</span>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+              </div>
+              {showSuggestionsDropdown && (phonebookSuggestions.length > 0 || (() => {
+                const q = composeSearch.trim().toLowerCase();
+                const mailcowFiltered = q.length >= 1
+                  ? mailcowAddressbook.filter(
+                      (e) =>
+                        e.name.toLowerCase().includes(q) ||
+                        e.email.toLowerCase().includes(q)
+                    )
+                  : [];
+                return mailcowFiltered.length > 0;
+              })()) && (
+                <ul className="absolute left-4 right-4 mt-0.5 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
+                  {phonebookSuggestions.length > 0 && (
+                    <>
+                      <li className="px-3 py-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Сотрудники</li>
+                      {phonebookSuggestions.map((entry) => (
+                        <li key={`pb-${entry.id}`}>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
+                            onClick={() => {
+                              addRecipient(entry.email!, entry.full_name);
+                              setComposeSearch("");
+                              setPhonebookSuggestions([]);
+                              setShowSuggestionsDropdown(false);
+                            }}
+                          >
+                            <span>{entry.full_name}</span>
+                            <span className="text-gray-500 text-xs">{entry.email}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </>
+                  )}
+                  {(() => {
+                    const q = composeSearch.trim().toLowerCase();
+                    const mailcowFiltered = q.length >= 1
+                      ? mailcowAddressbook.filter(
+                          (e) =>
+                            e.name.toLowerCase().includes(q) ||
+                            e.email.toLowerCase().includes(q)
+                        )
+                      : [];
+                    if (mailcowFiltered.length === 0) return null;
+                    return (
+                      <>
+                        <li className="px-3 py-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide border-t border-gray-100 mt-1 pt-1">Глобальная книга</li>
+                        {mailcowFiltered.slice(0, 30).map((entry, idx) => (
+                          <li key={`mc-${entry.email}-${idx}`}>
+                            <button
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
+                              onClick={() => {
+                                addRecipient(entry.email, entry.name);
+                                setComposeSearch("");
+                                setShowSuggestionsDropdown(false);
+                              }}
+                            >
+                              <span>{entry.name || entry.email}</span>
+                              <span className="text-gray-500 text-xs">{entry.email}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </ul>
+              )}
+              {phonebookLoading && (
+                <div className="absolute right-14 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-brand-green/30 border-t-brand-green rounded-full animate-spin" />
+                </div>
+              )}
+              {showDeptPicker && (
+                <div className="absolute left-4 right-4 mt-1 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                  {departments.map((dept) => (
+                    <button
+                      key={dept.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                      onClick={() => addRecipientsFromDepartment(dept.id)}
+                    >
+                      <Building2 className="w-4 h-4 text-gray-400" />
+                      {dept.name}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                    onClick={() => setShowDeptPicker(false)}
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              )}
             </div>
             <div className="px-4 py-2 border-b border-gray-100 flex items-center">
                <span className="text-sm text-gray-500 w-12">Тема</span>

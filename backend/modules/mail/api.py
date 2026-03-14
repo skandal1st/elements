@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from urllib.parse import quote
 from uuid import UUID
@@ -11,6 +12,7 @@ from backend.core.auth import get_token_payload
 from backend.core.database import get_db
 from backend.modules.mail.models import MailAccount
 from backend.modules.mail.schemas import (
+    AddressbookEntry,
     MailAccountCreate,
     MailAccountResponse,
     MailAccountUpdate,
@@ -24,6 +26,7 @@ from backend.modules.mail.services import (
     delete_by_uid_async,
     fetch_attachment_by_index_async,
     fetch_emails_async,
+    fetch_mailcow_mailboxes,
     fetch_message_by_uid_async,
     get_inbox_unread_count_async,
     list_folders_async,
@@ -328,6 +331,14 @@ async def delete_inbox_message(
     return {"status": "ok"}
 
 
+@router.get("/addressbook/mailcow", response_model=List[AddressbookEntry])
+async def get_mailcow_addressbook(payload: dict = Depends(get_token_payload)):
+    """Глобальная адресная книга из Mailcow (все ящики). Пустой список, если Mailcow не настроен."""
+    _user_id_from_payload(payload)
+    result = await asyncio.to_thread(fetch_mailcow_mailboxes)
+    return [AddressbookEntry(email=e["email"], name=e["name"]) for e in result]
+
+
 @router.post("/send", status_code=status.HTTP_200_OK)
 async def send_new_email(
     request: MailSendRequest,
@@ -347,7 +358,7 @@ async def send_new_email(
             login=account.login,
             password=account.password,
             ssl=account.smtp_ssl,
-            to_email=request.to_email,
+            to_emails=request.to_emails,
             subject=request.subject,
             text_body=request.text_body,
             html_body=request.html_body

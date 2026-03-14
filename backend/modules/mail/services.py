@@ -527,10 +527,12 @@ async def get_inbox_unread_count_async(host, port, login, password, ssl):
     return await asyncio.to_thread(_count)
 
 
-async def send_email_async(host, port, login, password, ssl, to_email, subject, text_body, html_body=None):
+async def send_email_async(host, port, login, password, ssl, to_emails, subject, text_body, html_body=None):
+    if isinstance(to_emails, str):
+        to_emails = [e.strip() for e in to_emails.split(",") if e.strip()]
     message = MIMEMultipart("alternative")
     message["From"] = login
-    message["To"] = to_email
+    message["To"] = ", ".join(to_emails)
     message["Subject"] = subject
 
     part1 = MIMEText(text_body, "plain", "utf-8")
@@ -549,3 +551,35 @@ async def send_email_async(host, port, login, password, ssl, to_email, subject, 
         use_tls=ssl
     )
     return True
+
+
+def fetch_mailcow_mailboxes() -> List[Dict]:
+    """Список ящиков из Mailcow API для глобальной адресной книги. Возвращает [{"email": str, "name": str}, ...]."""
+    try:
+        from backend.core.config import settings
+        import httpx
+    except ImportError:
+        return []
+    if not settings.mailcow_api_url or not settings.mailcow_api_key:
+        return []
+    base_url = settings.mailcow_api_url.rstrip("/")
+    headers = {"X-API-Key": settings.mailcow_api_key}
+    try:
+        with httpx.Client(timeout=15, headers=headers) as client:
+            r = client.get(f"{base_url}/api/v1/get/mailbox/all")
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        logger.warning("Mailcow addressbook fetch failed: %s", e)
+        return []
+    if not isinstance(data, list):
+        return []
+    result = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        email_val = item.get("username") or item.get("email") or item.get("address")
+        name_val = item.get("name") or item.get("full_name") or ""
+        if email_val:
+            result.append({"email": str(email_val).strip(), "name": str(name_val).strip() or email_val})
+    return result
