@@ -49,6 +49,7 @@ import { ContractsListPage } from "./modules/contracts/pages/ContractsListPage";
 import { ContractDetailPage } from "./modules/contracts/pages/ContractDetailPage";
 import { CounterpartiesPage } from "./modules/contracts/pages/CounterpartiesPage";
 import { ContractTypesPage } from "./modules/contracts/pages/ContractTypesPage";
+import { ContractCreatePage } from "./modules/contracts/pages/ContractCreatePage";
 import { MailLayout } from "./modules/mail/MailLayout";
 import { MailPage } from "./modules/mail/pages/MailPage";
 
@@ -332,6 +333,7 @@ function AppRoutes() {
           }
         >
           <Route index element={<ContractsListPage />} />
+          <Route path="new" element={<ContractCreatePage />} />
           <Route path="counterparties" element={<CounterpartiesPage />} />
           <Route path="types" element={<ContractTypesPage />} />
           <Route path=":id" element={<ContractDetailPage />} />
