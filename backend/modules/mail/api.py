@@ -5,8 +5,20 @@ from typing import List
 from backend.core.auth import get_token_payload
 from backend.core.database import get_db
 from backend.modules.mail.models import MailAccount
-from backend.modules.mail.schemas import MailAccountCreate, MailAccountResponse, MailAccountUpdate, MailMessageResponse, MailSendRequest
-from backend.modules.mail.services import fetch_emails_async, send_email_async
+from backend.modules.mail.schemas import (
+    MailAccountCreate,
+    MailAccountResponse,
+    MailAccountUpdate,
+    MailMessageDetailResponse,
+    MailMessageResponse,
+    MailSendRequest,
+)
+from backend.modules.mail.services import (
+    fetch_emails_async,
+    fetch_message_by_uid_async,
+    send_email_async,
+    set_seen_by_uid_async,
+)
 
 router = APIRouter(prefix="/api/v1/mail", tags=["mail"])
 
@@ -68,11 +80,12 @@ async def get_inbox_messages(
         limit=limit
     )
     
-    # Convert to response model
     result = []
-    for i, email in enumerate(emails):
+    for email in emails:
+        uid = email["uid"]
         result.append({
-            "id": str(i), 
+            "id": str(uid),
+            "uid": uid,
             "subject": email["subject"] or "Без темы",
             "sender": email["sender"],
             "date": email["date"],
@@ -80,9 +93,57 @@ async def get_inbox_messages(
             "is_read": email["is_read"],
             "is_flagged": email["is_flagged"],
             "has_attachments": email["has_attachments"],
-            "folder": email["folder"]
+            "folder": email["folder"],
         })
     return result
+
+
+@router.get("/inbox/{uid}", response_model=MailMessageDetailResponse)
+async def get_inbox_message(
+    uid: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+):
+    """Получить полное тело письма по IMAP UID (текст и HTML)."""
+    user_id = payload.get("sub")
+    account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    msg = await fetch_message_by_uid_async(
+        host=account.imap_host,
+        port=account.imap_port,
+        login=account.login,
+        password=account.password,
+        ssl=account.imap_ssl,
+        uid=uid,
+    )
+    if not msg:
+        raise HTTPException(status_code=404, detail="Письмо не найдено")
+    return msg
+
+
+@router.post("/inbox/{uid}/mark-read", status_code=status.HTTP_200_OK)
+async def mark_inbox_message_read(
+    uid: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+):
+    """Отметить письмо как прочитанное (установить флаг \\Seen в IMAP)."""
+    user_id = payload.get("sub")
+    account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    ok = await set_seen_by_uid_async(
+        host=account.imap_host,
+        port=account.imap_port,
+        login=account.login,
+        password=account.password,
+        ssl=account.imap_ssl,
+        uid=uid,
+    )
+    if not ok:
+        raise HTTPException(status_code=502, detail="Не удалось установить флаг прочтения")
+    return {"status": "ok"}
 
 @router.post("/send", status_code=status.HTTP_200_OK)
 async def send_new_email(

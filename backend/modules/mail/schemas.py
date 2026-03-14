@@ -47,7 +47,8 @@ class MailAccountResponse(BaseModel):
         orm_mode = True
 
 class MailMessageResponse(BaseModel):
-    id: str # from message-id or internal id
+    id: str  # string representation of uid for list compatibility
+    uid: int  # IMAP UID for fetching body and marking read
     subject: str
     sender: str
     date: str
@@ -56,6 +57,15 @@ class MailMessageResponse(BaseModel):
     is_flagged: bool
     has_attachments: bool
     folder: str
+
+
+class MailMessageDetailResponse(BaseModel):
+    uid: int
+    subject: str
+    sender: str
+    date: str
+    text_body: str
+    html_body: str
 
 class MailSendRequest(BaseModel):
     to_email: EmailStr

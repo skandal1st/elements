@@ -1,10 +1,11 @@
 import imaplib
 import email
+import re
 from email.header import decode_header
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import asyncio
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import json
 import logging
 import aiosmtplib
@@ -56,51 +57,41 @@ class ImapClient:
             
             emails = []
             for num in msg_nums:
-                # FETCH (BODY.PEEK[]) instead of RFC822 to avoid setting \Seen unnecessarily
-                status, data = self.mail.fetch(num, "(BODY.PEEK[] FLAGS)")
-                if status != "OK":
+                # FETCH UID + FLAGS + BODY.PEEK[] to get stable UID and avoid setting \Seen
+                status, data = self.mail.fetch(num, "(UID FLAGS BODY.PEEK[])")
+                if status != "OK" or not data or not data[0]:
                     continue
-                    
-                flags_data = data[0][0].decode()
-                is_read = r"\Seen" in flags_data
-                is_flagged = r"\Flagged" in flags_data
+                part0 = data[0][0].decode() if isinstance(data[0][0], bytes) else str(data[0][0])
+                uid_match = re.search(r"UID\s+(\d+)", part0, re.IGNORECASE)
+                uid = int(uid_match.group(1)) if uid_match else int(num)
+                is_read = r"\Seen" in part0
+                is_flagged = r"\Flagged" in part0
 
                 raw_email = data[0][1]
                 msg = email.message_from_bytes(raw_email)
-                
                 subject = self._decode_str(msg.get("Subject", ""))
                 sender = self._decode_str(msg.get("From", ""))
                 date = msg.get("Date", "")
-                
-                # Try to get plain text body for preview
-                body_text = ""
-                if msg.is_multipart():
-                    for part in msg.walk():
-                        content_type = part.get_content_type()
-                        content_disposition = str(part.get("Content-Disposition"))
-                        if content_type == "text/plain" and "attachment" not in content_disposition:
-                            try:
-                                body_text = part.get_payload(decode=True).decode(errors="ignore")
-                                break
-                            except:
-                                pass
-                else:
-                    try:
-                        body_text = msg.get_payload(decode=True).decode(errors="ignore")
-                    except:
-                        pass
-                
+
+                body_text, _ = self._get_text_and_html_body(msg)
+                preview = body_text[:200].replace("\r", " ").replace("\n", " ").strip() if body_text else ""
+
+                has_attachments = msg.is_multipart() and any(
+                    part.get_content_disposition() == "attachment"
+                    for part in msg.walk()
+                )
+
                 emails.append({
+                    "uid": uid,
                     "subject": subject,
                     "sender": sender,
                     "date": date,
-                    "preview": body_text[:200].replace("\r", " ").replace("\n", " ").strip() if body_text else "",
+                    "preview": preview,
                     "is_read": is_read,
                     "is_flagged": is_flagged,
-                    "has_attachments": msg.is_multipart(),
-                    "folder": "INBOX"
+                    "has_attachments": has_attachments,
+                    "folder": "INBOX",
                 })
-            
             return emails
         except Exception as e:
             logger.error(f"IMAP fetch failed: {e}")
@@ -116,13 +107,90 @@ class ImapClient:
                 if charset:
                     try:
                         full_str += bytes_str.decode(charset)
-                    except:
+                    except Exception:
                         full_str += bytes_str.decode("utf-8", errors="ignore")
                 else:
                     full_str += bytes_str.decode("utf-8", errors="ignore")
             else:
                 full_str += str(bytes_str)
         return full_str
+
+    def _get_text_and_html_body(self, msg) -> Tuple[str, str]:
+        """Extract plain text and HTML body from message. Returns (text_body, html_body)."""
+        text_body = ""
+        html_body = ""
+        if msg.is_multipart():
+            for part in msg.walk():
+                content_disposition = str(part.get("Content-Disposition", ""))
+                if "attachment" in content_disposition:
+                    continue
+                content_type = part.get_content_type()
+                try:
+                    payload = part.get_payload(decode=True)
+                    if not payload:
+                        continue
+                    charset = part.get_content_charset() or "utf-8"
+                    decoded = payload.decode(charset, errors="replace")
+                    if content_type == "text/plain":
+                        text_body = decoded
+                    elif content_type == "text/html":
+                        html_body = decoded
+                except Exception:
+                    continue
+        else:
+            try:
+                payload = msg.get_payload(decode=True)
+                if payload:
+                    charset = msg.get_content_charset() or "utf-8"
+                    decoded = payload.decode(charset, errors="replace")
+                    if msg.get_content_type() == "text/html":
+                        html_body = decoded
+                        text_body = decoded  # fallback for preview
+                    else:
+                        text_body = decoded
+            except Exception:
+                pass
+        return (text_body or "", html_body or "")
+
+    def fetch_message_by_uid(self, uid: int) -> Optional[Dict]:
+        """Fetch a single message by IMAP UID and return full body (text + html)."""
+        if not self.mail and not self.connect():
+            return None
+        try:
+            self.mail.select("INBOX", readonly=True)
+            status, data = self.mail.uid("FETCH", str(uid), "(BODY.PEEK[])")
+            if status != "OK" or not data or not data[0]:
+                return None
+            raw_email = data[0][1]
+            msg = email.message_from_bytes(raw_email)
+            subject = self._decode_str(msg.get("Subject", ""))
+            sender = self._decode_str(msg.get("From", ""))
+            date = msg.get("Date", "")
+            text_body, html_body = self._get_text_and_html_body(msg)
+            return {
+                "uid": uid,
+                "subject": subject,
+                "sender": sender,
+                "date": date,
+                "text_body": text_body,
+                "html_body": html_body,
+            }
+        except Exception as e:
+            logger.error("fetch_message_by_uid failed: %s", e)
+            return None
+
+    def set_seen_by_uid(self, uid: int) -> bool:
+        """Set \\Seen flag for the message with given UID."""
+        if not self.mail and not self.connect():
+            return False
+        try:
+            self.mail.select("INBOX", readonly=False)
+            status, _ = self.mail.uid("STORE", str(uid), "+FLAGS", "\\Seen")
+            return status == "OK"
+        except Exception as e:
+            logger.error("set_seen_by_uid failed: %s", e)
+            return False
+
 
 async def fetch_emails_async(host, port, login, password, ssl=True, limit=50):
     def _fetch():
@@ -131,8 +199,30 @@ async def fetch_emails_async(host, port, login, password, ssl=True, limit=50):
             return client.fetch_inbox(limit)
         finally:
             client.close()
-            
+
     return await asyncio.to_thread(_fetch)
+
+
+async def fetch_message_by_uid_async(host, port, login, password, ssl, uid: int):
+    def _fetch():
+        client = ImapClient(host, port, login, password, ssl)
+        try:
+            return client.fetch_message_by_uid(uid)
+        finally:
+            client.close()
+
+    return await asyncio.to_thread(_fetch)
+
+
+async def set_seen_by_uid_async(host, port, login, password, ssl, uid: int):
+    def _store():
+        client = ImapClient(host, port, login, password, ssl)
+        try:
+            return client.set_seen_by_uid(uid)
+        finally:
+            client.close()
+
+    return await asyncio.to_thread(_store)
 
 async def send_email_async(host, port, login, password, ssl, to_email, subject, text_body, html_body=None):
     message = MIMEMultipart("alternative")

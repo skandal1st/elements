@@ -16,6 +16,7 @@ import {
 
 interface MailMessage {
   id: string;
+  uid: number;
   subject: string;
   sender: string;
   date: string;
@@ -26,10 +27,21 @@ interface MailMessage {
   folder: string;
 }
 
+interface MailMessageDetail {
+  uid: number;
+  subject: string;
+  sender: string;
+  date: string;
+  text_body: string;
+  html_body: string;
+}
+
 export function MailPage() {
   const [emails, setEmails] = useState<MailMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmail, setSelectedEmail] = useState<MailMessage | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<MailMessageDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [activeFolder, setActiveFolder] = useState("inbox");
   const [isComposing, setIsComposing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -66,16 +78,46 @@ export function MailPage() {
         const data = await res.json();
         setEmails(data);
         if (data.length > 0 && !selectedEmail) {
-          setSelectedEmail(data[0]);
+          selectEmail(data[0]);
         }
       } else if (res.status === 400) {
-        // Not configured
         setShowSettings(true);
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const selectEmail = async (email: MailMessage) => {
+    setSelectedEmail(email);
+    setSelectedDetail(null);
+    setDetailLoading(true);
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`/api/v1/mail/inbox/${email.uid}/mark-read`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEmails((prev) =>
+        prev.map((e) => (e.uid === email.uid ? { ...e, is_read: true } : e))
+      );
+    } catch {
+      // ignore
+    }
+    try {
+      const res = await fetch(`/api/v1/mail/inbox/${email.uid}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const detail = await res.json();
+        setSelectedDetail(detail);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -211,7 +253,7 @@ export function MailPage() {
               {emails.map((e) => (
                 <div
                   key={e.id}
-                  onClick={() => setSelectedEmail(e)}
+                  onClick={() => selectEmail(e)}
                   className={`p-4 cursor-pointer transition-colors ${selectedEmail?.id === e.id ? 'bg-green-50/50' : 'hover:bg-gray-50'}`}
                 >
                   <div className="flex justify-between items-start mb-1">
@@ -262,13 +304,43 @@ export function MailPage() {
                 <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"><MoreVertical className="w-4 h-4" /></button>
               </div>
             </div>
-            <div className="flex-1 p-6 overflow-y-auto">
-               <div className="prose prose-sm max-w-none text-gray-800">
-                  {/* Basic plain text rendering with line breaks. A real body would use HTML parsing. */}
-                  {selectedEmail.preview.split('\n').map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
-               </div>
+            <div className="flex-1 p-6 overflow-y-auto min-h-0">
+              {detailLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-brand-green/30 border-t-brand-green rounded-full animate-spin" />
+                </div>
+              ) : selectedDetail ? (
+                <div className="prose prose-sm max-w-none text-gray-800">
+                  {selectedDetail.html_body ? (
+                    <iframe
+                      title="Тело письма"
+                      sandbox="allow-same-origin"
+                      srcDoc={
+                        selectedDetail.html_body.trim().toLowerCase().startsWith("<!doctype") ||
+                        selectedDetail.html_body.trim().toLowerCase().startsWith("<html")
+                          ? selectedDetail.html_body
+                          : `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;padding:12px;font-family:system-ui,sans-serif;">${selectedDetail.html_body}</body></html>`
+                      }
+                      className="w-full min-h-[400px] border-0 rounded-lg bg-white"
+                      style={{ height: "calc(100vh - 320px)" }}
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800 break-words">
+                      {selectedDetail.text_body || "Нет текста"}
+                    </pre>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-500 text-sm">
+                  {selectedEmail.preview ? (
+                    selectedEmail.preview.split("\n").map((line, i) => (
+                      <p key={i}>{line}</p>
+                    ))
+                  ) : (
+                    "Загрузка..."
+                  )}
+                </div>
+              )}
             </div>
             <div className="p-4 border-t border-gray-100 bg-gray-50">
                <div className="flex gap-2">
