@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     mailcow_api_url: str = os.getenv("MAILCOW_API_URL", "")
     mailcow_api_key: str = os.getenv("MAILCOW_API_KEY", "")
 
+    # Проверка контрагента по ИНН (api-fns.ru, данные ФНС)
+    fns_api_key: str = os.getenv("FNS_API_KEY", "")
+
 
 # Глобальный экземпляр настроек
 settings = Settings()

@@ -128,6 +128,12 @@ class ZupSettings(BaseModel):
     zup_sync_interval_minutes: Optional[int] = 60
 
 
+class FnsSettings(BaseModel):
+    """Проверка контрагента по ИНН (api-fns.ru, данные ФНС)."""
+
+    fns_api_key: Optional[str] = None
+
+
 class LlmSettings(BaseModel):
     """Настройки LLM / OpenRouter."""
 
@@ -184,3 +190,4 @@ class AllSettings(BaseModel):
     ldap: LdapSettings = LdapSettings()
     zup: ZupSettings = ZupSettings()
     llm: LlmSettings = LlmSettings()
+    fns: FnsSettings = FnsSettings()

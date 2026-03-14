@@ -5,6 +5,7 @@ API модуля Договора.
 from backend.core.config import settings
 from backend.modules.contracts.routes import (
     acts,
+    check_inn,
     contract_types,
     contracts,
     counterparties,
@@ -18,6 +19,7 @@ router = APIRouter(prefix=f"{settings.api_v1_prefix}/contracts", tags=["contract
 
 # Роуты с фиксированными путями — до роутов с path-параметрами
 router.include_router(from_document.router)
+router.include_router(check_inn.router)
 router.include_router(counterparties.router)
 router.include_router(contract_types.router)
 router.include_router(reference.router)

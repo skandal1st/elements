@@ -12,6 +12,7 @@ from backend.modules.it.dependencies import get_db
 from backend.modules.it.schemas.settings import (
     AllSettings,
     EmailSettings,
+    FnsSettings,
     GeneralSettings,
     ImapSettings,
     LlmSettings,
@@ -108,6 +109,7 @@ SETTING_TYPE_MAP = {
         "qdrant_url",
         "qdrant_collection",
     ],
+    "fns": ["fns_api_key"],
 }
 
 # Настройки, которые должны быть скрыты при выводе (пароли и т.д.)
@@ -121,6 +123,7 @@ SENSITIVE_KEYS = [
     "ldap_bind_password",
     "zup_password",
     "openrouter_api_key",
+    "fns_api_key",
 ]
 
 
@@ -297,6 +300,9 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
             ),
             qdrant_url=get_val("qdrant_url"),
             qdrant_collection=get_val("qdrant_collection", "knowledge_articles_v1"),
+        ),
+        fns=FnsSettings(
+            fns_api_key=_mask_sensitive(get_val("fns_api_key"), "fns_api_key"),
         ),
     )
 

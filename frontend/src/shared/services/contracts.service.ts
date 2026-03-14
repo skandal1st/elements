@@ -170,6 +170,12 @@ export const contractsService = {
     return apiDelete(`${BASE}/counterparties/${id}`)
   },
 
+  /** Проверка контрагента по ИНН (ФНС, api-fns.ru). Требуется FNS_API_KEY на backend. */
+  checkInn(inn: string): Promise<{ name: string; full_name: string; inn: string; kpp: string | null; address: string | null; status: string | null }> {
+    const q = new URLSearchParams({ inn: inn.replace(/\D/g, '') })
+    return apiGet(`${BASE}/check-inn?${q}`)
+  },
+
   listContractTypes(params?: { is_active?: boolean }): Promise<ContractType[]> {
     const search = new URLSearchParams()
     if (params?.is_active != null) search.set('is_active', String(params.is_active))

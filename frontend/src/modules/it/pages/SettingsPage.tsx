@@ -25,6 +25,7 @@ import {
   Shuffle,
   X,
   Database,
+  FileSignature,
 } from "lucide-react";
 import { apiGet, apiPost } from "../../../shared/api/client";
 import { useUIStore } from "../../../shared/store/ui.store";
@@ -74,6 +75,7 @@ type AllSettings = {
   ldap: LdapSettings;
   zup: ZupSettings;
   llm: LlmSettings;
+  fns: FnsSettings;
 };
 
 type GeneralSettings = {
@@ -147,6 +149,10 @@ type LlmSettings = {
   qdrant_collection?: string;
 };
 
+type FnsSettings = {
+  fns_api_key?: string;
+};
+
 type SettingsUser = {
   id: string;
   email: string;
@@ -182,6 +188,7 @@ const TABS = [
   { id: "llm", label: "LLM / OpenRouter", icon: Sparkles },
   { id: "ldap", label: "Active Directory", icon: Shield },
   { id: "zup", label: "1\u0421 \u0417\u0423\u041F", icon: Database },
+  { id: "fns", label: "Договора / ФНС", icon: FileSignature },
 ];
 
 const PRIORITIES = ["low", "medium", "high", "critical"];
@@ -210,6 +217,7 @@ export function SettingsPage() {
     ldap: {},
     zup: {},
     llm: {},
+    fns: {},
   });
 
   // Состояния для зданий
@@ -297,7 +305,7 @@ export function SettingsPage() {
     setError(null);
     try {
       const data = await apiGet<AllSettings>("/it/settings/all");
-      setSettings(data);
+      setSettings({ ...data, fns: data.fns ?? {} });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -2117,6 +2125,25 @@ export function SettingsPage() {
                 <p className="text-xs text-gray-500">
                   После сохранения настроек и включения интеграции фоновая синхронизация начнётся автоматически при следующем перезапуске бэкенда. Ручную синхронизацию можно запустить на странице HR &rarr; Синхронизация ЗУП.
                 </p>
+              </div>
+            )}
+
+            {activeTab === "fns" && (
+              <div className="space-y-4 max-w-xl">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Проверка контрагентов по ИНН (ФНС)
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Интеграция с api-fns.ru для проверки организаций и ИП по ИНН в модуле Договора. Ключ можно получить на{" "}
+                  <a href="https://api-fns.ru/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">api-fns.ru</a>.
+                </p>
+                {renderInput(
+                  "FNS API Key",
+                  "fns",
+                  "fns_api_key",
+                  "password",
+                  "Ключ api-fns.ru",
+                )}
               </div>
             )}
 
