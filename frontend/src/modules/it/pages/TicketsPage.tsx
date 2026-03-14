@@ -1434,6 +1434,9 @@ export function TicketsPage() {
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Сотрудник
                 </th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Дата создания
+                </th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24"></th>
               </tr>
             </thead>
@@ -1473,6 +1476,9 @@ export function TicketsPage() {
                   <td className="px-4 py-4 text-gray-400">
                     {t.employee_name || "—"}
                   </td>
+                  <td className="px-4 py-4 text-gray-400 text-sm whitespace-nowrap">
+                    {t.created_at ? new Date(t.created_at).toLocaleString("ru-RU") : "—"}
+                  </td>
                   <td className="px-4 py-4">
                     <button
                       onClick={(e) => {
@@ -1488,7 +1494,7 @@ export function TicketsPage() {
               ))}
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
                     Заявки не найдены
                   </td>
                 </tr>
@@ -1810,8 +1816,7 @@ export function TicketsPage() {
                   />
                   {renderAttachments(detail.attachments, {
                     showEmpty: true,
-                    emptyText:
-                      "Вложений нет (если они были в письме — проверьте, что Nginx проксирует /uploads/ на backend).",
+                    emptyText: "Вложений нет",
                   })}
                 </div>
               ) : (
@@ -1821,7 +1826,7 @@ export function TicketsPage() {
                   </p>
                   {renderAttachments(detail.attachments, {
                     showEmpty: true,
-                    emptyText: "Вложений нет (если они были в письме — проверьте, что Nginx проксирует /uploads/ на backend).",
+                    emptyText: "Вложений нет",
                   })}
                 </div>
               )}
