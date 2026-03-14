@@ -31,6 +31,8 @@ def get_org_structure(db: Session = Depends(get_db)) -> List[OrgDepartment]:
     result: list[OrgDepartment] = []
     for dept in departments:
         dept_employees = employees_by_department.get(dept.id, [])
+        if not dept_employees:
+            continue  # Пустые отделы (без сотрудников) не показываем в оргструктуре
         position_groups: dict[int | None, list[Employee]] = {}
         for e in dept_employees:
             position_groups.setdefault(e.position_id, []).append(e)

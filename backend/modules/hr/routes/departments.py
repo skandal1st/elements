@@ -1,11 +1,13 @@
 """Роуты /hr/departments."""
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import exists
 
 from backend.modules.hr.dependencies import get_db, get_current_user, require_roles
 from backend.modules.hr.models.department import Department
+from backend.modules.hr.models.employee import Employee
 from backend.modules.hr.models.user import User
 from backend.modules.hr.schemas.department import DepartmentCreate, DepartmentOut, DepartmentUpdate
 from backend.modules.hr.services.audit import log_action
@@ -18,8 +20,18 @@ def _audit_user(user: User) -> str:
 
 
 @router.get("/", response_model=List[DepartmentOut])
-def list_departments(db: Session = Depends(get_db)) -> List[Department]:
-    return db.query(Department).all()
+def list_departments(
+    db: Session = Depends(get_db),
+    only_with_employees: bool = Query(False, description="Только отделы, в которых есть сотрудники (для адресной книги, оргструктуры)"),
+) -> List[Department]:
+    query = db.query(Department)
+    if only_with_employees:
+        has_employee = exists().where(
+            Employee.department_id == Department.id,
+            Employee.status != "dismissed",
+        )
+        query = query.filter(has_employee)
+    return query.all()
 
 
 @router.post("/", response_model=DepartmentOut, dependencies=[Depends(require_roles(["hr"]))])

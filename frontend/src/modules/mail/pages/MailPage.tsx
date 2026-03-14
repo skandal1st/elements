@@ -125,9 +125,13 @@ export function MailPage() {
   useEffect(() => {
     if (!isComposing) return;
     const q = composeSearch.trim();
-    if (q.length < 2) {
+    if (q.length === 0) {
       setPhonebookSuggestions([]);
       setShowSuggestionsDropdown(false);
+      return;
+    }
+    if (q.length < 2) {
+      setPhonebookSuggestions([]);
       return;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -159,7 +163,7 @@ export function MailPage() {
     };
   }, [isComposing, composeSearch]);
 
-  // Загрузка глобальной адресной книги Mailcow при открытии формы написания
+  // Загрузка глобальной адресной книги Mailcow и списка отделов при открытии формы написания
   useEffect(() => {
     if (!isComposing) return;
     const token = localStorage.getItem("token");
@@ -168,6 +172,10 @@ export function MailPage() {
       .then((res) => (res.ok ? res.json() : []))
       .then((data: MailcowEntry[]) => setMailcowAddressbook(Array.isArray(data) ? data : []))
       .catch(() => setMailcowAddressbook([]));
+    fetch("/api/v1/hr/departments/?only_with_employees=true", { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: DepartmentOut[]) => setDepartments(Array.isArray(data) ? data : []))
+      .catch(() => setDepartments([]));
   }, [isComposing]);
 
   // При загрузке страницы: сначала проверяем, есть ли учётная запись почты, затем синхронизируем
@@ -536,7 +544,7 @@ export function MailPage() {
     const token = localStorage.getItem("token");
     if (!token) return;
     try {
-      const res = await fetch("/api/v1/hr/departments/", {
+      const res = await fetch("/api/v1/hr/departments/?only_with_employees=true", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -887,7 +895,10 @@ export function MailPage() {
                     ref={composeSearchRef}
                     type="text"
                     value={composeSearch}
-                    onChange={(e) => setComposeSearch(e.target.value)}
+                    onChange={(e) => {
+                      setComposeSearch(e.target.value);
+                      if (e.target.value.trim().length >= 1) setShowSuggestionsDropdown(true);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -898,9 +909,9 @@ export function MailPage() {
                         }
                       }
                     }}
-                    onFocus={() => phonebookSuggestions.length > 0 && setShowSuggestionsDropdown(true)}
+                    onFocus={() => composeSearch.trim().length >= 1 && setShowSuggestionsDropdown(true)}
                     onBlur={() => setTimeout(() => setShowSuggestionsDropdown(false), 180)}
-                    placeholder={recipients.length === 0 ? "Поиск по ФИО или введите email (несколько через запятую)..." : ""}
+                    placeholder={recipients.length === 0 ? "Поиск по ФИО, отделу или email (несколько через запятую)..." : ""}
                     className="flex-1 min-w-[120px] text-sm outline-none py-0.5"
                   />
                 </div>
@@ -915,8 +926,11 @@ export function MailPage() {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </div>
-              {showSuggestionsDropdown && (phonebookSuggestions.length > 0 || (() => {
+              {showSuggestionsDropdown && (() => {
                 const q = composeSearch.trim().toLowerCase();
+                const departmentsFiltered = q.length >= 1
+                  ? departments.filter((d) => d.name.toLowerCase().includes(q))
+                  : [];
                 const mailcowFiltered = q.length >= 1
                   ? mailcowAddressbook.filter(
                       (e) =>
@@ -924,42 +938,57 @@ export function MailPage() {
                         e.email.toLowerCase().includes(q)
                     )
                   : [];
-                return mailcowFiltered.length > 0;
-              })()) && (
-                <ul className="absolute left-4 right-4 mt-0.5 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
-                  {phonebookSuggestions.length > 0 && (
-                    <>
-                      <li className="px-3 py-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Сотрудники</li>
-                      {phonebookSuggestions.map((entry) => (
-                        <li key={`pb-${entry.id}`}>
-                          <button
-                            type="button"
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
-                            onClick={() => {
-                              addRecipient(entry.email!, entry.full_name);
-                              setComposeSearch("");
-                              setPhonebookSuggestions([]);
-                              setShowSuggestionsDropdown(false);
-                            }}
-                          >
-                            <span>{entry.full_name}</span>
-                            <span className="text-gray-500 text-xs">{entry.email}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </>
-                  )}
-                  {(() => {
-                    const q = composeSearch.trim().toLowerCase();
-                    const mailcowFiltered = q.length >= 1
-                      ? mailcowAddressbook.filter(
-                          (e) =>
-                            e.name.toLowerCase().includes(q) ||
-                            e.email.toLowerCase().includes(q)
-                        )
-                      : [];
-                    if (mailcowFiltered.length === 0) return null;
-                    return (
+                const hasAny =
+                  phonebookSuggestions.length > 0 ||
+                  departmentsFiltered.length > 0 ||
+                  mailcowFiltered.length > 0;
+                if (!hasAny) return null;
+                return (
+                  <ul className="absolute left-4 right-4 mt-0.5 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
+                    {phonebookSuggestions.length > 0 && (
+                      <>
+                        <li className="px-3 py-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Сотрудники</li>
+                        {phonebookSuggestions.map((entry) => (
+                          <li key={`pb-${entry.id}`}>
+                            <button
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
+                              onClick={() => {
+                                addRecipient(entry.email!, entry.full_name);
+                                setComposeSearch("");
+                                setPhonebookSuggestions([]);
+                                setShowSuggestionsDropdown(false);
+                              }}
+                            >
+                              <span>{entry.full_name}</span>
+                              <span className="text-gray-500 text-xs">{entry.email}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    )}
+                    {departmentsFiltered.length > 0 && (
+                      <>
+                        <li className="px-3 py-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide border-t border-gray-100 mt-1 pt-1">Отделы</li>
+                        {departmentsFiltered.slice(0, 20).map((dept) => (
+                          <li key={`dept-${dept.id}`}>
+                            <button
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                              onClick={() => {
+                                addRecipientsFromDepartment(dept.id);
+                                setComposeSearch("");
+                                setShowSuggestionsDropdown(false);
+                              }}
+                            >
+                              <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+                              <span>{dept.name}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    )}
+                    {mailcowFiltered.length > 0 && (
                       <>
                         <li className="px-3 py-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide border-t border-gray-100 mt-1 pt-1">Глобальная книга</li>
                         {mailcowFiltered.slice(0, 30).map((entry, idx) => (
@@ -979,10 +1008,10 @@ export function MailPage() {
                           </li>
                         ))}
                       </>
-                    );
-                  })()}
-                </ul>
-              )}
+                    )}
+                  </ul>
+                );
+              })()}
               {phonebookLoading && (
                 <div className="absolute right-14 top-1/2 -translate-y-1/2">
                   <div className="w-4 h-4 border-2 border-brand-green/30 border-t-brand-green rounded-full animate-spin" />
