@@ -26,8 +26,8 @@ import {
   getMinutes,
 } from "date-fns";
 import { ru } from "date-fns/locale";
-import { apiGet, apiPost } from "../../../shared/api/client";
-import { useTasksStore, type Project } from "../../../shared/store/tasks.store";
+import { apiGet, apiPost } from "@/shared/api/client";
+import { useTasksStore, type Project } from "@/shared/store/tasks.store";
 
 type CalendarItem = {
   id: string;
@@ -46,14 +46,9 @@ type CalendarItem = {
 const WEEKDAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const DAY_START_HOUR = 7;
 const DAY_END_HOUR = 22;
-const SLOT_MINUTES = 60;
 
 function toDateOnly(d: Date): string {
   return format(d, "yyyy-MM-dd");
-}
-
-function toISODateTime(d: Date): string {
-  return format(d, "yyyy-MM-dd'T'HH:mm:ss");
 }
 
 export function DashboardCalendar() {
@@ -197,8 +192,6 @@ export function DashboardCalendar() {
     setShowCreateTask(true);
   };
 
-  const firstProject = projects.filter((p) => !p.is_archived)[0];
-
   return (
     <div className="space-y-4">
       <div className="portal-card">
@@ -305,7 +298,6 @@ export function DashboardCalendar() {
         {viewMode === "day" && (
           <DayView
             selectedDate={selectedDate}
-            dayViewItems={dayViewItems}
             timeSlots={timeSlots}
             onSlotClick={handleSlotClick}
             getItemsInSlot={getItemsInSlot}
@@ -354,7 +346,7 @@ export function DashboardCalendar() {
       {showCreateTask && (
         <CreateTaskModal
           initialDateTime={createTaskSlot ?? selectedDate}
-          projects={projects.filter((p) => !p.is_archived)}
+          projects={projects.filter((p: Project) => !p.is_archived)}
           onClose={() => {
             setShowCreateTask(false);
             setCreateTaskSlot(null);
@@ -386,13 +378,11 @@ export function DashboardCalendar() {
 
 function DayView({
   selectedDate,
-  dayViewItems,
   timeSlots,
   onSlotClick,
   getItemsInSlot,
 }: {
   selectedDate: Date;
-  dayViewItems: CalendarItem[];
   timeSlots: Date[];
   onSlotClick: (slot: Date) => void;
   getItemsInSlot: (slot: Date) => CalendarItem[];
@@ -543,7 +533,7 @@ function CreateTaskModal({
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
             >
               <option value="">Выберите проект</option>
-              {projects.map((p) => (
+              {projects.map((p: Project) => (
                 <option key={p.id} value={p.id}>
                   {p.title}
                 </option>
