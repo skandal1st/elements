@@ -103,28 +103,39 @@ export function Sidebar() {
           {/* Logo Area */}
           <div className={`pt-10 pb-8 flex items-center ${sidebarCollapsed ? "justify-center" : "justify-center"} border-b border-gray-50 mx-6 mb-4 relative`}>
              {!sidebarCollapsed ? (
-                <div className="flex flex-col items-center gap-2">
-                  {/* Имитация логотипа */}
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-end gap-[2px] mb-1">
-                      <div className="w-[4px] h-[18px] bg-brand-green rounded-t-sm"></div>
-                      <div className="w-[4px] h-[24px] bg-brand-green rounded-t-sm"></div>
-                      <div className="w-[4px] h-[30px] bg-brand-yellow rounded-t-sm"></div>
-                      <div className="w-[4px] h-[24px] bg-brand-green rounded-t-sm"></div>
-                      <div className="w-[4px] h-[18px] bg-brand-green rounded-t-sm"></div>
-                     </div>
-                     <span className="text-[18px] font-black text-[#004e38] tracking-widest uppercase mt-1">
-                       Роснефть
-                     </span>
+                <div className="flex flex-row items-center gap-3">
+                  <div className="flex items-center text-[#F08C00]">
+                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      {/* Sun rays */}
+                      <line x1="50" y1="12" x2="50" y2="28" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                      <line x1="50" y1="72" x2="50" y2="88" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                      <line x1="12" y1="50" x2="28" y2="50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                      <line x1="72" y1="50" x2="88" y2="50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                      <line x1="23.1" y1="23.1" x2="34.4" y2="34.4" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                      <line x1="76.9" y1="76.9" x2="65.6" y2="65.6" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                      <line x1="76.9" y1="23.1" x2="65.6" y2="34.4" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                      <line x1="23.1" y1="76.9" x2="34.4" y2="65.6" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                      {/* Inner roof */}
+                      <path d="M28 65 L50 38 L72 65" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                   </div>
+                  <span className="text-[20px] font-black text-[#F08C00] tracking-widest uppercase mt-1" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial" }}>
+                    ТЕПЛОЦЕНТРАЛЬ
+                  </span>
                 </div>
              ) : (
-                <div className="flex items-end gap-[2px]">
-                   <div className="w-[3px] h-[12px] bg-brand-green"></div>
-                   <div className="w-[3px] h-[16px] bg-brand-green"></div>
-                   <div className="w-[3px] h-[22px] bg-brand-yellow"></div>
-                   <div className="w-[3px] h-[16px] bg-brand-green"></div>
-                   <div className="w-[3px] h-[12px] bg-brand-green"></div>
+                <div className="flex items-center text-[#F08C00]">
+                  <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="50" y1="12" x2="50" y2="28" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <line x1="50" y1="72" x2="50" y2="88" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <line x1="12" y1="50" x2="28" y2="50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <line x1="72" y1="50" x2="88" y2="50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <line x1="23.1" y1="23.1" x2="34.4" y2="34.4" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <line x1="76.9" y1="76.9" x2="65.6" y2="65.6" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <line x1="76.9" y1="23.1" x2="65.6" y2="34.4" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <line x1="23.1" y1="76.9" x2="34.4" y2="65.6" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <path d="M28 65 L50 38 L72 65" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </div>
              )}
           </div>

@@ -26,11 +26,12 @@ export default {
           blue: '#3b82f6',
           cyan: '#06b6d4',
         },
-        // Цвета бренда (Rosneft style)
+        // Цвета бренда (Teplocentral style)
         brand: {
-          green: '#006B3D',
-          yellow: '#FFC000',
-          yellowHover: '#E6AC00',
+          green: '#F58220', // Legacy alias -> now orange
+          yellow: '#F58220', // Legacy alias -> now orange
+          yellowHover: '#E0771B',
+          primary: '#F58220',
           light: '#F5F6F8',
           white: '#FFFFFF',
         },

@@ -379,6 +379,7 @@ def ensure_mail_tables() -> None:
     Создаёт таблицы модуля почты, если их ещё нет.
     """
     try:
+        from backend.modules.hr.models.user import User  # Для разрешения ForeignKey("users.id")
         from backend.modules.mail.models import MailAccount, MailMessage, MailAttachment
     except Exception as e:
         logger.warning("Mail models import failed: %s", e)
