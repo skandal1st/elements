@@ -73,8 +73,9 @@ export function MailPage() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
 
+  // При первом заходе на страницу и при смене папки — подтягиваем папки и письма
   useEffect(() => {
-    fetchFolders();
+    syncAll();
   }, []);
 
   useEffect(() => {
@@ -82,6 +83,11 @@ export function MailPage() {
       fetchMessages();
     }
   }, [activeFolder, folders, foldersLoading]);
+
+  /** Синхронизация: обновляет папки и письма (эффект вызовет fetchMessages после обновления папок). */
+  const syncAll = () => {
+    fetchFolders();
+  };
 
   // Load current account into settings when opening the modal
   useEffect(() => {
@@ -350,8 +356,8 @@ export function MailPage() {
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-800 truncate">{currentFolderLabel}</h2>
-            <button onClick={fetchMessages} className="p-2 -mr-2 text-gray-400 hover:text-brand-green transition-colors rounded-full hover:bg-gray-50">
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-brand-green" : ""}`} />
+            <button onClick={syncAll} className="p-2 -mr-2 text-gray-400 hover:text-brand-green transition-colors rounded-full hover:bg-gray-50" title="Синхронизировать папки и письма">
+              <RefreshCw className={`w-4 h-4 ${foldersLoading || loading ? "animate-spin text-brand-green" : ""}`} />
             </button>
           </div>
           <div className="relative">

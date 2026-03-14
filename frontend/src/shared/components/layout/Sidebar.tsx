@@ -102,13 +102,13 @@ export function Sidebar() {
               <img
                 src="/logo.png"
                 alt="ТЕПЛОЦЕНТРАЛЬ"
-                className="h-10 w-auto max-w-full object-contain object-left"
+                className="h-14 w-auto max-w-full object-contain object-left"
               />
             ) : (
               <img
                 src="/logo-icon.png"
                 alt="ТЕПЛОЦЕНТРАЛЬ"
-                className="w-10 h-10 object-contain"
+                className="w-14 h-14 object-contain"
               />
             )}
           </div>
