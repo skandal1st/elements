@@ -86,8 +86,11 @@ export function MailPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        const data = await res.json();
-        setFolders(Array.isArray(data) ? data : []);
+        const raw = await res.json();
+        const data = (Array.isArray(raw) ? raw : []).filter(
+          (f: MailFolder) => f.name && f.name !== "/"
+        );
+        setFolders(data);
         if (data.length > 0 && activeFolder === "INBOX") {
           const hasInbox = data.some((f: MailFolder) => f.name === "INBOX" || f.name.toUpperCase() === "INBOX");
           if (!hasInbox) setActiveFolder(data[0].name);

@@ -41,7 +41,7 @@ class ImapClient:
                 pass
 
     def list_folders(self) -> List[Dict]:
-        """Return list of IMAP folders. Each item: {name, display_name}."""
+        """Return list of IMAP folders (only selectable mailboxes). Each item: {name, display_name}."""
         if not self.mail and not self.connect():
             return []
         try:
@@ -51,10 +51,16 @@ class ImapClient:
             result = []
             for line in data:
                 line_str = line.decode("utf-8", errors="replace") if isinstance(line, bytes) else str(line)
+                # LIST format: (flags) "delim" "name" — skip \Noselect (not a selectable mailbox)
+                if r"\Noselect" in line_str:
+                    continue
                 matches = re.findall(r'"([^"]*)"', line_str)
                 if not matches:
                     continue
-                name = matches[-1]
+                name = matches[-1].strip()
+                # Exclude root/delimiter-only entries (e.g. "/" or "")
+                if not name or name == "/":
+                    continue
                 display_name = self._decode_imap_folder_name(name)
                 result.append({"name": name, "display_name": display_name})
             return result
@@ -76,7 +82,10 @@ class ImapClient:
         if not self.mail and not self.connect():
             return []
         try:
-            self.mail.select(folder, readonly=True)
+            status, _ = self.mail.select(folder, readonly=True)
+            if status != "OK":
+                logger.warning("IMAP SELECT failed for folder %r", folder)
+                return []
             status, messages_data = self.mail.search(None, "ALL")
             if status != "OK":
                 return []
