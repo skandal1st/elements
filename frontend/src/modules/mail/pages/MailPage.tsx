@@ -12,6 +12,8 @@ import {
   Reply,
   Forward,
   Archive,
+  Paperclip,
+  Download,
   X
 } from "lucide-react";
 
@@ -28,6 +30,12 @@ interface MailMessage {
   folder: string;
 }
 
+interface MailAttachment {
+  filename: string;
+  content_type: string;
+  size: number;
+}
+
 interface MailMessageDetail {
   uid: number;
   subject: string;
@@ -35,6 +43,7 @@ interface MailMessageDetail {
   date: string;
   text_body: string;
   html_body: string;
+  attachments?: MailAttachment[];
 }
 
 interface MailFolder {
@@ -148,6 +157,36 @@ export function MailPage() {
     } catch (e) {
       console.error(e);
       alert("Ошибка при архивации");
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} Б`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+  };
+
+  const handleDownloadAttachment = async (index: number) => {
+    if (!selectedEmail || !selectedDetail?.attachments?.[index]) return;
+    const token = localStorage.getItem("token");
+    const folderParam = encodeURIComponent(activeFolder);
+    try {
+      const res = await fetch(
+        `/api/v1/mail/inbox/${selectedEmail.uid}/attachments/${index}?folder=${folderParam}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error("Не удалось скачать");
+      const blob = await res.blob();
+      const name = selectedDetail.attachments[index].filename || "attachment";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при скачивании вложения");
     }
   };
 
@@ -566,6 +605,34 @@ export function MailPage() {
                   ) : (
                     "Загрузка..."
                   )}
+                </div>
+              )}
+              {selectedDetail?.attachments && selectedDetail.attachments.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-100">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    Вложения ({selectedDetail.attachments.length})
+                  </h3>
+                  <ul className="space-y-2">
+                    {selectedDetail.attachments.map((att, idx) => (
+                      <li key={idx}>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadAttachment(idx)}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50 hover:border-brand-green/30 transition-colors text-left"
+                        >
+                          <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                          <span className="flex-1 min-w-0 truncate text-sm text-gray-800" title={att.filename}>
+                            {att.filename}
+                          </span>
+                          <span className="text-xs text-gray-400 flex-shrink-0">
+                            {formatFileSize(att.size)}
+                          </span>
+                          <Download className="w-4 h-4 text-brand-green flex-shrink-0" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

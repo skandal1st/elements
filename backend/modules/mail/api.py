@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -19,6 +20,7 @@ from backend.modules.mail.schemas import (
 from backend.modules.mail.services import (
     archive_by_uid_async,
     delete_by_uid_async,
+    fetch_attachment_by_index_async,
     fetch_emails_async,
     fetch_message_by_uid_async,
     get_inbox_unread_count_async,
@@ -189,6 +191,45 @@ async def get_inbox_message(
     if not msg:
         raise HTTPException(status_code=404, detail="Письмо не найдено")
     return msg
+
+
+@router.get("/inbox/{uid}/attachments/{index}")
+async def get_inbox_attachment(
+    uid: int,
+    index: int,
+    folder: str = "INBOX",
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+):
+    """Скачать вложение по индексу (0, 1, 2, ...)."""
+    if index < 0:
+        raise HTTPException(status_code=400, detail="Неверный индекс вложения")
+    user_id = _user_id_from_payload(payload)
+    account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    result = await fetch_attachment_by_index_async(
+        host=account.imap_host,
+        port=account.imap_port,
+        login=account.login,
+        password=account.password,
+        ssl=account.imap_ssl,
+        uid=uid,
+        folder=folder,
+        index=index,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Вложение не найдено")
+    content, filename, content_type = result
+    safe_name = filename.replace('"', "'").replace("\r", "").replace("\n", " ")
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_name}"',
+            "Content-Length": str(len(content)),
+        },
+    )
 
 
 @router.post("/inbox/{uid}/mark-read", status_code=status.HTTP_200_OK)

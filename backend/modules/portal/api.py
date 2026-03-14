@@ -2,8 +2,9 @@
 API роуты для Portal модуля
 """
 from datetime import datetime, timezone
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -189,6 +190,19 @@ async def create_calendar_event(
     db.add(event)
     db.commit()
     db.refresh(event)
+    return _event_response(event)
+
+
+class CalendarEventUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    start_at: str | None = None
+    end_at: str | None = None
+    is_all_day: bool | None = None
+    color: str | None = None
+
+
+def _event_response(event: CalendarEvent) -> dict:
     return {
         "id": str(event.id),
         "title": event.title,
@@ -199,3 +213,47 @@ async def create_calendar_event(
         "color": event.color or "#3B82F6",
         "type": "event",
     }
+
+
+@router.patch("/calendar/events/{event_id}")
+async def update_calendar_event(
+    event_id: UUID,
+    body: CalendarEventUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Изменить событие календаря."""
+    event = db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    data = body.model_dump(exclude_unset=True)
+    if "start_at" in data and data["start_at"]:
+        try:
+            data["start_at"] = datetime.fromisoformat(data["start_at"].replace("Z", "+00:00"))
+        except ValueError:
+            del data["start_at"]
+    if "end_at" in data and data["end_at"]:
+        try:
+            data["end_at"] = datetime.fromisoformat(data["end_at"].replace("Z", "+00:00"))
+        except ValueError:
+            del data["end_at"]
+    for k, v in data.items():
+        setattr(event, k, v)
+    db.commit()
+    db.refresh(event)
+    return _event_response(event)
+
+
+@router.delete("/calendar/events/{event_id}")
+async def delete_calendar_event(
+    event_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Удалить событие календаря."""
+    event = db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    db.delete(event)
+    db.commit()
+    return {"ok": True}

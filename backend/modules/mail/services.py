@@ -267,6 +267,49 @@ class ImapClient:
                 pass
         return (text_body or "", html_body or "")
 
+    def _get_attachments(self, msg) -> List[Dict]:
+        """Список вложений: [{ filename, content_type, size }, ...]."""
+        result = []
+        if not msg.is_multipart():
+            return result
+        for part in msg.walk():
+            filename = part.get_filename()
+            if not filename:
+                disp = str(part.get("Content-Disposition", ""))
+                if "attachment" not in disp.lower():
+                    continue
+                filename = "attachment"
+            filename = self._decode_str(filename) or "attachment"
+            content_type = part.get_content_type() or "application/octet-stream"
+            payload = part.get_payload(decode=True)
+            size = len(payload) if payload else 0
+            result.append({
+                "filename": filename,
+                "content_type": content_type,
+                "size": size,
+            })
+        return result
+
+    def _get_attachment_by_index(self, msg, index: int) -> Optional[tuple]:
+        """Возвращает (bytes, filename, content_type) для вложения по индексу или None."""
+        if not msg.is_multipart() or index < 0:
+            return None
+        idx = 0
+        for part in msg.walk():
+            filename = part.get_filename()
+            if not filename:
+                disp = str(part.get("Content-Disposition", ""))
+                if "attachment" not in disp.lower():
+                    continue
+                filename = "attachment"
+            if idx == index:
+                filename = self._decode_str(filename) or "attachment"
+                content_type = part.get_content_type() or "application/octet-stream"
+                payload = part.get_payload(decode=True) or b""
+                return (payload, filename, content_type)
+            idx += 1
+        return None
+
     def fetch_message_by_uid(self, uid: int, folder: str = "INBOX") -> Optional[Dict]:
         """Fetch a single message by IMAP UID from the given folder."""
         if not self.mail and not self.connect():
@@ -282,6 +325,7 @@ class ImapClient:
             sender = self._decode_str(msg.get("From", ""))
             date = msg.get("Date", "")
             text_body, html_body = self._get_text_and_html_body(msg)
+            attachments = self._get_attachments(msg)
             return {
                 "uid": uid,
                 "subject": subject,
@@ -289,9 +333,25 @@ class ImapClient:
                 "date": date,
                 "text_body": text_body,
                 "html_body": html_body,
+                "attachments": attachments,
             }
         except Exception as e:
             logger.error("fetch_message_by_uid failed: %s", e)
+            return None
+
+    def fetch_attachment_by_index(self, uid: int, folder: str, index: int) -> Optional[tuple]:
+        """(bytes, filename, content_type) для вложения по индексу или None."""
+        if not self.mail and not self.connect():
+            return None
+        try:
+            self.mail.select(folder, readonly=True)
+            status, data = self.mail.uid("FETCH", str(uid), "(BODY.PEEK[])")
+            if status != "OK" or not data or not data[0]:
+                return None
+            msg = email.message_from_bytes(data[0][1])
+            return self._get_attachment_by_index(msg, index)
+        except Exception as e:
+            logger.error("fetch_attachment_by_index failed: %s", e)
             return None
 
     def set_seen_by_uid(self, uid: int, folder: str = "INBOX") -> bool:
@@ -406,6 +466,17 @@ async def fetch_message_by_uid_async(host, port, login, password, ssl, uid: int,
         client = ImapClient(host, port, login, password, ssl)
         try:
             return client.fetch_message_by_uid(uid, folder)
+        finally:
+            client.close()
+
+    return await asyncio.to_thread(_fetch)
+
+
+async def fetch_attachment_by_index_async(host, port, login, password, ssl, uid: int, folder: str, index: int):
+    def _fetch():
+        client = ImapClient(host, port, login, password, ssl)
+        try:
+            return client.fetch_attachment_by_index(uid, folder, index)
         finally:
             client.close()
 

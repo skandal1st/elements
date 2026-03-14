@@ -6,6 +6,9 @@ import {
   X,
   ListTodo,
   CalendarPlus,
+  Pencil,
+  Trash2,
+  GripVertical,
 } from "lucide-react";
 import {
   format,
@@ -25,7 +28,7 @@ import {
   getMinutes,
 } from "date-fns";
 import { ru } from "date-fns/locale";
-import { apiGet, apiPost } from "@/shared/api/client";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/shared/api/client";
 import { useTasksStore, type Project } from "@/shared/store/tasks.store";
 
 type CalendarItem = {
@@ -66,11 +69,17 @@ export function DashboardCalendar() {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [createTaskSlot, setCreateTaskSlot] = useState<Date | null>(null);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [menuItem, setMenuItem] = useState<CalendarItem | null>(null);
+  const [editingTaskItem, setEditingTaskItem] = useState<CalendarItem | null>(null);
+  const [editingEventItem, setEditingEventItem] = useState<CalendarItem | null>(null);
+  const [draggedItem, setDraggedItem] = useState<CalendarItem | null>(null);
 
   const {
     projects,
     loadProjects,
     createTask,
+    updateTask,
+    deleteTask,
   } = useTasksStore();
 
   const fromParam = useMemo(
@@ -200,6 +209,70 @@ export function DashboardCalendar() {
     setShowCreateTask(true);
   };
 
+  const handleItemClick = (e: React.MouseEvent, item: CalendarItem) => {
+    e.stopPropagation();
+    setMenuItem(item);
+  };
+
+  const handleItemDrop = useCallback(
+    async (item: CalendarItem, slotStart: Date) => {
+      if (item.type === "task") {
+        const startIso = slotStart.toISOString();
+        const start = item.start_at ? parseISO(item.start_at) : null;
+        const end = item.end_at ? parseISO(item.end_at) : null;
+        let endIso = startIso;
+        if (start && end && end > start) {
+          const durationMs = end.getTime() - start.getTime();
+          endIso = new Date(slotStart.getTime() + durationMs).toISOString();
+        }
+        await updateTask(item.id, { start_date: startIso, due_date: endIso });
+      } else {
+        const startIso = slotStart.toISOString();
+        const start = item.start_at ? parseISO(item.start_at) : null;
+        const end = item.end_at ? parseISO(item.end_at) : null;
+        let endIso = slotStart.toISOString();
+        if (start && end && end > start) {
+          const durationMs = end.getTime() - start.getTime();
+          endIso = new Date(slotStart.getTime() + durationMs).toISOString();
+        }
+        await apiPatch(`/portal/calendar/events/${item.id}`, {
+          start_at: startIso,
+          end_at: endIso,
+        });
+      }
+      setDraggedItem(null);
+      await fetchCalendar();
+      await fetchTodayTasks(selectedDate);
+    },
+    [updateTask, selectedDate, fetchCalendar, fetchTodayTasks]
+  );
+
+  const handleEditTask = (item: CalendarItem) => {
+    setMenuItem(null);
+    setEditingTaskItem(item);
+  };
+
+  const handleDeleteTask = async (item: CalendarItem) => {
+    setMenuItem(null);
+    if (!confirm(`Удалить задачу «${item.title}»?`)) return;
+    await deleteTask(item.id);
+    await fetchCalendar();
+    await fetchTodayTasks(selectedDate);
+  };
+
+  const handleEditEvent = (item: CalendarItem) => {
+    setMenuItem(null);
+    setEditingEventItem(item);
+  };
+
+  const handleDeleteEvent = async (item: CalendarItem) => {
+    setMenuItem(null);
+    if (!confirm(`Удалить событие «${item.title}»?`)) return;
+    await apiDelete(`/portal/calendar/events/${item.id}`);
+    await fetchCalendar();
+    await fetchTodayTasks(selectedDate);
+  };
+
   return (
     <div className="space-y-4">
       <div className="portal-card">
@@ -309,8 +382,47 @@ export function DashboardCalendar() {
             timeSlots={timeSlots}
             onSlotClick={handleSlotClick}
             getItemsInSlot={getItemsInSlot}
+            onItemClick={handleItemClick}
+            onItemDrop={handleItemDrop}
+            draggedItem={draggedItem}
+            onDragStart={setDraggedItem}
+            onDragEnd={() => setDraggedItem(null)}
           />
         )}
+
+      {/* Меню по клику на задачу/событие */}
+      {menuItem && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setMenuItem(null)}
+          role="presentation"
+        >
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 portal-card py-2 min-w-[180px] shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-100 truncate max-w-[240px]" title={menuItem.title}>
+              {menuItem.title}
+            </p>
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              onClick={() => menuItem.type === "task" ? handleEditTask(menuItem) : handleEditEvent(menuItem)}
+            >
+              <Pencil className="w-4 h-4" />
+              Изменить
+            </button>
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              onClick={() => menuItem.type === "task" ? handleDeleteTask(menuItem) : handleDeleteEvent(menuItem)}
+            >
+              <Trash2 className="w-4 h-4" />
+              Удалить
+            </button>
+          </div>
+        </div>
+      )}
       </div>
 
       {/* Задачи на выбранный день */}
@@ -380,6 +492,32 @@ export function DashboardCalendar() {
           }}
         />
       )}
+
+      {editingTaskItem && (
+        <EditTaskModal
+          item={editingTaskItem}
+          projects={projects.filter((p: Project) => !p.is_archived)}
+          onClose={() => setEditingTaskItem(null)}
+          onSave={async (data) => {
+            await updateTask(editingTaskItem.id, data);
+            setEditingTaskItem(null);
+            await fetchCalendar();
+            await fetchTodayTasks(selectedDate);
+          }}
+        />
+      )}
+
+      {editingEventItem && (
+        <EditEventModal
+          item={editingEventItem}
+          onClose={() => setEditingEventItem(null)}
+          onSave={async () => {
+            setEditingEventItem(null);
+            await fetchCalendar();
+            await fetchTodayTasks(selectedDate);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -389,12 +527,53 @@ function DayView({
   timeSlots,
   onSlotClick,
   getItemsInSlot,
+  onItemClick,
+  onItemDrop,
+  draggedItem,
+  onDragStart,
+  onDragEnd,
 }: {
   selectedDate: Date;
   timeSlots: Date[];
   onSlotClick: (slot: Date) => void;
   getItemsInSlot: (slot: Date) => CalendarItem[];
+  onItemClick: (e: React.MouseEvent, item: CalendarItem) => void;
+  onItemDrop: (item: CalendarItem, slot: Date) => void;
+  draggedItem: CalendarItem | null;
+  onDragStart: (item: CalendarItem) => void;
+  onDragEnd: () => void;
 }) {
+  const [dropTargetSlot, setDropTargetSlot] = useState<number | null>(null);
+
+  const handleSlotDragOver = (e: React.DragEvent, slot: Date) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDropTargetSlot(slot.getTime());
+  };
+
+  const handleSlotDragLeave = () => {
+    setDropTargetSlot(null);
+  };
+
+  const handleSlotDrop = (e: React.DragEvent, slot: Date) => {
+    e.preventDefault();
+    setDropTargetSlot(null);
+    const raw = e.dataTransfer.getData("application/json");
+    if (!raw) return;
+    try {
+      const item = JSON.parse(raw) as CalendarItem;
+      onItemDrop(item, slot);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleItemDragStart = (e: React.DragEvent, item: CalendarItem) => {
+    e.dataTransfer.setData("application/json", JSON.stringify(item));
+    e.dataTransfer.effectAllowed = "move";
+    onDragStart(item);
+  };
+
   return (
     <div className="border-t border-gray-100 pt-4">
       <p className="text-sm font-medium text-gray-700 mb-3">
@@ -411,17 +590,30 @@ function DayView({
               <div className="w-14 flex-shrink-0 text-xs text-gray-400 py-1 pr-2 text-right">
                 {format(slot, "HH:mm")}
               </div>
-              <button
-                type="button"
-                className="flex-1 min-h-[44px] text-left hover:bg-gray-50/80 rounded px-2 py-1 transition-colors"
+              <div
+                className={`flex-1 min-h-[44px] rounded px-2 py-1 transition-colors flex items-center gap-1 ${
+                  dropTargetSlot === slot.getTime() ? "bg-brand-green/10 ring-1 ring-brand-green/30" : ""
+                }`}
+                onDragOver={(e) => handleSlotDragOver(e, slot)}
+                onDragLeave={handleSlotDragLeave}
+                onDrop={(e) => handleSlotDrop(e, slot)}
                 onClick={() => onSlotClick(slot)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && onSlotClick(slot)}
               >
                 {items.length > 0 ? (
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1">
                     {items.map((item) => (
                       <div
                         key={item.id}
-                        className="text-xs rounded px-2 py-1 truncate border-l-2"
+                        draggable
+                        onDragStart={(e) => handleItemDragStart(e, item)}
+                        onDragEnd={onDragEnd}
+                        onClick={(e) => onItemClick(e, item)}
+                        className={`text-xs rounded px-2 py-1 truncate border-l-2 cursor-grab active:cursor-grabbing flex items-center gap-1 ${
+                          draggedItem?.id === item.id ? "opacity-50" : "hover:bg-gray-100/80"
+                        }`}
                         style={{
                           borderLeftColor:
                             item.type === "event"
@@ -432,14 +624,15 @@ function DayView({
                               ? `${item.color ?? "#3B82F6"}20`
                               : "#22c55e20",
                         }}
-                        title={item.title}
+                        title={`${item.title}. Перетащите для смены времени.`}
                       >
+                        <GripVertical className="w-3 h-3 flex-shrink-0 text-gray-400" />
                         {format(parseISO(item.start_at!), "HH:mm")} — {item.title}
                       </div>
                     ))}
                   </div>
                 ) : null}
-              </button>
+              </div>
             </div>
           );
         })}
@@ -589,6 +782,213 @@ function CreateTaskModal({
               className="px-4 py-2 rounded-lg bg-brand-green text-white hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Создание…" : "Создать"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditTaskModal({
+  item,
+  projects,
+  onClose,
+  onSave,
+}: {
+  item: CalendarItem;
+  projects: Project[];
+  onClose: () => void;
+  onSave: (data: { title?: string; project_id?: string; start_date?: string; due_date?: string }) => Promise<void>;
+}) {
+  const start = item.start_at ? parseISO(item.start_at) : new Date();
+  const [title, setTitle] = useState(item.title);
+  const [projectId, setProjectId] = useState(item.project_id ?? projects[0]?.id ?? "");
+  const [dateStr, setDateStr] = useState(format(start, "yyyy-MM-dd"));
+  const [timeStr, setTimeStr] = useState(format(start, "HH:mm"));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (projects.length && !projectId) setProjectId(projects[0].id);
+  }, [projects, projectId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError("Укажите название");
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      const dateTime = new Date(`${dateStr}T${timeStr}:00`);
+      await onSave({
+        title: title.trim(),
+        project_id: projectId || undefined,
+        start_date: dateTime.toISOString(),
+        due_date: dateTime.toISOString(),
+      });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="portal-card max-w-md w-full shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-gray-800 font-medium">Изменить задачу</h3>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Название</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+              placeholder="Название задачи"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Проект</label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+            >
+              <option value="">Выберите проект</option>
+              {projects.map((p: Project) => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Дата</label>
+              <input
+                type="date"
+                value={dateStr}
+                onChange={(e) => setDateStr(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Время</label>
+              <input
+                type="time"
+                value={timeStr}
+                onChange={(e) => setTimeStr(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+              />
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Отмена</button>
+            <button type="submit" disabled={saving || !title.trim()} className="px-4 py-2 rounded-lg bg-brand-green text-white hover:opacity-90 disabled:opacity-50">
+              {saving ? "Сохранение…" : "Сохранить"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditEventModal({
+  item,
+  onClose,
+  onSave,
+}: {
+  item: CalendarItem;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const start = item.start_at ? parseISO(item.start_at) : new Date();
+  const end = item.end_at ? parseISO(item.end_at) : start;
+  const [title, setTitle] = useState(item.title);
+  const [startDate, setStartDate] = useState(format(start, "yyyy-MM-dd"));
+  const [startTime, setStartTime] = useState(format(start, "HH:mm"));
+  const [endTime, setEndTime] = useState(format(end, "HH:mm"));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError("Укажите название");
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      await apiPatch(`/portal/calendar/events/${item.id}`, {
+        title: title.trim(),
+        start_at: `${startDate}T${startTime}:00`,
+        end_at: `${startDate}T${endTime}:00`,
+        is_all_day: false,
+      });
+      onSave();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="portal-card max-w-md w-full shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-gray-800 font-medium">Изменить событие</h3>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Название</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+              placeholder="Название события"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Дата</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Начало</label>
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Конец</label>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green" />
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Отмена</button>
+            <button type="submit" disabled={saving || !title.trim()} className="px-4 py-2 rounded-lg bg-brand-green text-white hover:opacity-90 disabled:opacity-50">
+              {saving ? "Сохранение…" : "Сохранить"}
             </button>
           </div>
         </form>

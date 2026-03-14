@@ -66,6 +66,12 @@ class MailMessageResponse(BaseModel):
     folder: str
 
 
+class MailAttachmentDetail(BaseModel):
+    filename: str
+    content_type: str
+    size: int
+
+
 class MailMessageDetailResponse(BaseModel):
     uid: int
     subject: str
@@ -73,6 +79,7 @@ class MailMessageDetailResponse(BaseModel):
     date: str
     text_body: str
     html_body: str
+    attachments: List[MailAttachmentDetail] = []
 
 class MailSendRequest(BaseModel):
     to_email: EmailStr
