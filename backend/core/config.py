@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     # Проверка контрагента по ИНН (api-fns.ru, данные ФНС)
     fns_api_key: str = os.getenv("FNS_API_KEY", "")
 
+    # Jitsi Meet (видеоконференции)
+    jitsi_base_url: str = "https://meet.teplocentral.org"
+
 
 # Глобальный экземпляр настроек
 settings = Settings()

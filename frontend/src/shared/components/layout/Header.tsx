@@ -1,11 +1,12 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { Search, Settings, ChevronDown, LogOut, User } from "lucide-react";
+import { Search, Settings, ChevronDown, LogOut, User, Video } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
 import { useUIStore } from "../../store/ui.store";
 import { apiGet } from "../../api/client";
 import { formatRelative } from "../../utils/formatRelative";
 import { NotificationBell } from "../notifications/NotificationBell";
+import { VideoConferenceModal } from "../videoconference/VideoConferenceModal";
 
 function formatNameWithInitials(fullName: string): string {
   if (!fullName) return "Пользователь";
@@ -48,6 +49,7 @@ export function Header() {
   const logout = useAuthStore((state) => state.logout);
   const location = useLocation();
   const [userOpen, setUserOpen] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const userRef = useRef<HTMLDivElement>(null);
 
   const { displayName, email, isSuperuser } = useMemo(() => {
@@ -130,6 +132,15 @@ export function Header() {
 
           <NotificationBell />
 
+          <button
+            type="button"
+            onClick={() => setShowVideoModal(true)}
+            className="p-2.5 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
+            title="Начать видеоконференцию"
+          >
+            <Video className="w-5 h-5" />
+          </button>
+
           {isSuperuser && (
             <Link
               to="/settings"
@@ -184,6 +195,7 @@ export function Header() {
           </div>
         </div>
       </div>
+      <VideoConferenceModal isOpen={showVideoModal} onClose={() => setShowVideoModal(false)} />
     </header>
   );
 }

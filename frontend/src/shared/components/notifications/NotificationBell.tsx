@@ -8,6 +8,7 @@ import {
   Info,
   CheckCircle,
   AlertTriangle,
+  Video,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -104,12 +105,18 @@ export function NotificationBell() {
       if (n.related_type === "ticket") navigate("/it/tickets");
       else if (n.related_type === "equipment") navigate("/it/equipment");
       else if (n.related_type === "consumable") navigate("/it/consumables");
+      else if (n.related_type === "videoconference") {
+        window.open(`https://meet.teplocentral.org/elements-${n.related_id}`, "_blank");
+      }
     }
   };
 
-  const icon = (type: Notification["type"]) => {
+  const icon = (n: Notification) => {
     const c = "h-5 w-5 flex-shrink-0";
-    switch (type) {
+    if (n.related_type === "videoconference") {
+      return <Video className={`${c} text-indigo-500`} />;
+    }
+    switch (n.type) {
       case "success":
         return <CheckCircle className={`${c} text-green-500`} />;
       case "error":
@@ -180,7 +187,7 @@ export function NotificationBell() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {icon(n.type)}
+                    {icon(n)}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white">
                         {n.title}

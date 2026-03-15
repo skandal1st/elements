@@ -25,6 +25,7 @@ from .routes import (
     ticket_comments,
     tickets,
     users,
+    videoconference,
     zabbix,
 )
 from .routes import (
@@ -53,6 +54,7 @@ router.include_router(zabbix.router)
 router.include_router(telegram.router)
 router.include_router(rocketchat.router)
 router.include_router(email.router)
+router.include_router(videoconference.router)
 router.include_router(knowledge_api.router)
 
 
