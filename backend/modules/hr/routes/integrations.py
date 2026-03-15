@@ -482,7 +482,7 @@ def zup_debug(db: Session = Depends(get_db)) -> dict:
 
 @router.post(
     "/zup/sync",
-    dependencies=[Depends(require_roles(["hr", "admin"]))],
+    dependencies=[Depends(require_roles(["admin"]))],
 )
 def zup_sync(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
     """Запустить полную синхронизацию с 1С ЗУП."""
@@ -524,7 +524,7 @@ def zup_sync(db: Session = Depends(get_db), current_user: User = Depends(get_cur
 
 @router.get(
     "/zup/status",
-    dependencies=[Depends(require_roles(["hr", "admin"]))],
+    dependencies=[Depends(require_roles(["admin"]))],
 )
 def zup_status(db: Session = Depends(get_db)) -> dict:
     """Получить статус интеграции с 1С ЗУП."""

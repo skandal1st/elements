@@ -8,7 +8,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from backend.core.auth import get_token_payload, require_superuser
+from backend.core.auth import get_token_payload, require_superuser, oauth2_scheme
+
+
+def require_portal_news_editor(token: str = Depends(oauth2_scheme)):
+    """Доступ к управлению новостями: суперпользователь, администратор портала или секретарь."""
+    payload = get_token_payload(token)
+    if payload.get("is_superuser"):
+        return payload
+    portal_role = (payload.get("roles") or {}).get("portal")
+    if portal_role in ("admin", "secretary"):
+        return payload
+    raise HTTPException(
+        status_code=403,
+        detail="Доступ к управлению новостями только у администратора портала или секретаря",
+    )
+
+
 from backend.core.config import settings
 from backend.core.database import get_db
 from backend.modules.hr.models.system_settings import SystemSettings
@@ -310,9 +326,9 @@ def _announcement_response(a: Announcement) -> dict:
 @router.get("/announcements")
 async def list_announcements_admin(
     db: Session = Depends(get_db),
-    _payload: dict = Depends(require_superuser),
+    _payload: dict = Depends(require_portal_news_editor),
 ):
-    """Список всех объявлений (для управления). Только администратор."""
+    """Список всех объявлений (для управления). Администратор портала или секретарь."""
     announcements = (
         db.query(Announcement)
         .order_by(Announcement.created_at.desc())
@@ -325,9 +341,9 @@ async def list_announcements_admin(
 async def create_announcement(
     body: AnnouncementCreate,
     db: Session = Depends(get_db),
-    _payload: dict = Depends(require_superuser),
+    _payload: dict = Depends(require_portal_news_editor),
 ):
-    """Создать важное объявление. Только администратор."""
+    """Создать важное объявление. Администратор портала или секретарь."""
     announcement = Announcement(
         title=body.title,
         content=body.content,
@@ -345,9 +361,9 @@ async def update_announcement(
     announcement_id: UUID,
     body: AnnouncementUpdate,
     db: Session = Depends(get_db),
-    _payload: dict = Depends(require_superuser),
+    _payload: dict = Depends(require_portal_news_editor),
 ):
-    """Изменить объявление. Только администратор."""
+    """Изменить объявление. Администратор портала или секретарь."""
     announcement = db.query(Announcement).filter(Announcement.id == announcement_id).first()
     if not announcement:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
@@ -363,9 +379,9 @@ async def update_announcement(
 async def delete_announcement(
     announcement_id: UUID,
     db: Session = Depends(get_db),
-    _payload: dict = Depends(require_superuser),
+    _payload: dict = Depends(require_portal_news_editor),
 ):
-    """Удалить объявление. Только администратор."""
+    """Удалить объявление. Администратор портала или секретарь."""
     announcement = db.query(Announcement).filter(Announcement.id == announcement_id).first()
     if not announcement:
         raise HTTPException(status_code=404, detail="Объявление не найдено")

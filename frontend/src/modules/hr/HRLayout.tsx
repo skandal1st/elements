@@ -1,14 +1,32 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
-const links = [
-  { to: '/hr/phonebook', label: 'Телефонная книга' },
-  { to: '/hr/birthdays', label: 'Дни рождения' },
-  { to: '/hr/org', label: 'Оргструктура' },
-  { to: '/hr/requests', label: 'HR-заявки' },
-  { to: '/hr/zup-sync', label: 'Синхронизация ЗУП' },
+const ALL_LINKS = [
+  { to: '/hr/phonebook', label: 'Телефонная книга', roles: ['employee', 'secretary', 'hr', 'admin'] },
+  { to: '/hr/birthdays', label: 'Дни рождения', roles: ['employee', 'secretary', 'hr', 'admin'] },
+  { to: '/hr/org', label: 'Оргструктура', roles: ['hr', 'admin'] },
+  { to: '/hr/requests', label: 'HR-заявки', roles: ['hr', 'admin'] },
+  { to: '/hr/zup-sync', label: 'Синхронизация ЗУП', roles: ['admin'] },
 ]
 
 export function HRLayout() {
+  const [hrRole, setHrRole] = useState<string>('employee')
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        const roles = payload.roles || {}
+        setHrRole(roles.hr || 'employee')
+      } catch {
+        setHrRole('employee')
+      }
+    }
+  }, [])
+
+  const links = ALL_LINKS.filter((link) => link.roles.includes(hrRole))
+
   return (
     <div className="space-y-6">
       <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-4">

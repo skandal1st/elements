@@ -3,6 +3,17 @@ import { Edit, ArrowRightLeft, Trash2, Users } from 'lucide-react'
 import { apiDelete, apiGet, apiPatch, apiPost } from '../../../shared/api/client'
 import { buildingsService, roomsService } from '../../../shared/services/rooms.service'
 
+function getHrRole(): string {
+  const token = localStorage.getItem('token')
+  if (!token) return 'employee'
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return (payload.roles && payload.roles.hr) || 'employee'
+  } catch {
+    return 'employee'
+  }
+}
+
 type PhonebookEntry = {
   id: number
   full_name: string
@@ -26,6 +37,10 @@ export function Phonebook() {
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [hrRole, setHrRole] = useState<string>(() => getHrRole())
+
+  const canEditPhonebook = ['secretary', 'hr', 'admin'].includes(hrRole)
+  const canTransferOrDelete = ['hr', 'admin'].includes(hrRole)
 
   // Модальное окно редактирования
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -83,6 +98,10 @@ export function Phonebook() {
 
   useEffect(() => {
     load()
+  }, [])
+
+  useEffect(() => {
+    setHrRole(getHrRole())
   }, [])
 
   const loadBuildings = async () => {
@@ -321,7 +340,9 @@ export function Phonebook() {
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Внутренний</th>
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Внешний</th>
                 <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Действия</th>
+                {(canEditPhonebook || canTransferOrDelete) && (
+                  <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Действия</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -333,24 +354,32 @@ export function Phonebook() {
                   <td className="px-4 py-4 text-gray-400">{item.internal_phone ?? '-'}</td>
                   <td className="px-4 py-4 text-gray-400">{item.external_phone ?? '-'}</td>
                   <td className="px-4 py-4 text-gray-400">{item.email ?? '-'}</td>
+                  {(canEditPhonebook || canTransferOrDelete) && (
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(item)} className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all" title="Редактировать">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => openTransfer(item)} className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Перевести на другую должность">
-                        <ArrowRightLeft className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteEmployee(item)}
-                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Удалить (dismissed)"
-                        disabled={deletingId === item.id}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canEditPhonebook && (
+                        <button onClick={() => openEdit(item)} className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all" title="Редактировать">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+                      {canTransferOrDelete && (
+                        <button onClick={() => openTransfer(item)} className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Перевести на другую должность">
+                          <ArrowRightLeft className="w-4 h-4" />
+                        </button>
+                      )}
+                      {canTransferOrDelete && (
+                        <button
+                          onClick={() => handleDeleteEmployee(item)}
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Удалить (dismissed)"
+                          disabled={deletingId === item.id}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
+                  )}
                 </tr>
               ))}
             </tbody>

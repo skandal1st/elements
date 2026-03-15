@@ -19,7 +19,7 @@ def _audit_user(user: User) -> str:
     return user.username or user.email
 
 
-@router.get("/", response_model=List[EmployeeOut], dependencies=[Depends(require_roles(["hr", "it", "manager", "auditor"]))])
+@router.get("/", response_model=List[EmployeeOut], dependencies=[Depends(require_roles(["hr", "admin", "secretary", "it", "manager", "auditor"]))])
 def list_employees(
     db: Session = Depends(get_db),
     q: Optional[str] = Query(default=None),
@@ -62,7 +62,7 @@ def create_employee(
     return employee
 
 
-@router.patch("/{employee_id}", response_model=EmployeeOut, dependencies=[Depends(require_roles(["hr"]))])
+@router.patch("/{employee_id}", response_model=EmployeeOut, dependencies=[Depends(require_roles(["hr", "admin", "secretary"]))])
 def update_employee(
     employee_id: int,
     payload: EmployeeUpdate,
@@ -115,7 +115,7 @@ def delete_employee(
 
 @router.get(
     "/{employee_id}/card",
-    dependencies=[Depends(require_roles(["hr", "it", "manager"]))],
+    dependencies=[Depends(require_roles(["hr", "admin", "secretary", "it", "manager"]))],
 )
 def get_employee_card(
     employee_id: int,

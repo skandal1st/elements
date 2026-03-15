@@ -38,12 +38,12 @@ def _pos_name(db: Session, position_id: int | None) -> str | None:
     return p.name if p else None
 
 
-@router.get("/", response_model=List[HRRequestOut], dependencies=[Depends(require_roles(["hr", "it", "auditor"]))])
+@router.get("/", response_model=List[HRRequestOut], dependencies=[Depends(require_roles(["hr", "admin"]))])
 def list_requests(db: Session = Depends(get_db)) -> List[HRRequest]:
     return db.query(HRRequest).all()
 
 
-@router.post("/", response_model=HRRequestOut, dependencies=[Depends(require_roles(["hr"]))])
+@router.post("/", response_model=HRRequestOut, dependencies=[Depends(require_roles(["hr", "admin"]))])
 def create_request(
     payload: HRRequestCreate,
     db: Session = Depends(get_db),

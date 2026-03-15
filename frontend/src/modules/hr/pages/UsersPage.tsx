@@ -18,6 +18,7 @@ type User = {
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Администратор',
   hr: 'HR-специалист',
+  secretary: 'Секретарь',
   user: 'Пользователь',
   viewer: 'Просмотр',
   it_specialist: 'ИТ-специалист',
@@ -35,12 +36,13 @@ const MODULE_LABELS: Record<string, string> = {
 }
 
 // Роли для каждого модуля
+// HR: employee — только телефонная книга и дни рождения; secretary — + редактирование телефонной книги; hr — всё кроме ЗУП; admin — всё
 const MODULE_ROLES: Record<string, string[]> = {
-  hr: ['admin', 'hr', 'employee'],
+  hr: ['admin', 'hr', 'secretary', 'employee'],
   it: ['admin', 'it_specialist', 'employee', 'auditor'],
   tasks: ['admin', 'employee'],
   documents: ['admin', 'specialist', 'employee'],
-  portal: ['admin', 'user'],
+  portal: ['admin', 'secretary', 'user'],
 }
 
 export function UsersPage() {

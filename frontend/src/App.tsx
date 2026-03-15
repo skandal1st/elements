@@ -77,7 +77,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function PortalAdminRoute({ children }: { children: React.ReactNode }) {
+function PortalAdminRoute({
+  children,
+  allowSecretary = false,
+}: {
+  children: React.ReactNode;
+  /** true для раздела Новости (доступ секретарю), false для Настроек (только администратор) */
+  allowSecretary?: boolean;
+}) {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -90,13 +97,18 @@ function PortalAdminRoute({ children }: { children: React.ReactNode }) {
     }
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
-      setHasAccess(!!payload.is_superuser);
+      const isSuperuser = !!payload.is_superuser;
+      const isPortalAdmin = !!(payload.roles && payload.roles.portal === "admin");
+      const isPortalSecretary = !!(payload.roles && payload.roles.portal === "secretary");
+      setHasAccess(
+        isSuperuser || isPortalAdmin || (allowSecretary && isPortalSecretary)
+      );
     } catch {
       setHasAccess(false);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [allowSecretary]);
 
   if (loading) {
     return (
@@ -111,7 +123,7 @@ function PortalAdminRoute({ children }: { children: React.ReactNode }) {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-white mb-4">Доступ запрещен</h2>
           <p className="text-gray-400 mb-4">
-            Раздел «Настройки» доступен только администратору портала.
+            Раздел доступен только администратору портала или суперпользователю.
           </p>
           <Navigate to="/" replace />
         </div>
@@ -297,7 +309,7 @@ function AppRoutes() {
           path="/news"
           element={
             <ProtectedRoute>
-              <PortalAdminRoute>
+              <PortalAdminRoute allowSecretary>
                 <AnnouncementsPage />
               </PortalAdminRoute>
             </ProtectedRoute>

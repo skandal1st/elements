@@ -105,13 +105,13 @@ async def login(
     else:
         platform_modules = settings.get_enabled_modules()
 
-    # Доступ пользователя: суперпользователь — все модули; иначе — базовые (portal, news, mail) + по ролям
-    BASE_MODULES = ("portal", "news", "mail")  # доступны всем авторизованным
+    # Доступ пользователя: суперпользователь — все модули; иначе — базовые (portal, news, mail) всегда + по ролям
+    BASE_MODULES = ("portal", "news", "mail")  # доступны всем авторизованным, не зависят от enabled_modules
     if user.is_superuser:
         modules = list(platform_modules)
     else:
         user_module_keys = list((user.roles or {}).keys())
-        modules = [m for m in BASE_MODULES if m in platform_modules] + [
+        modules = list(BASE_MODULES) + [
             m for m in user_module_keys if m in platform_modules and m not in BASE_MODULES
         ]
 
@@ -188,7 +188,7 @@ async def get_current_user_info(
         modules = list(platform_modules)
     else:
         user_module_keys = list((user.roles or {}).keys())
-        modules = [m for m in BASE_MODULES if m in platform_modules] + [
+        modules = list(BASE_MODULES) + [
             m for m in user_module_keys if m in platform_modules and m not in BASE_MODULES
         ]
 
@@ -231,7 +231,7 @@ async def update_profile(
         modules = list(platform_modules)
     else:
         user_module_keys = list((user.roles or {}).keys())
-        modules = [m for m in BASE_MODULES if m in platform_modules] + [
+        modules = list(BASE_MODULES) + [
             m for m in user_module_keys if m in platform_modules and m not in BASE_MODULES
         ]
     return UserResponse(

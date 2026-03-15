@@ -13,7 +13,7 @@ from backend.modules.hr.schemas.org import OrgDepartment, OrgEmployee, OrgPositi
 router = APIRouter(prefix="/org", tags=["org"])
 
 
-@router.get("/", response_model=List[OrgDepartment], dependencies=[Depends(require_roles(["hr", "it", "manager", "auditor"]))])
+@router.get("/", response_model=List[OrgDepartment], dependencies=[Depends(require_roles(["hr", "admin"]))])
 def get_org_structure(db: Session = Depends(get_db)) -> List[OrgDepartment]:
     departments = db.query(Department).all()
     positions = {p.id: p for p in db.query(Position).all()}
