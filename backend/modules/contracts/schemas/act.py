@@ -17,7 +17,8 @@ class ContractActBase(BaseModel):
 
 
 class ContractActCreate(ContractActBase):
-    contract_id: UUID
+    """Тело запроса на создание акта. contract_id берётся из path /contracts/{contract_id}/acts/."""
+    contract_id: UUID | None = None  # не передаётся с фронта, подставляется из URL
 
 
 class ContractActUpdate(BaseModel):
