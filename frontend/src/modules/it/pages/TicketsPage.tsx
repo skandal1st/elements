@@ -171,9 +171,9 @@ const statusLabel: Record<string, string> = {
 const statusColor: Record<string, string> = {
   new: "bg-accent-blue/20 text-accent-blue",
   in_progress: "bg-yellow-500/20 text-yellow-400",
-  waiting: "bg-dark-400/50 text-gray-400",
+  waiting: "bg-amber-500/20 text-amber-700",
   resolved: "bg-green-500/20 text-green-400",
-  closed: "bg-dark-500/50 text-gray-500",
+  closed: "bg-gray-200 text-gray-700",
   pending_user: "bg-orange-500/20 text-orange-400",
 };
 
