@@ -22,6 +22,17 @@ export type UnreadCountResponse = {
   count: number
 }
 
+export type PendingCall = {
+  id: string
+  message: string
+  related_id: string | null
+  created_at: string
+}
+
+export type PendingCallsResponse = {
+  calls: PendingCall[]
+}
+
 export const notificationsService = {
   async getNotifications(
     unreadOnly = false,
@@ -96,6 +107,15 @@ export const notificationsService = {
       return { error: null }
     } catch (error) {
       return { error: error as Error }
+    }
+  },
+
+  async getPendingCalls(): Promise<{ calls: PendingCall[]; error: Error | null }> {
+    try {
+      const data = await apiGet<PendingCallsResponse>('/it/notifications/pending-calls')
+      return { calls: data.calls, error: null }
+    } catch (error) {
+      return { calls: [], error: error as Error }
     }
   },
 }

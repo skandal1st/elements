@@ -112,6 +112,7 @@ export function Header() {
   const updatedLabel = formatRelative(lastEmailCheckAt);
 
   return (
+    <>
     <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm">
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -195,7 +196,8 @@ export function Header() {
           </div>
         </div>
       </div>
-      <VideoConferenceModal isOpen={showVideoModal} onClose={() => setShowVideoModal(false)} />
     </header>
+    <VideoConferenceModal isOpen={showVideoModal} onClose={() => setShowVideoModal(false)} />
+    </>
   );
 }

@@ -15,6 +15,7 @@ import {
   notificationsService,
   type Notification,
 } from "../../services/notifications.service";
+import { useNotificationStore } from "../../store/notification.store";
 
 function formatTimeAgo(date: string): string {
   const now = new Date();
@@ -33,10 +34,12 @@ function formatTimeAgo(date: string): string {
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -51,16 +54,10 @@ export function NotificationBell() {
     }
   };
 
-  const loadUnreadCount = async () => {
+  const refreshUnreadCount = async () => {
     const result = await notificationsService.getUnreadCount();
     if (!result.error) setUnreadCount(result.count);
   };
-
-  useEffect(() => {
-    loadUnreadCount();
-    const t = setInterval(loadUnreadCount, 30000);
-    return () => clearInterval(t);
-  }, []);
 
   useEffect(() => {
     if (isOpen) loadNotifications();
@@ -79,26 +76,26 @@ export function NotificationBell() {
     e.stopPropagation();
     await notificationsService.markAsRead(id);
     loadNotifications();
-    loadUnreadCount();
+    refreshUnreadCount();
   };
 
   const handleMarkAllAsRead = async () => {
     await notificationsService.markAllAsRead();
     loadNotifications();
-    loadUnreadCount();
+    refreshUnreadCount();
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     await notificationsService.deleteNotification(id);
     loadNotifications();
-    loadUnreadCount();
+    refreshUnreadCount();
   };
 
   const handleNotificationClick = (n: Notification) => {
     if (!n.is_read) {
       notificationsService.markAsRead(n.id);
-      loadUnreadCount();
+      refreshUnreadCount();
     }
     if (n.related_type && n.related_id) {
       setIsOpen(false);

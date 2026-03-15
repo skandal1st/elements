@@ -9,6 +9,10 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "./shared/components/layout/Sidebar";
 import { Header } from "./shared/components/layout/Header";
 import { useUIStore } from "./shared/store/ui.store";
+import { useNotificationStore } from "./shared/store/notification.store";
+import { useNotificationSound } from "./shared/hooks/useNotificationSound";
+import { useIncomingCalls } from "./shared/hooks/useIncomingCalls";
+import { IncomingCallOverlay } from "./shared/components/notifications/IncomingCallOverlay";
 import { Dashboard } from "./modules/portal/Dashboard";
 import { LoginPage } from "./pages/LoginPage";
 import { useAuthStore } from "./shared/store/auth.store";
@@ -195,6 +199,10 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed);
 
+  // Hooks for notification sound and incoming calls (only run when authenticated)
+  useNotificationSound();
+  const { activeCall, handleAccept, handleDecline } = useIncomingCalls();
+
   // На странице логина не показываем Sidebar и Header
   if (location.pathname === "/login" || !isAuthenticated) {
     return <>{children}</>;
@@ -209,6 +217,13 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         <Header />
         <main className="p-6 bg-brand-light min-h-[calc(100vh-73px)]">{children}</main>
       </div>
+      {activeCall && (
+        <IncomingCallOverlay
+          callerMessage={activeCall.message}
+          onAccept={handleAccept}
+          onDecline={handleDecline}
+        />
+      )}
     </>
   );
 }
@@ -399,11 +414,15 @@ function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
   const checkTokenExpiry = useAuthStore((state) => state.checkTokenExpiry);
   const loadUIFromStorage = useUIStore((state) => state.loadFromStorage);
+  const loadNotificationSettings = useNotificationStore(
+    (state) => state.loadFromStorage
+  );
 
   useEffect(() => {
     // Загружаем данные из localStorage при старте
     loadFromStorage();
     loadUIFromStorage();
+    loadNotificationSettings();
 
     // Периодически проверяем срок действия токена (каждые 30 секунд)
     const interval = setInterval(() => {
@@ -411,7 +430,7 @@ function App() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [loadFromStorage, checkTokenExpiry, loadUIFromStorage]);
+  }, [loadFromStorage, checkTokenExpiry, loadUIFromStorage, loadNotificationSettings]);
 
   return (
     <BrowserRouter>

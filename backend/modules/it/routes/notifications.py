@@ -1,8 +1,10 @@
 """Роуты /it/notifications — уведомления."""
-from typing import List
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -14,6 +16,19 @@ from backend.modules.it.schemas.notification import (
     UnreadCountResponse,
 )
 from backend.modules.hr.models.user import User
+
+
+class PendingCallOut(BaseModel):
+    id: UUID
+    message: str
+    related_id: Optional[UUID] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PendingCallsResponse(BaseModel):
+    calls: list[PendingCallOut]
 
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -62,6 +77,29 @@ def get_unread_count(
     ).scalar() or 0
     
     return UnreadCountResponse(count=count)
+
+
+@router.get("/pending-calls", response_model=PendingCallsResponse)
+def get_pending_calls(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PendingCallsResponse:
+    """Получить непрочитанные приглашения на видеоконференцию за последние 2 минуты"""
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
+
+    calls = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == current_user.id,
+            Notification.is_read == False,
+            Notification.related_type == "videoconference",
+            Notification.created_at >= cutoff,
+        )
+        .order_by(Notification.created_at.desc())
+        .all()
+    )
+
+    return PendingCallsResponse(calls=calls)
 
 
 @router.patch("/{notification_id}/read", response_model=NotificationOut)
