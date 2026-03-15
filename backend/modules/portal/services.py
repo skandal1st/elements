@@ -80,25 +80,36 @@ class PortalService:
             Equipment.status == "in_use"
         ).count()
 
-        # Tasks stats — only for the current user
+        # Tasks stats — only from user's accessible projects
         today = date.today()
         first_day_of_month = today.replace(day=1)
 
-        base_filter = [Task.assignee_id == user.id] if user else []
+        if user:
+            accessible = get_accessible_projects(self.db, user, include_archived=False)
+            project_ids = [p.id for p, _ in accessible]
+        else:
+            project_ids = []
 
-        tasks_total = self.db.query(func.count(Task.id)).filter(
-            *base_filter
-        ).scalar() or 0
-        tasks_completed = self.db.query(func.count(Task.id)).filter(
-            *base_filter,
-            Task.status == "done"
-        ).scalar() or 0
+        if project_ids:
+            base_filter = [Task.project_id.in_(project_ids), Task.archived_at.is_(None)]
 
-        tasks_completed_this_month = self.db.query(func.count(Task.id)).filter(
-            *base_filter,
-            Task.status == "done",
-            Task.updated_at >= first_day_of_month
-        ).scalar() or 0
+            tasks_total = self.db.query(func.count(Task.id)).filter(
+                *base_filter
+            ).scalar() or 0
+            tasks_completed = self.db.query(func.count(Task.id)).filter(
+                *base_filter,
+                Task.status == "done"
+            ).scalar() or 0
+
+            tasks_completed_this_month = self.db.query(func.count(Task.id)).filter(
+                *base_filter,
+                Task.status == "done",
+                Task.updated_at >= first_day_of_month
+            ).scalar() or 0
+        else:
+            tasks_total = 0
+            tasks_completed = 0
+            tasks_completed_this_month = 0
         
         tasks_progress = 0
         if tasks_total > 0:
