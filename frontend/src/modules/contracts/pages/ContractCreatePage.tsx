@@ -8,6 +8,9 @@ import {
   type Funding,
   type Subunit,
 } from '@/shared/services/contracts.service'
+import { apiGet } from '@/shared/api/client'
+
+type HrDepartment = { id: number; name: string }
 
 export function ContractCreatePage() {
   const navigate = useNavigate()
@@ -16,6 +19,9 @@ export function ContractCreatePage() {
   const [contractTypes, setContractTypes] = useState<ContractType[]>([])
   const [fundingList, setFundingList] = useState<Funding[]>([])
   const [subunits, setSubunits] = useState<Subunit[]>([])
+  const [hrDepartments, setHrDepartments] = useState<HrDepartment[]>([])
+  const [customSubunitModal, setCustomSubunitModal] = useState(false)
+  const [customSubunitName, setCustomSubunitName] = useState('')
 
   const [number, setNumber] = useState('')
   const [name, setName] = useState('')
@@ -35,15 +41,48 @@ export function ContractCreatePage() {
       contractsService.listContractTypes(),
       contractsService.listFunding(),
       contractsService.listSubunits(),
+      apiGet<HrDepartment[]>('/hr/departments/?only_with_employees=true'),
     ])
-      .then(([c, t, f, s]) => {
+      .then(([c, t, f, s, hr]) => {
         setCounterparties(c)
         setContractTypes(t)
         setFundingList(f)
         setSubunits(s)
+        setHrDepartments(hr || [])
       })
       .catch(console.error)
   }, [])
+
+  const handleSubunitSelectFromHr = async (hrDepartmentName: string) => {
+    const trimmed = hrDepartmentName.trim()
+    if (!trimmed) return
+    let id = subunits.find((s) => s.name === trimmed)?.id
+    if (!id) {
+      try {
+        const created = await contractsService.createSubunit({ name: trimmed, is_active: true })
+        id = created.id
+        setSubunits((prev) => [...prev, created])
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Ошибка создания подразделения')
+        return
+      }
+    }
+    setSubunitId(id)
+  }
+
+  const handleAddCustomSubunit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!customSubunitName.trim()) return
+    try {
+      const created = await contractsService.createSubunit({ name: customSubunitName.trim(), is_active: true })
+      setSubunits((prev) => [...prev, created])
+      setSubunitId(created.id)
+      setCustomSubunitName('')
+      setCustomSubunitModal(false)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Ошибка')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -201,13 +240,28 @@ export function ContractCreatePage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Подразделение</label>
             <select
               value={subunitId}
-              onChange={(e) => setSubunitId(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value
+                if (v === '__custom__') {
+                  setCustomSubunitModal(true)
+                  return
+                }
+                if (v.startsWith('hr:')) {
+                  handleSubunitSelectFromHr(v.slice(3))
+                  return
+                }
+                setSubunitId(v)
+              }}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
             >
               <option value="">— Выберите —</option>
-              {subunits.map((s) => (
+              {hrDepartments.map((d) => (
+                <option key={d.id} value={`hr:${d.name}`}>{d.name}</option>
+              ))}
+              {subunits.filter((s) => !hrDepartments.some((d) => d.name === s.name)).map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
+              <option value="__custom__">— Добавить своё подразделение —</option>
             </select>
           </div>
         </div>
@@ -239,6 +293,35 @@ export function ContractCreatePage() {
           </button>
         </div>
       </form>
+
+      {customSubunitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCustomSubunitModal(false)}>
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Добавить своё подразделение</h3>
+            <form onSubmit={handleAddCustomSubunit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Наименование</label>
+                <input
+                  type="text"
+                  value={customSubunitName}
+                  onChange={(e) => setCustomSubunitName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                  placeholder="Введите название подразделения"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="submit" disabled={!customSubunitName.trim()} className="px-4 py-2 bg-brand-green text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                  Добавить
+                </button>
+                <button type="button" onClick={() => setCustomSubunitModal(false)} className="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50">
+                  Отмена
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

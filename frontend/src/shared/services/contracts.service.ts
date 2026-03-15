@@ -199,12 +199,20 @@ export const contractsService = {
     return apiGet<Funding[]>(`${BASE}/funding`)
   },
 
+  createFunding(data: { name: string; is_active?: boolean }): Promise<Funding> {
+    return apiPost<Funding>(`${BASE}/funding`, data)
+  },
+
   listCostCodes(): Promise<CostCode[]> {
     return apiGet<CostCode[]>(`${BASE}/cost-codes`)
   },
 
   listSubunits(): Promise<Subunit[]> {
     return apiGet<Subunit[]>(`${BASE}/subunits`)
+  },
+
+  createSubunit(data: { name: string; is_active?: boolean }): Promise<Subunit> {
+    return apiPost<Subunit>(`${BASE}/subunits`, data)
   },
 
   /** Создать договор из согласованного документа */
