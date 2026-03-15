@@ -1,6 +1,7 @@
 """
 Сервис агрегации данных для стартовой страницы Portal
 """
+import logging
 from datetime import date, datetime, timedelta
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
@@ -10,8 +11,10 @@ from backend.modules.hr.models.employee import Employee
 from backend.modules.it.models import Ticket, Equipment
 from backend.modules.hr.models.user import User
 from backend.modules.portal.models import Announcement, CalendarEvent
-from backend.modules.tasks.models import Task
+from backend.modules.tasks.models import Task, Project
 from backend.modules.tasks.services.permissions import get_accessible_projects
+
+logger = logging.getLogger(__name__)
 
 class PortalService:
     """Сервис для агрегации данных портала"""
@@ -218,3 +221,132 @@ class PortalService:
         from_d = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
         to_d = datetime.combine(day, datetime.max.time(), tzinfo=timezone.utc)
         return self.get_calendar_tasks(user, from_d, to_d)
+
+    def get_action_items(self, user: User, user_modules: List[str]) -> Dict[str, Any]:
+        """Агрегация элементов, требующих внимания пользователя."""
+        result: Dict[str, Any] = {}
+
+        # --- Документы, ожидающие согласования ---
+        if "documents" in user_modules:
+            try:
+                from backend.modules.documents.models import (
+                    ApprovalStepInstance,
+                    ApprovalInstance,
+                    Document,
+                )
+
+                steps = (
+                    self.db.query(ApprovalStepInstance)
+                    .join(ApprovalInstance)
+                    .join(Document)
+                    .filter(
+                        ApprovalStepInstance.approver_id == user.id,
+                        ApprovalStepInstance.status == "pending",
+                        ApprovalInstance.status == "in_progress",
+                        ApprovalStepInstance.step_order == ApprovalInstance.current_step_order,
+                        Document.status == "pending_approval",
+                    )
+                    .all()
+                )
+                items = []
+                for s in steps:
+                    inst = s.approval_instance
+                    doc = inst.document
+                    creator = self.db.query(User).filter(User.id == doc.creator_id).first()
+                    items.append({
+                        "document_id": str(doc.id),
+                        "document_title": doc.title,
+                        "deadline_at": s.deadline_at.isoformat() if s.deadline_at else None,
+                        "creator_name": creator.full_name if creator else None,
+                    })
+                result["pending_approvals"] = items
+                result["pending_approvals_count"] = len(items)
+            except Exception:
+                logger.exception("Action items: ошибка загрузки согласований")
+
+        # --- Тикеты, назначенные на пользователя ---
+        if "it" in user_modules:
+            try:
+                assigned = (
+                    self.db.query(Ticket)
+                    .filter(
+                        Ticket.assignee_id == user.id,
+                        Ticket.status.in_(["new", "in_progress", "waiting"]),
+                    )
+                    .order_by(Ticket.created_at.desc())
+                    .limit(20)
+                    .all()
+                )
+                result["assigned_tickets"] = [
+                    {
+                        "id": str(t.id),
+                        "title": t.title,
+                        "status": t.status,
+                        "priority": t.priority,
+                        "created_at": t.created_at.isoformat() if t.created_at else None,
+                    }
+                    for t in assigned
+                ]
+                result["assigned_tickets_count"] = len(assigned)
+            except Exception:
+                logger.exception("Action items: ошибка загрузки назначенных тикетов")
+
+            # --- Тикеты, созданные пользователем (группировка по статусу) ---
+            try:
+                rows = (
+                    self.db.query(Ticket.status, func.count(Ticket.id))
+                    .filter(
+                        Ticket.creator_id == user.id,
+                        Ticket.status.notin_(["closed"]),
+                    )
+                    .group_by(Ticket.status)
+                    .all()
+                )
+                result["my_tickets_by_status"] = {status: cnt for status, cnt in rows}
+            except Exception:
+                logger.exception("Action items: ошибка загрузки моих тикетов")
+
+        # --- Просроченные задачи ---
+        if "tasks" in user_modules:
+            try:
+                from datetime import timezone as tz
+
+                now = datetime.now(tz.utc)
+                accessible = get_accessible_projects(self.db, user, include_archived=False)
+                project_ids = [p.id for p, _ in accessible]
+
+                if project_ids:
+                    overdue = (
+                        self.db.query(Task)
+                        .filter(
+                            Task.project_id.in_(project_ids),
+                            Task.due_date < now,
+                            Task.status.notin_(["done", "cancelled"]),
+                            Task.archived_at.is_(None),
+                        )
+                        .order_by(Task.due_date.asc())
+                        .limit(20)
+                        .all()
+                    )
+                    items = []
+                    for t in overdue:
+                        days_overdue = (now - t.due_date).days if t.due_date else 0
+                        project = self.db.query(Project).filter(Project.id == t.project_id).first()
+                        items.append({
+                            "id": str(t.id),
+                            "title": t.title,
+                            "project_id": str(t.project_id),
+                            "project_title": project.title if project else None,
+                            "due_date": t.due_date.isoformat() if t.due_date else None,
+                            "days_overdue": days_overdue,
+                            "priority": t.priority,
+                        })
+                    result["overdue_tasks"] = items
+                    result["overdue_tasks_count"] = len(items)
+                else:
+                    result["overdue_tasks"] = []
+                    result["overdue_tasks_count"] = 0
+            except Exception:
+                logger.exception("Action items: ошибка загрузки просроченных задач")
+
+        return result

@@ -8,6 +8,8 @@ import {
   Gift,
 } from "lucide-react";
 import { DashboardCalendar } from "./DashboardCalendar";
+import { ActionCenter, type ActionItemsData } from "./ActionCenter";
+import { useAuthStore } from "@/shared/store/auth.store";
 
 interface Announcement {
   id: string;
@@ -43,32 +45,39 @@ interface DashboardData {
 export function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [actionItems, setActionItems] = useState<ActionItemsData | null>(null);
+  const user = useAuthStore((s) => s.user);
+
+  const hasModule = (mod: string) =>
+    !!user?.is_superuser || !!user?.modules?.includes(mod);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
 
-  const fetchDashboardData = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/v1/portal/dashboard", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    // Fetch dashboard and action items in parallel
+    const fetchDashboard = fetch("/api/v1/portal/dashboard", { headers })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
 
-      if (response.ok) {
-        const dashboardData = await response.json();
-        setData(dashboardData);
-      } else {
-        // Mock data if failed
-        setData({ announcements: [], available_modules: [], birthdays: [] });
+    const fetchActions = fetch("/api/v1/portal/dashboard/actions", { headers })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+
+    Promise.all([fetchDashboard, fetchActions]).then(
+      ([dashboardData, actionsData]) => {
+        setData(
+          dashboardData ?? {
+            announcements: [],
+            available_modules: [],
+            birthdays: [],
+          }
+        );
+        if (actionsData) setActionItems(actionsData);
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Ошибка загрузки данных:", error);
-      setData({ announcements: [], available_modules: [], birthdays: [] });
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
+  }, []);
 
   if (loading) {
     return (
@@ -98,6 +107,11 @@ export function Dashboard() {
       <div className="flex gap-6">
         {/* Main Content (Left) */}
         <div className="flex-1 space-y-6">
+          {/* Action Center */}
+          {actionItems && (
+            <ActionCenter data={actionItems} hasModule={hasModule} />
+          )}
+
           {/* Кнопки быстрого доступа — карточки как виджет План */}
           <div className="flex gap-6">
             <a
@@ -140,45 +154,47 @@ export function Dashboard() {
 
           {/* Stats Row */}
           <div className="flex gap-6">
-            <div className="portal-card flex-1 flex items-center justify-between">
-              <div>
-                <h3 className="text-gray-500 font-medium mb-1">План</h3>
-                <p className="text-sm text-gray-400 mb-6">{data?.stats?.tasks_completed ?? 0}/{data?.stats?.tasks_total ?? 0} задач</p>
-                <div className="flex items-center gap-2 text-sm text-green-600 font-semibold">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                  </span>
-                  +{data?.stats?.tasks_completed_this_month ?? 0}
-                  <span className="text-gray-400 font-normal ml-1">в этом месяце</span>
+            {hasModule("tasks") && (
+              <div className="portal-card flex-1 flex items-center justify-between">
+                <div>
+                  <h3 className="text-gray-500 font-medium mb-1">План</h3>
+                  <p className="text-sm text-gray-400 mb-6">{data?.stats?.tasks_completed ?? 0}/{data?.stats?.tasks_total ?? 0} задач</p>
+                  <div className="flex items-center gap-2 text-sm text-green-600 font-semibold">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    +{data?.stats?.tasks_completed_this_month ?? 0}
+                    <span className="text-gray-400 font-normal ml-1">в этом месяце</span>
+                  </div>
+                </div>
+                <div className="relative w-28 h-28">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      className="text-gray-100"
+                      strokeWidth="3"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    <path
+                      className="text-brand-yellow"
+                      strokeDasharray={`${data?.stats?.tasks_progress ?? 0}, 100`}
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold text-gray-800">{data?.stats?.tasks_progress ?? 0}%</span>
+                  </div>
                 </div>
               </div>
-              <div className="relative w-28 h-28">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-gray-100"
-                    strokeWidth="3"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className="text-brand-yellow"
-                    strokeDasharray={`${data?.stats?.tasks_progress ?? 0}, 100`}
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-800">{data?.stats?.tasks_progress ?? 0}%</span>
-                </div>
-              </div>
-            </div>
+            )}
 
-            <div className="portal-card flex-[1.5] flex flex-col">
+            <div className={`portal-card flex flex-col ${hasModule("tasks") ? "flex-[1.5]" : "flex-1"}`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-gray-800 font-medium">Важные объявления</h3>
                 {data?.announcements && data.announcements.length > 0 && (

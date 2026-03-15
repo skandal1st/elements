@@ -50,6 +50,24 @@ async def get_dashboard(
     return data
 
 
+@router.get("/dashboard/actions")
+async def get_dashboard_actions(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload),
+    user: User = Depends(get_current_user),
+):
+    """
+    Элементы, требующие внимания текущего пользователя.
+    Загружается отдельно от основного dashboard для параллельной загрузки.
+    """
+    user_modules: list[str] = payload.get("modules", [])
+    is_superuser: bool = payload.get("is_superuser", False)
+    if is_superuser:
+        user_modules = list(set(user_modules) | {"documents", "it", "tasks"})
+    service = PortalService(db)
+    return service.get_action_items(user, user_modules)
+
+
 @router.get("/birthdays")
 async def get_birthdays(
     days_ahead: int = 30,
