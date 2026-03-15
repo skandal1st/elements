@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from '../api/client'
+import { apiGet, apiPost, apiPatch, apiDelete, apiUpload } from '../api/client'
 
 export interface Counterparty {
   id: string
@@ -22,6 +22,14 @@ export interface ContractType {
   updated_at?: string | null
 }
 
+export interface ContractFileItem {
+  id: string
+  kind: string
+  file_path: string
+  file_name: string
+  created_at?: string | null
+}
+
 export interface ContractAct {
   id: string
   contract_id: string
@@ -33,6 +41,7 @@ export interface ContractAct {
   amount: string
   created_at?: string | null
   updated_at?: string | null
+  files?: ContractFileItem[]
 }
 
 export interface ContractListItem {
@@ -70,7 +79,7 @@ export interface ContractDetail extends ContractListItem {
   subunit_id?: string | null
   created_by_id?: string | null
   acts: ContractAct[]
-  files: { id: string; kind: string; file_path: string; file_name: string; created_at?: string | null }[]
+  files: ContractFileItem[]
 }
 
 export interface Funding {
@@ -148,6 +157,25 @@ export const contractsService = {
 
   deleteAct(contractId: string, actId: string): Promise<void> {
     return apiDelete(`${BASE}/${contractId}/acts/${actId}`)
+  },
+
+  /** Загрузить файл к договору (PDF, DOC, DOCX) */
+  uploadContractFile(contractId: string, file: File): Promise<ContractFileItem> {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiUpload<ContractFileItem>(`${BASE}/${contractId}/files`, formData)
+  },
+
+  /** Загрузить файл к акту/платежу (PDF, DOC, DOCX) */
+  uploadActFile(contractId: string, actId: string, file: File): Promise<ContractFileItem> {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiUpload<ContractFileItem>(`${BASE}/${contractId}/acts/${actId}/files`, formData)
+  },
+
+  /** Удалить файл договора или акта */
+  deleteContractFile(contractId: string, fileId: string): Promise<void> {
+    return apiDelete(`${BASE}/${contractId}/files/${fileId}`)
   },
 
   listCounterparties(params?: { search?: string; is_active?: boolean }): Promise<Counterparty[]> {

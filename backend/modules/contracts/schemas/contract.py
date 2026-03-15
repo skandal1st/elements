@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from .act import ContractActOut
+from .file_schema import ContractFileOut
 
 
 class ContractBase(BaseModel):
@@ -48,16 +49,6 @@ class ContractUpdate(BaseModel):
     notice: str | None = None
     term: date | None = None
     done: bool | None = None
-
-
-class ContractFileOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    kind: str
-    file_path: str
-    file_name: str
-    created_at: datetime | None
 
 
 class ContractListOut(BaseModel):

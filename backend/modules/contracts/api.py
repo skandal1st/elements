@@ -9,6 +9,7 @@ from backend.modules.contracts.routes import (
     contract_types,
     contracts,
     counterparties,
+    files as contract_files,
     from_document,
     reference,
 )
@@ -24,4 +25,5 @@ router.include_router(counterparties.router)
 router.include_router(contract_types.router)
 router.include_router(reference.router)
 router.include_router(acts.router)  # /{contract_id}/acts — до contracts
+router.include_router(contract_files.router)  # /{contract_id}/files, /{contract_id}/acts/{act_id}/files
 router.include_router(contracts.router)

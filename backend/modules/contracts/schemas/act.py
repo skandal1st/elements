@@ -1,8 +1,11 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import List
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+
+from .file_schema import ContractFileOut
 
 
 class ContractActBase(BaseModel):
@@ -38,3 +41,4 @@ class ContractActOut(BaseModel):
     amount: Decimal
     created_at: datetime | None
     updated_at: datetime | None
+    files: List[ContractFileOut] = []

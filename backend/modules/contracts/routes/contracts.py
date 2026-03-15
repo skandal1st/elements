@@ -86,7 +86,7 @@ def list_contracts(
             joinedload(Contract.contract_type),
             joinedload(Contract.funding),
             joinedload(Contract.subunit),
-            joinedload(Contract.acts),
+            joinedload(Contract.acts).joinedload(ContractAct.files),
         )
         .order_by(
             Contract.updated_at.desc() if order_by == "updated_at" else Contract.date_begin.desc()
@@ -160,7 +160,7 @@ def _get_detail(contract_id: UUID, db: Session) -> ContractDetailOut:
             joinedload(Contract.funding),
             joinedload(Contract.cost_code),
             joinedload(Contract.subunit),
-            joinedload(Contract.acts),
+            joinedload(Contract.acts).joinedload(ContractAct.files),
             joinedload(Contract.files),
         )
         .filter(Contract.id == contract_id)
@@ -220,7 +220,7 @@ def update_contract(
             joinedload(Contract.funding),
             joinedload(Contract.cost_code),
             joinedload(Contract.subunit),
-            joinedload(Contract.acts),
+            joinedload(Contract.acts).joinedload(ContractAct.files),
             joinedload(Contract.files),
         )
         .filter(Contract.id == contract_id)

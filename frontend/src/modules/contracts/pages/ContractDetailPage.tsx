@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Upload, FileText } from 'lucide-react'
 import { contractsService, type ContractDetail, type Funding, type Subunit } from '@/shared/services/contracts.service'
 import { apiGet } from '@/shared/api/client'
 
@@ -34,6 +34,11 @@ export function ContractDetailPage() {
   const [newFundingName, setNewFundingName] = useState('')
   const [customSubunitName, setCustomSubunitName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingSubunit, setSavingSubunit] = useState(false)
+  const [uploadingFileFor, setUploadingFileFor] = useState<'contract' | string | null>(null) // 'contract' or actId
+  const contractFileInputRef = useRef<HTMLInputElement>(null)
+  const actFileInputRef = useRef<HTMLInputElement>(null)
+  const uploadingActIdRef = useRef<string | null>(null)
 
   const load = async () => {
     if (!id) return
@@ -119,32 +124,33 @@ export function ContractDetailPage() {
     if (!id) return
     const trimmed = hrDepartmentName.trim()
     if (!trimmed) return
-    let subunitId: string | null = subunits.find((s) => s.name === trimmed)?.id ?? null
-    if (!subunitId) {
-      try {
+    setSavingSubunit(true)
+    try {
+      let subunitId: string | null = subunits.find((s) => s.name === trimmed)?.id ?? null
+      if (!subunitId) {
         const created = await contractsService.createSubunit({ name: trimmed, is_active: true })
         subunitId = created.id
         setSubunits((prev) => [...prev, created])
-      } catch (err) {
-        alert(err instanceof Error ? err.message : 'Ошибка создания подразделения')
-        return
       }
-    }
-    try {
       await contractsService.updateContract(id, { subunit_id: subunitId })
-      load()
+      await load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Ошибка')
+      alert(err instanceof Error ? err.message : 'Ошибка сохранения подразделения')
+    } finally {
+      setSavingSubunit(false)
     }
   }
 
   const handleSubunitChange = async (subunitId: string) => {
     if (!id) return
+    setSavingSubunit(true)
     try {
       await contractsService.updateContract(id, { subunit_id: subunitId || undefined })
-      load()
+      await load()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Ошибка')
+    } finally {
+      setSavingSubunit(false)
     }
   }
 
@@ -174,6 +180,54 @@ export function ContractDetailPage() {
       alert(err instanceof Error ? err.message : 'Ошибка')
     }
   }
+
+  const allowedAccept = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+  const handleContractFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !id) return
+    setUploadingFileFor('contract')
+    try {
+      await contractsService.uploadContractFile(id, file)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Ошибка загрузки')
+    } finally {
+      setUploadingFileFor(null)
+    }
+  }
+
+  const handleActFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    const actId = uploadingActIdRef.current
+    uploadingActIdRef.current = null
+    if (!file || !id || !actId) {
+      setUploadingFileFor(null)
+      return
+    }
+    try {
+      await contractsService.uploadActFile(id, actId, file)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Ошибка загрузки')
+    } finally {
+      setUploadingFileFor(null)
+    }
+  }
+
+  const deleteFile = async (fileId: string) => {
+    if (!id || !confirm('Удалить файл?')) return
+    try {
+      await contractsService.deleteContractFile(id, fileId)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Ошибка')
+    }
+  }
+
+  const fileUrl = (path: string) => (path.startsWith('/') ? path : `/${path}`)
 
   if (loading) return <div className="text-gray-400">Загрузка...</div>
   if (!contract) return <div className="text-gray-400">Договор не найден</div>
@@ -213,6 +267,45 @@ export function ContractDetailPage() {
           <div className="text-xs text-gray-500">Остаток</div>
           <div className="font-semibold">{formatMoney(contract.rest_acts)}</div>
         </div>
+      </div>
+
+      {/* Документы договора */}
+      <div>
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Документы договора</h3>
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <input
+            ref={contractFileInputRef}
+            type="file"
+            accept={allowedAccept}
+            className="hidden"
+            onChange={handleContractFileSelect}
+          />
+          <button
+            type="button"
+            onClick={() => contractFileInputRef.current?.click()}
+            disabled={uploadingFileFor === 'contract'}
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Upload className="w-4 h-4" />
+            {uploadingFileFor === 'contract' ? 'Загрузка...' : 'Загрузить документ (PDF, DOC, DOCX)'}
+          </button>
+        </div>
+        {contract.files?.filter((f) => f.kind === 'contract').length > 0 ? (
+          <ul className="space-y-1 text-sm">
+            {contract.files
+              .filter((f) => f.kind === 'contract')
+              .map((f) => (
+                <li key={f.id} className="flex items-center gap-2">
+                  <a href={fileUrl(f.file_path)} target="_blank" rel="noopener noreferrer" className="text-brand-green hover:underline inline-flex items-center gap-1">
+                    <FileText className="w-4 h-4" /> {f.file_name}
+                  </a>
+                  <button type="button" onClick={() => deleteFile(f.id)} className="p-0.5 text-gray-400 hover:text-red-600" title="Удалить"><Trash2 className="w-4 h-4" /></button>
+                </li>
+              ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-400">Нет загруженных документов</p>
+        )}
       </div>
 
       {/* Источники финансирования */}
@@ -261,7 +354,8 @@ export function ContractDetailPage() {
               }
               handleSubunitChange(v)
             }}
-            className="px-3 py-2 border border-gray-200 rounded-xl text-sm min-w-[200px]"
+            disabled={savingSubunit}
+            className="px-3 py-2 border border-gray-200 rounded-xl text-sm min-w-[200px] disabled:opacity-60"
           >
             <option value="">— Не выбрано —</option>
             {hrDepartments.map((d) => (
@@ -270,11 +364,13 @@ export function ContractDetailPage() {
             {subunits.filter((s) => !hrDepartments.some((d) => d.name === s.name)).map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-            {contract.subunit_id && contract.subunit_name && !subunits.some((s) => s.id === contract.subunit_id) && (
+            {/* Текущее подразделение договора — всегда в списке, чтобы после сохранения значение отображалось */}
+            {contract.subunit_id && contract.subunit_name && (
               <option value={contract.subunit_id}>{contract.subunit_name}</option>
             )}
             <option value="__custom__">— Добавить своё подразделение —</option>
           </select>
+          {savingSubunit && <span className="text-sm text-gray-500">Сохранение...</span>}
         </div>
       </div>
 
@@ -299,6 +395,13 @@ export function ContractDetailPage() {
             </button>
           </div>
         </div>
+        <input
+          ref={actFileInputRef}
+          type="file"
+          accept={allowedAccept}
+          className="hidden"
+          onChange={handleActFileSelect}
+        />
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -307,13 +410,14 @@ export function ContractDetailPage() {
                 <th className="text-left py-2 px-3">Номер</th>
                 <th className="text-left py-2 px-3">Дата</th>
                 <th className="text-right py-2 px-3">Сумма</th>
+                <th className="text-left py-2 px-3">Документы</th>
                 <th className="w-10" />
               </tr>
             </thead>
             <tbody>
               {contract.acts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-gray-400">Нет актов и платёжек</td>
+                  <td colSpan={6} className="py-4 text-center text-gray-400">Нет актов и платёжек</td>
                 </tr>
               ) : (
                 contract.acts.map((a) => (
@@ -322,6 +426,31 @@ export function ContractDetailPage() {
                     <td className="py-2 px-3">{a.number ?? '—'}</td>
                     <td className="py-2 px-3">{formatDate(a.act_date)}</td>
                     <td className="py-2 px-3 text-right">{formatMoney(a.amount)}</td>
+                    <td className="py-2 px-3">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(a.files?.length ?? 0) > 0 && (
+                          <>
+                            {a.files!.map((f) => (
+                              <span key={f.id} className="inline-flex items-center gap-0.5">
+                                <a href={fileUrl(f.file_path)} target="_blank" rel="noopener noreferrer" className="text-brand-green hover:underline text-xs truncate max-w-[120px]" title={f.file_name}>
+                                  {f.file_name}
+                                </a>
+                                <button type="button" onClick={() => deleteFile(f.id)} className="p-0.5 text-gray-400 hover:text-red-600" title="Удалить"><Trash2 className="w-3 h-3" /></button>
+                              </span>
+                            ))}
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { uploadingActIdRef.current = a.id; setUploadingFileFor(a.id); actFileInputRef.current?.click(); }}
+                          disabled={uploadingFileFor === a.id}
+                          className="p-1 text-gray-500 hover:text-gray-700 rounded border border-gray-200 hover:bg-gray-50 text-xs disabled:opacity-50"
+                          title="Загрузить PDF, DOC, DOCX"
+                        >
+                          {uploadingFileFor === a.id ? '...' : <Upload className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </td>
                     <td className="py-2 px-3">
                       <button type="button" onClick={() => deleteAct(a.id)} className="p-1 text-gray-400 hover:text-red-600" title="Удалить">
                         <Trash2 className="w-4 h-4" />
