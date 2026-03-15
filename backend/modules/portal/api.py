@@ -25,14 +25,15 @@ router = APIRouter(prefix=f"{settings.api_v1_prefix}/portal", tags=["portal"])
 @router.get("/dashboard")
 async def get_dashboard(
     db: Session = Depends(get_db),
-    payload: dict = Depends(get_token_payload)
+    payload: dict = Depends(get_token_payload),
+    user: User = Depends(get_current_user),
 ):
     """
     Получает данные для стартовой страницы.
     Доступно всем авторизованным пользователям.
     """
     service = PortalService(db)
-    data = service.get_dashboard_data()
+    data = service.get_dashboard_data(user)
     rows = (
         db.query(Equipment.zabbix_host_id)
         .filter(Equipment.zabbix_host_id.isnot(None))
@@ -65,13 +66,14 @@ async def get_birthdays(
 @router.get("/stats")
 async def get_stats(
     db: Session = Depends(get_db),
-    payload: dict = Depends(get_token_payload)
+    payload: dict = Depends(get_token_payload),
+    user: User = Depends(get_current_user),
 ):
     """
     Получает статистику по компании.
     """
     service = PortalService(db)
-    stats = service.get_company_stats()
+    stats = service.get_company_stats(user)
     rows = (
         db.query(Equipment.zabbix_host_id)
         .filter(Equipment.zabbix_host_id.isnot(None))

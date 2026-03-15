@@ -67,29 +67,35 @@ class PortalService:
             for a in announcements
         ]
     
-    def get_company_stats(self) -> Dict:
+    def get_company_stats(self, user: "User | None" = None) -> Dict:
         employees_count = self.db.query(Employee).filter(
             Employee.status == "active"
         ).count()
-        
+
         active_tickets = self.db.query(Ticket).filter(
             Ticket.status.in_(["new", "in_progress", "waiting"])
         ).count()
-        
+
         equipment_in_use = self.db.query(Equipment).filter(
             Equipment.status == "in_use"
         ).count()
-        
-        # Tasks stats
+
+        # Tasks stats — only for the current user
         today = date.today()
         first_day_of_month = today.replace(day=1)
-        
-        tasks_total = self.db.query(func.count(Task.id)).scalar() or 0
+
+        base_filter = [Task.assignee_id == user.id] if user else []
+
+        tasks_total = self.db.query(func.count(Task.id)).filter(
+            *base_filter
+        ).scalar() or 0
         tasks_completed = self.db.query(func.count(Task.id)).filter(
+            *base_filter,
             Task.status == "done"
         ).scalar() or 0
 
         tasks_completed_this_month = self.db.query(func.count(Task.id)).filter(
+            *base_filter,
             Task.status == "done",
             Task.updated_at >= first_day_of_month
         ).scalar() or 0
@@ -108,11 +114,11 @@ class PortalService:
             "tasks_completed_this_month": tasks_completed_this_month
         }
     
-    def get_dashboard_data(self) -> Dict:
+    def get_dashboard_data(self, user: "User | None" = None) -> Dict:
         return {
             "birthdays": self.get_upcoming_birthdays(),
             "announcements": self.get_announcements(),
-            "stats": self.get_company_stats(),
+            "stats": self.get_company_stats(user),
         }
 
     def get_calendar_events(
