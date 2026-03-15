@@ -21,6 +21,11 @@ from backend.modules.mail.schemas import (
     MailMessageResponse,
     MailSendRequest,
 )
+from backend.modules.mail.server_config import (
+    get_mail_server_settings,
+    get_effective_imap_config,
+    get_effective_smtp_config,
+)
 from backend.modules.mail.services import (
     archive_by_uid_async,
     delete_by_uid_async,
@@ -48,27 +53,70 @@ def _user_id_from_payload(payload: dict) -> UUID:
         raise HTTPException(status_code=401, detail="Неверный формат идентификатора пользователя") from e
 
 
+def _effective_imap(account, db: Session) -> dict:
+    """Итоговые IMAP-параметры; 400 если сервер не настроен."""
+    server = get_mail_server_settings(db)
+    cfg = get_effective_imap_config(account, server)
+    if not cfg["host"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Настройки IMAP не заданы. Обратитесь к администратору (Настройки → Интеграция с почтовым сервером).",
+        )
+    return cfg
+
+
+def _effective_smtp(account, db: Session) -> dict:
+    """Итоговые SMTP-параметры; 400 если сервер не настроен."""
+    server = get_mail_server_settings(db)
+    cfg = get_effective_smtp_config(account, server)
+    if not cfg["host"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Настройки SMTP не заданы. Обратитесь к администратору (Настройки → Интеграция с почтовым сервером).",
+        )
+    return cfg
+
+
 @router.post("/accounts", response_model=MailAccountResponse, status_code=status.HTTP_201_CREATED)
 async def create_mail_account(
     account_in: MailAccountCreate,
     db: Session = Depends(get_db),
     payload: dict = Depends(get_token_payload),
 ):
-    """Создать или обновить учетную запись почты для текущего пользователя (сохраняется в БД)."""
+    """Создать или обновить учётную запись почты (логин и пароль). IMAP/SMTP берутся из настроек."""
     user_id = _user_id_from_payload(payload)
-    data = account_in.model_dump()
+    data = account_in.model_dump(exclude_unset=False)
+    if not (data.get("password") or "").strip():
+        raise HTTPException(status_code=400, detail="Пароль обязателен при создании учётной записи")
+    if not (data.get("login") or "").strip():
+        raise HTTPException(status_code=400, detail="Логин обязателен")
+    data["email_address"] = (data.get("email_address") or data.get("login") or "").strip() or data["login"]
     existing = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if existing:
-        for key, value in data.items():
-            if key == "password" and not (value or "").strip():
-                continue
-            setattr(existing, key, value)
+        for key in ("login", "password", "email_address", "display_name"):
+            if key in data:
+                if key == "password" and not (data[key] or "").strip():
+                    continue
+                setattr(existing, key, data[key])
+        for key in ("imap_host", "imap_port", "imap_ssl", "smtp_host", "smtp_port", "smtp_ssl"):
+            if key in data:
+                setattr(existing, key, data[key])
         db.commit()
         db.refresh(existing)
         return existing
-    if not (data.get("password") or "").strip():
-        raise HTTPException(status_code=400, detail="Пароль обязателен при создании учётной записи")
-    new_account = MailAccount(user_id=user_id, **data)
+    new_account = MailAccount(
+        user_id=user_id,
+        login=data["login"],
+        password=data["password"],
+        email_address=data["email_address"],
+        display_name=data.get("display_name"),
+        imap_host=data.get("imap_host"),
+        imap_port=data.get("imap_port"),
+        imap_ssl=data.get("imap_ssl"),
+        smtp_host=data.get("smtp_host"),
+        smtp_port=data.get("smtp_port"),
+        smtp_ssl=data.get("smtp_ssl"),
+    )
     db.add(new_account)
     db.commit()
     db.refresh(new_account)
@@ -98,12 +146,13 @@ async def get_unread_count(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         return {"unread_count": 0}
+    imap = _effective_imap(account, db)
     count = await get_inbox_unread_count_async(
-        host=account.imap_host,
-        port=account.imap_port,
+        host=imap["host"],
+        port=imap["port"],
         login=account.login,
         password=account.password,
-        ssl=account.imap_ssl,
+        ssl=imap["ssl"],
     )
     return {"unread_count": count}
 
@@ -119,12 +168,13 @@ async def get_folders(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    imap = _effective_imap(account, db)
     folders = await list_folders_async(
-        host=account.imap_host,
-        port=account.imap_port,
+        host=imap["host"],
+        port=imap["port"],
         login=account.login,
         password=account.password,
-        ssl=account.imap_ssl,
+        ssl=imap["ssl"],
         include_stats=include_stats,
     )
     if not folders:
@@ -144,12 +194,13 @@ async def get_inbox_messages(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    imap = _effective_imap(account, db)
     emails = await fetch_emails_async(
-        host=account.imap_host,
-        port=account.imap_port,
+        host=imap["host"],
+        port=imap["port"],
         login=account.login,
         password=account.password,
-        ssl=account.imap_ssl,
+        ssl=imap["ssl"],
         folder=folder,
         limit=limit,
     )
@@ -184,12 +235,13 @@ async def get_inbox_message(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    imap = _effective_imap(account, db)
     msg = await fetch_message_by_uid_async(
-        host=account.imap_host,
-        port=account.imap_port,
+        host=imap["host"],
+        port=imap["port"],
         login=account.login,
         password=account.password,
-        ssl=account.imap_ssl,
+        ssl=imap["ssl"],
         uid=uid,
         folder=folder,
     )
@@ -213,12 +265,13 @@ async def get_inbox_attachment(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    imap = _effective_imap(account, db)
     result = await fetch_attachment_by_index_async(
-        host=account.imap_host,
-        port=account.imap_port,
+        host=imap["host"],
+        port=imap["port"],
         login=account.login,
         password=account.password,
-        ssl=account.imap_ssl,
+        ssl=imap["ssl"],
         uid=uid,
         folder=folder,
         index=index,
@@ -260,12 +313,13 @@ async def mark_inbox_message_read(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    imap = _effective_imap(account, db)
     ok = await set_seen_by_uid_async(
-        host=account.imap_host,
-        port=account.imap_port,
+        host=imap["host"],
+        port=imap["port"],
         login=account.login,
         password=account.password,
-        ssl=account.imap_ssl,
+        ssl=imap["ssl"],
         uid=uid,
         folder=folder,
     )
@@ -287,12 +341,13 @@ async def archive_inbox_message(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    imap = _effective_imap(account, db)
     ok = await archive_by_uid_async(
-        host=account.imap_host,
-        port=account.imap_port,
+        host=imap["host"],
+        port=imap["port"],
         login=account.login,
         password=account.password,
-        ssl=account.imap_ssl,
+        ssl=imap["ssl"],
         uid=uid,
         folder=folder,
         archive_folder=archive_folder,
@@ -317,12 +372,13 @@ async def delete_inbox_message(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
+    imap = _effective_imap(account, db)
     ok = await delete_by_uid_async(
-        host=account.imap_host,
-        port=account.imap_port,
+        host=imap["host"],
+        port=imap["port"],
         login=account.login,
         password=account.password,
-        ssl=account.imap_ssl,
+        ssl=imap["ssl"],
         uid=uid,
         folder=folder,
     )
@@ -350,14 +406,14 @@ async def send_new_email(
     account = db.query(MailAccount).filter(MailAccount.user_id == user_id).first()
     if not account:
         raise HTTPException(status_code=400, detail="Учетная запись почты не настроена")
-
+    smtp = _effective_smtp(account, db)
     try:
         await send_email_async(
-            host=account.smtp_host,
-            port=account.smtp_port,
+            host=smtp["host"],
+            port=smtp["port"],
             login=account.login,
             password=account.password,
-            ssl=account.smtp_ssl,
+            ssl=smtp["ssl"],
             to_emails=request.to_emails,
             subject=request.subject,
             text_body=request.text_body,

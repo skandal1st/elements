@@ -14,6 +14,7 @@ import { useNotificationSound } from "./shared/hooks/useNotificationSound";
 import { useIncomingCalls } from "./shared/hooks/useIncomingCalls";
 import { IncomingCallOverlay } from "./shared/components/notifications/IncomingCallOverlay";
 import { Dashboard } from "./modules/portal/Dashboard";
+import { AnnouncementsPage } from "./modules/portal/AnnouncementsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { useAuthStore } from "./shared/store/auth.store";
 import { HRLayout } from "./modules/hr/HRLayout";
@@ -261,7 +262,7 @@ function AppRoutes() {
           path="/mail"
           element={
             <ProtectedRoute>
-              <ModuleRoute module="portal">
+              <ModuleRoute module="mail">
                 <MailLayout />
               </ModuleRoute>
             </ProtectedRoute>
@@ -292,6 +293,16 @@ function AppRoutes() {
           <Route path="licenses" element={<LicensesPage />} />
           <Route path="dictionaries" element={<DictionariesPage />} />
         </Route>
+        <Route
+          path="/news"
+          element={
+            <ProtectedRoute>
+              <PortalAdminRoute>
+                <AnnouncementsPage />
+              </PortalAdminRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/settings"
           element={

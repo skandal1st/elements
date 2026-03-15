@@ -92,17 +92,10 @@ export function MailPage() {
   const [isComposing, setIsComposing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  // Settings state (must match MailAccountCreate: email_address, imap_*, smtp_*, login, password)
+  // Настройки учётки: только логин и пароль. IMAP/SMTP задаются в Настройках → Интеграция с почтовым сервером.
   const [settings, setSettings] = useState({
-    email_address: "",
     login: "",
-    password: "",
-    imap_host: "",
-    imap_port: 993,
-    imap_ssl: true,
-    smtp_host: "",
-    smtp_port: 465,
-    smtp_ssl: true
+    password: ""
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
 
@@ -334,15 +327,8 @@ export function MailPage() {
         if (res.ok) {
           const acc = await res.json();
           setSettings({
-            email_address: acc.email_address ?? "",
             login: acc.login ?? "",
-            password: "", // never send stored password back
-            imap_host: acc.imap_host ?? "",
-            imap_port: acc.imap_port ?? 993,
-            imap_ssl: acc.imap_ssl !== false,
-            smtp_host: acc.smtp_host ?? "",
-            smtp_port: acc.smtp_port ?? 465,
-            smtp_ssl: acc.smtp_ssl !== false
+            password: "" // never send stored password back
           });
         }
       } catch (e) {
@@ -454,15 +440,8 @@ export function MailPage() {
     try {
       const token = localStorage.getItem("token");
       const payload = {
-        email_address: settings.email_address,
-        login: settings.login,
-        password: settings.password,
-        imap_host: settings.imap_host,
-        imap_port: Number(settings.imap_port),
-        imap_ssl: settings.imap_ssl,
-        smtp_host: settings.smtp_host,
-        smtp_port: Number(settings.smtp_port),
-        smtp_ssl: settings.smtp_ssl
+        login: settings.login.trim(),
+        password: settings.password
       };
       const res = await fetch("/api/v1/mail/accounts", {
         method: "POST",
@@ -1093,37 +1072,16 @@ export function MailPage() {
                 </div>
               ) : (
               <form id="mail-settings-form" onSubmit={handleSaveSettings} className="space-y-4">
+                <p className="text-sm text-gray-500 mb-4">
+                  Серверы IMAP и SMTP настраиваются администратором в разделе <strong>Настройки → Интеграция с почтовым сервером</strong>. Здесь укажите только логин и пароль от вашей почты.
+                </p>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email адрес</label>
-                  <input type="email" required value={settings.email_address} onChange={e => setSettings({...settings, email_address: e.target.value})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="user@company.com" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Логин</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Логин (email)</label>
                   <input type="text" required value={settings.login} onChange={e => setSettings({...settings, login: e.target.value})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="user@company.com" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Пароль (IMAP/SMTP)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
                   <input type="password" value={settings.password} onChange={e => setSettings({...settings, password: e.target.value})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="Оставьте пустым, чтобы не менять" />
-                </div>
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">IMAP Сервер</label>
-                    <input type="text" required value={settings.imap_host} onChange={e => setSettings({...settings, imap_host: e.target.value})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="imap.mail.ru" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">IMAP Порт</label>
-                    <input type="number" required value={settings.imap_port} onChange={e => setSettings({...settings, imap_port: Number(e.target.value)})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="993" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Сервер</label>
-                    <input type="text" required value={settings.smtp_host} onChange={e => setSettings({...settings, smtp_host: e.target.value})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="smtp.mail.ru" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Порт</label>
-                    <input type="number" required value={settings.smtp_port} onChange={e => setSettings({...settings, smtp_port: Number(e.target.value)})} className="w-full text-base bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-green/20" placeholder="465" />
-                  </div>
                 </div>
               </form>
               )}

@@ -105,12 +105,15 @@ async def login(
     else:
         platform_modules = settings.get_enabled_modules()
 
-    # Доступ пользователя: суперпользователь — все модули; иначе — по ролям (user.roles)
+    # Доступ пользователя: суперпользователь — все модули; иначе — базовые (portal, news, mail) + по ролям
+    BASE_MODULES = ("portal", "news", "mail")  # доступны всем авторизованным
     if user.is_superuser:
         modules = list(platform_modules)
     else:
         user_module_keys = list((user.roles or {}).keys())
-        modules = [m for m in user_module_keys if m in platform_modules]
+        modules = [m for m in BASE_MODULES if m in platform_modules] + [
+            m for m in user_module_keys if m in platform_modules and m not in BASE_MODULES
+        ]
 
     # Основная роль (для обратной совместимости)
     main_role = "employee"
@@ -180,11 +183,14 @@ async def get_current_user_info(
     else:
         platform_modules = settings.get_enabled_modules()
 
+    BASE_MODULES = ("portal", "news", "mail")
     if user.is_superuser:
         modules = list(platform_modules)
     else:
         user_module_keys = list((user.roles or {}).keys())
-        modules = [m for m in user_module_keys if m in platform_modules]
+        modules = [m for m in BASE_MODULES if m in platform_modules] + [
+            m for m in user_module_keys if m in platform_modules and m not in BASE_MODULES
+        ]
 
     main_role = "employee"
     if user.roles:
@@ -220,7 +226,14 @@ async def update_profile(
     if user.roles:
         main_role = list(user.roles.values())[0] if user.roles else "employee"
     platform_modules = settings.get_enabled_modules()
-    modules = list(platform_modules) if user.is_superuser else [m for m in (user.roles or {}).keys() if m in platform_modules]
+    BASE_MODULES = ("portal", "news", "mail")
+    if user.is_superuser:
+        modules = list(platform_modules)
+    else:
+        user_module_keys = list((user.roles or {}).keys())
+        modules = [m for m in BASE_MODULES if m in platform_modules] + [
+            m for m in user_module_keys if m in platform_modules and m not in BASE_MODULES
+        ]
     return UserResponse(
         id=str(user.id),
         email=user.email,

@@ -8,14 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from backend.core.auth import get_token_payload
+from backend.core.auth import get_token_payload, require_superuser
 from backend.core.config import settings
 from backend.core.database import get_db
 from backend.modules.hr.models.system_settings import SystemSettings
 from backend.modules.hr.models.user import User
 from backend.modules.it.models import Equipment
 from backend.modules.it.services.zabbix_service import zabbix_service
-from backend.modules.portal.models import CalendarEvent
+from backend.modules.portal.models import Announcement, CalendarEvent
 from backend.modules.portal.services import PortalService
 from backend.modules.tasks.dependencies import get_current_user
 
@@ -275,5 +275,100 @@ async def delete_calendar_event(
     if not event:
         raise HTTPException(status_code=404, detail="Событие не найдено")
     db.delete(event)
+    db.commit()
+    return {"ok": True}
+
+
+# --- Важные объявления (только для администратора) ---
+
+class AnnouncementCreate(BaseModel):
+    title: str
+    content: str | None = None
+    image_color: str | None = "bg-blue-100"
+    is_active: bool = True
+
+
+class AnnouncementUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    image_color: str | None = None
+    is_active: bool | None = None
+
+
+def _announcement_response(a: Announcement) -> dict:
+    return {
+        "id": str(a.id),
+        "title": a.title,
+        "content": a.content,
+        "image_color": a.image_color or "bg-blue-100",
+        "is_active": a.is_active,
+        "date": a.created_at.strftime("%d.%m.%Y") if a.created_at else None,
+        "created_at": a.created_at.isoformat() if a.created_at else None,
+    }
+
+
+@router.get("/announcements")
+async def list_announcements_admin(
+    db: Session = Depends(get_db),
+    _payload: dict = Depends(require_superuser),
+):
+    """Список всех объявлений (для управления). Только администратор."""
+    announcements = (
+        db.query(Announcement)
+        .order_by(Announcement.created_at.desc())
+        .all()
+    )
+    return [_announcement_response(a) for a in announcements]
+
+
+@router.post("/announcements")
+async def create_announcement(
+    body: AnnouncementCreate,
+    db: Session = Depends(get_db),
+    _payload: dict = Depends(require_superuser),
+):
+    """Создать важное объявление. Только администратор."""
+    announcement = Announcement(
+        title=body.title,
+        content=body.content,
+        image_color=body.image_color or "bg-blue-100",
+        is_active=body.is_active,
+    )
+    db.add(announcement)
+    db.commit()
+    db.refresh(announcement)
+    return _announcement_response(announcement)
+
+
+@router.patch("/announcements/{announcement_id}")
+async def update_announcement(
+    announcement_id: UUID,
+    body: AnnouncementUpdate,
+    db: Session = Depends(get_db),
+    _payload: dict = Depends(require_superuser),
+):
+    """Изменить объявление. Только администратор."""
+    announcement = db.query(Announcement).filter(Announcement.id == announcement_id).first()
+    if not announcement:
+        raise HTTPException(status_code=404, detail="Объявление не найдено")
+    data = body.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(announcement, k, v)
+    db.commit()
+    db.refresh(announcement)
+    return _announcement_response(announcement)
+
+
+@router.delete("/announcements/{announcement_id}")
+async def delete_announcement(
+    announcement_id: UUID,
+    db: Session = Depends(get_db),
+    _payload: dict = Depends(require_superuser),
+):
+    """Удалить объявление. Только администратор."""
+    announcement = db.query(Announcement).filter(Announcement.id == announcement_id).first()
+    if not announcement:
+        raise HTTPException(status_code=404, detail="Объявление не найдено")
+    db.delete(announcement)
     db.commit()
     return {"ok": True}

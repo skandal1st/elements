@@ -4,16 +4,18 @@ from uuid import UUID
 from datetime import datetime
 
 class MailAccountCreate(BaseModel):
-    email_address: EmailStr
-    display_name: Optional[str] = None
-    imap_host: str
-    imap_port: int = 993
-    imap_ssl: bool = True
-    smtp_host: str
-    smtp_port: int = 465
-    smtp_ssl: bool = True
+    """Создание учётки: логин и пароль обязательны; IMAP/SMTP задаются в Настройках."""
     login: str
     password: str
+    email_address: Optional[EmailStr] = None  # для отображения (по умолчанию = login)
+    display_name: Optional[str] = None
+    # Серверные параметры опциональны — берутся из настроек интеграции с почтовым сервером
+    imap_host: Optional[str] = None
+    imap_port: Optional[int] = None
+    imap_ssl: Optional[bool] = None
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_ssl: Optional[bool] = None
 
 class MailAccountUpdate(BaseModel):
     display_name: Optional[str] = None
@@ -30,14 +32,14 @@ class MailAccountUpdate(BaseModel):
 class MailAccountResponse(BaseModel):
     id: UUID
     user_id: UUID
-    email_address: str
+    email_address: Optional[str] = None
     display_name: Optional[str] = None
-    imap_host: str
-    imap_port: int
-    imap_ssl: bool
-    smtp_host: str
-    smtp_port: int
-    smtp_ssl: bool
+    imap_host: Optional[str] = None
+    imap_port: Optional[int] = None
+    imap_ssl: Optional[bool] = None
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_ssl: Optional[bool] = None
     login: str
     is_active: bool
     created_at: datetime

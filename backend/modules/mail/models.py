@@ -16,13 +16,14 @@ class MailAccount(Base):
     # Имя, которое будет отображаться у получателей
     display_name = Column(String(255), nullable=True)
     
-    imap_host = Column(String(255), nullable=False)
-    imap_port = Column(Integer, default=993)
-    imap_ssl = Column(Boolean, default=True)
+    # Если не заданы — берутся из настроек «Интеграция с почтовым сервером» (раздел Настройки)
+    imap_host = Column(String(255), nullable=True)
+    imap_port = Column(Integer, default=993, nullable=True)
+    imap_ssl = Column(Boolean, default=True, nullable=True)
     
-    smtp_host = Column(String(255), nullable=False)
-    smtp_port = Column(Integer, default=465)
-    smtp_ssl = Column(Boolean, default=True)
+    smtp_host = Column(String(255), nullable=True)
+    smtp_port = Column(Integer, default=465, nullable=True)
+    smtp_ssl = Column(Boolean, default=True, nullable=True)
     
     login = Column(String(255), nullable=False)
     password = Column(String(512), nullable=False)  # В проде нужно шифровать Fernet
