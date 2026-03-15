@@ -1566,7 +1566,7 @@ export function TicketsPage() {
                     )}
                   </div>
                   {showCreateEmpDropdown && !form.for_employee_id && (
-                    <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-dark-700 border border-gray-200 rounded-xl shadow-lg">
+                    <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
                       {filteredCreateEmployees.map((emp) => (
                         <button
                           key={emp.id}
@@ -1639,7 +1639,7 @@ export function TicketsPage() {
                 onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="bg-dark-800">
+                  <option key={c} value={c} className="bg-white text-gray-900">
                     {categoryLabel[c] ?? c}
                   </option>
                 ))}
@@ -1651,7 +1651,7 @@ export function TicketsPage() {
                 onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
               >
                 {PRIORITIES.map((p) => (
-                  <option key={p} value={p} className="bg-dark-800">
+                  <option key={p} value={p} className="bg-white text-gray-900">
                     {priorityLabel[p] ?? p}
                   </option>
                 ))}
@@ -1669,9 +1669,9 @@ export function TicketsPage() {
                     setRoomEquipment([]);
                   }}
                 >
-                  <option value="" className="bg-dark-800">Выберите здание</option>
+                  <option value="" className="bg-white text-gray-900">Выберите здание</option>
                   {buildings.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-dark-800">
+                    <option key={b.id} value={b.id} className="bg-white text-gray-900">
                       {b.name}
                     </option>
                   ))}
@@ -1683,9 +1683,9 @@ export function TicketsPage() {
                   onChange={(e) => setSelectedRoomId(e.target.value)}
                   disabled={!selectedBuildingId}
                 >
-                  <option value="" className="bg-dark-800">Выберите кабинет</option>
+                  <option value="" className="bg-white text-gray-900">Выберите кабинет</option>
                   {rooms.map((r) => (
-                    <option key={r.id} value={r.id} className="bg-dark-800">
+                    <option key={r.id} value={r.id} className="bg-white text-gray-900">
                       {r.name} {r.building_name ? `(${r.building_name})` : ""}
                     </option>
                   ))}
@@ -1699,9 +1699,9 @@ export function TicketsPage() {
                 value={form.equipment_id}
                 onChange={(e) => setForm((p) => ({ ...p, equipment_id: e.target.value }))}
               >
-                <option value="" className="bg-dark-800">Выберите оборудование (необязательно)</option>
+                <option value="" className="bg-white text-gray-900">Выберите оборудование (необязательно)</option>
                 {(userRole === "it" && form.for_employee_id ? createRoomEquipment : roomEquipment).map((eq) => (
-                  <option key={eq.id} value={eq.id} className="bg-dark-800">
+                  <option key={eq.id} value={eq.id} className="bg-white text-gray-900">
                     {eq.name} ({eq.inventory_number}){eq.owner_name ? ` — ${eq.owner_name}` : ""}
                   </option>
                 ))}
@@ -1761,13 +1761,13 @@ export function TicketsPage() {
             </div>
 
             {/* Инициатор */}
-            <div className="p-4 rounded-xl bg-dark-700/20 border border-gray-200">
+            <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-500 mb-1">
                     Инициатор
                   </p>
-                  <p className="text-sm text-gray-200 truncate">
+                  <p className="text-sm text-gray-900 truncate">
                     {detail.employee_name
                       ? detail.employee_name
                       : detail.email_sender
@@ -1783,7 +1783,7 @@ export function TicketsPage() {
                 {userRole === "it" && (
                   <button
                     onClick={openAssignEmployeeModal}
-                    className="px-4 py-2 text-sm font-medium text-accent-purple border border-accent-purple/30 rounded-xl hover:bg-accent-purple/10 transition-all"
+                    className="px-4 py-2 text-sm font-medium text-accent-purple border border-accent-purple/60 bg-white rounded-xl hover:bg-accent-purple/10 transition-all"
                   >
                     {detail.employee_name ? "Изменить" : "Выбрать"}
                   </button>
@@ -1793,10 +1793,10 @@ export function TicketsPage() {
 
             {/* Email sender info */}
             {detail.email_sender && (
-              <div className="p-4 rounded-xl bg-dark-700/10 border border-dark-600/30">
-                <p className="text-xs text-gray-400">
-                  <Mail className="w-4 h-4 inline mr-2" />
-                  Email отправителя: <strong className="text-gray-200">{detail.email_sender}</strong>
+              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                <p className="text-xs text-gray-600">
+                  <Mail className="w-4 h-4 inline mr-2 text-gray-500" />
+                  Email отправителя: <strong className="text-gray-900">{detail.email_sender}</strong>
                 </p>
               </div>
             )}
@@ -1845,7 +1845,7 @@ export function TicketsPage() {
                     onChange={(e) => updateEditField("category", e.target.value)}
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c} value={c} className="bg-dark-800">
+                      <option key={c} value={c} className="bg-white text-gray-900">
                         {categoryLabel[c] ?? c}
                       </option>
                     ))}
@@ -1868,7 +1868,7 @@ export function TicketsPage() {
                     onChange={(e) => updateEditField("priority", e.target.value)}
                   >
                     {PRIORITIES.map((p) => (
-                      <option key={p} value={p} className="bg-dark-800">
+                      <option key={p} value={p} className="bg-white text-gray-900">
                         {priorityLabel[p] ?? p}
                       </option>
                     ))}
@@ -1891,7 +1891,7 @@ export function TicketsPage() {
                     onChange={(e) => updateStatus(detail.id, e.target.value)}
                   >
                     {STATUSES.map((s) => (
-                      <option key={s} value={s} className="bg-dark-800">
+                      <option key={s} value={s} className="bg-white text-gray-900">
                         {statusLabel[s] ?? s}
                       </option>
                     ))}
@@ -1962,7 +1962,7 @@ export function TicketsPage() {
                         )}
                       </div>
                       {showExecutorDropdown && (
-                        <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-dark-700 border border-gray-200 rounded-xl shadow-lg">
+                        <div className="absolute z-20 w-full mt-1 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
                           {filteredExecutors.map((u) => (
                             <button
                               key={u.id}
@@ -2036,9 +2036,9 @@ export function TicketsPage() {
                         debouncedSave(newForm, new Set(), []);
                       }}
                     >
-                      <option value="" className="bg-dark-800">Выберите здание</option>
+                      <option value="" className="bg-white text-gray-900">Выберите здание</option>
                       {buildings.map((b) => (
-                        <option key={b.id} value={b.id} className="bg-dark-800">
+                        <option key={b.id} value={b.id} className="bg-white text-gray-900">
                           {b.name}
                         </option>
                       ))}
@@ -2065,9 +2065,9 @@ export function TicketsPage() {
                       }}
                       disabled={!editBuildingId}
                     >
-                      <option value="" className="bg-dark-800">Выберите кабинет</option>
+                      <option value="" className="bg-white text-gray-900">Выберите кабинет</option>
                       {editRooms.map((r) => (
-                        <option key={r.id} value={r.id} className="bg-dark-800">
+                        <option key={r.id} value={r.id} className="bg-white text-gray-900">
                           {r.name} {r.building_name ? `(${r.building_name})` : ""}
                         </option>
                       ))}
@@ -2088,11 +2088,11 @@ export function TicketsPage() {
                       value={editForm.equipment_id}
                       onChange={(e) => updateEditField("equipment_id", e.target.value)}
                     >
-                      <option value="" className="bg-dark-800">
+                      <option value="" className="bg-white text-gray-900">
                         Выберите оборудование (необязательно)
                       </option>
                       {editRoomEquipment.map((eq) => (
-                        <option key={eq.id} value={eq.id} className="bg-dark-800">
+                        <option key={eq.id} value={eq.id} className="bg-white text-gray-900">
                           {eq.name} ({eq.inventory_number}){eq.owner_name ? ` — ${eq.owner_name}` : ""}
                         </option>
                       ))}
@@ -2473,7 +2473,7 @@ export function TicketsPage() {
                 )}
               </div>
               {showAssignEmpDropdown && !selectedEmployeeId && (
-                <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-dark-700 border border-gray-200 rounded-xl shadow-lg">
+                <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
                   {filteredAssignEmployees.map((emp) => (
                     <button
                       key={emp.id}
