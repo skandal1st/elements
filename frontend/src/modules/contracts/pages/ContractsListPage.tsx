@@ -22,6 +22,7 @@ export function ContractsListPage() {
   const [orderBy, setOrderBy] = useState<'date_begin' | 'updated_at' | 'counterparty'>('date_begin')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [hideDone, setHideDone] = useState(false)
   const [page, setPage] = useState(1)
   const pageSize = 50
   const [total, setTotal] = useState(0)
@@ -34,6 +35,7 @@ export function ContractsListPage() {
         order_by: orderBy,
         date_begin_from: dateFrom || undefined,
         date_begin_to: dateTo || undefined,
+        hide_done: hideDone || undefined,
         limit: pageSize,
         offset: (page - 1) * pageSize,
       }
@@ -94,6 +96,15 @@ export function ContractsListPage() {
               onChange={(e) => { setPage(1); setDateTo(e.target.value) }}
               className="px-3 py-2 border border-gray-200 rounded-xl text-sm"
             />
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={hideDone}
+                onChange={(e) => { setPage(1); setHideDone(e.target.checked) }}
+                className="rounded border-gray-300"
+              />
+              Скрыть завершённые
+            </label>
           </div>
           <button
             onClick={() => navigate('/contracts/new')}

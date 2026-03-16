@@ -78,6 +78,7 @@ def list_contracts(
     contract_type_id: Optional[UUID] = Query(None),
     funding_id: Optional[UUID] = Query(None),
     subunit_id: Optional[UUID] = Query(None),
+    hide_done: bool = Query(False, description="Если true — скрывать завершённые (done=true)"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     order_by: str = Query(
@@ -107,6 +108,8 @@ def list_contracts(
         q = q.filter(Contract.funding_id == funding_id)
     if subunit_id:
         q = q.filter(Contract.subunit_id == subunit_id)
+    if hide_done:
+        q = q.filter(Contract.done.is_(False))
 
     total = q.count()
 

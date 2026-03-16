@@ -123,6 +123,7 @@ export const contractsService = {
     funding_id?: string
     subunit_id?: string
     order_by?: string
+    hide_done?: boolean
     limit?: number
     offset?: number
   }): Promise<ContractsListResponse> {
