@@ -128,7 +128,9 @@ export const contractsService = {
   }): Promise<ContractsListResponse> {
     const search = new URLSearchParams()
     if (params) {
-      Object.entries(params).forEach(([k, v]) => { if (v != null && v !== '') search.set(k, v) })
+      Object.entries(params).forEach(([k, v]) => {
+        if (v != null && v !== '') search.set(k, String(v))
+      })
     }
     const q = search.toString()
     return apiGet<ContractsListResponse>(q ? `${BASE}/?${q}` : `${BASE}/`)
