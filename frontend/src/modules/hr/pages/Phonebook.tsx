@@ -82,9 +82,17 @@ export function Phonebook() {
       ])
       const deptMap = new Map(departmentData.map((d) => [d.id, d.name]))
       const sorted = [...data].sort((a, b) => {
-        const left = deptMap.get(a.department_id ?? -1) ?? ''
-        const right = deptMap.get(b.department_id ?? -1) ?? ''
-        return left.localeCompare(right, 'ru')
+        const aHasPhone = !!(a.internal_phone || a.external_phone)
+        const bHasPhone = !!(b.internal_phone || b.external_phone)
+        if (aHasPhone !== bHasPhone) {
+          // записи с телефонами — выше, без телефонов — ниже
+          return aHasPhone ? -1 : 1
+        }
+        const leftDept = deptMap.get(a.department_id ?? -1) ?? ''
+        const rightDept = deptMap.get(b.department_id ?? -1) ?? ''
+        const deptCompare = leftDept.localeCompare(rightDept, 'ru')
+        if (deptCompare !== 0) return deptCompare
+        return (a.full_name || '').localeCompare(b.full_name || '', 'ru')
       })
       setItems(sorted)
       setDepartments(departmentData)
@@ -334,24 +342,40 @@ export function Phonebook() {
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">ФИО</th>
-                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Отдел</th>
-                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Должность</th>
-                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Внутренний</th>
-                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Внешний</th>
-                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ФИО / должность
+                </th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Внутр.
+                </th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Отдел
+                </th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Внешний
+                </th>
+                <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
                 {(canEditPhonebook || canTransferOrDelete) && (
                   <th className="px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Действия</th>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {items.map((item) => (
+              {items.map((item) => {
+                const positionName = positions.find((p) => p.id === item.position_id)?.name
+                const deptName = departments.find((d) => d.id === item.department_id)?.name ?? '-'
+                return (
                 <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4 font-medium text-gray-900">{item.full_name}</td>
-                  <td className="px-4 py-4 text-gray-400">{departments.find((d) => d.id === item.department_id)?.name ?? '-'}</td>
-                  <td className="px-4 py-4 text-gray-400">{positions.find((p) => p.id === item.position_id)?.name ?? '-'}</td>
+                  <td className="px-4 py-4">
+                    <div className="font-medium text-gray-900">{item.full_name}</div>
+                    {positionName && (
+                      <div className="text-xs text-gray-400 mt-0.5">{positionName}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-4 text-gray-400">{item.internal_phone ?? '-'}</td>
+                  <td className="px-4 py-4 text-gray-400">{deptName}</td>
                   <td className="px-4 py-4 text-gray-400">{item.external_phone ?? '-'}</td>
                   <td className="px-4 py-4 text-gray-400">{item.email ?? '-'}</td>
                   {(canEditPhonebook || canTransferOrDelete) && (
@@ -381,7 +405,7 @@ export function Phonebook() {
                   </td>
                   )}
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
