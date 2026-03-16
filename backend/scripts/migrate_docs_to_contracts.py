@@ -274,15 +274,51 @@ def main() -> None:
                 act_id = act_num_to_id.get(row["actnum"]) if row.get("actnum") is not None else None
                 if not act_id:
                     continue
+                # Файлы актов лежат как actsrc{num}.pdf в каталоге actbase/
                 src_file = actbase_dir / f"actsrc{row['num']}.pdf"
                 if src_file.exists():
                     dest = uploads_contracts / "acts" / f"{act_id}_{row['num']}.pdf"
                     shutil.copy2(src_file, dest)
                     rel = f"/uploads/documents/contracts/acts/{dest.name}"
-                    cf = ContractFile(contract_act_id=act_id, kind="act", file_path=rel, file_name=dest.name)
+                    cf = ContractFile(
+                        contract_act_id=act_id,
+                        kind="act",
+                        file_path=rel,
+                        file_name=dest.name,
+                    )
                     db.add(cf)
         db.commit()
         print("  Файлы актов (actsrc): скопированы")
+
+        # Файлы контрагентов (firmsrc{num}.pdf / firmsrc{num}.jpg в firmbase/)
+        with conn_mysql.cursor() as cur:
+            cur.execute("SELECT firmnum, num FROM firmsrc")
+            for row in cur.fetchall():
+                counterparty_id = firm_num_to_id.get(row["firmnum"]) if row.get("firmnum") else None
+                if not counterparty_id:
+                    continue
+                # Пробуем сначала PDF, затем JPG
+                pdf_file = firmbase_dir / f"firmsrc{row['num']}.pdf"
+                jpg_file = firmbase_dir / f"firmsrc{row['num']}.jpg"
+                if pdf_file.exists():
+                    src_file = pdf_file
+                elif jpg_file.exists():
+                    src_file = jpg_file
+                else:
+                    continue
+
+                dest = uploads_contracts / "counterparties" / f"{counterparty_id}_{row['num']}{src_file.suffix}"
+                shutil.copy2(src_file, dest)
+                rel = f"/uploads/documents/contracts/counterparties/{dest.name}"
+                cf = ContractFile(
+                    counterparty_id=counterparty_id,
+                    kind="counterparty",
+                    file_path=rel,
+                    file_name=dest.name,
+                )
+                db.add(cf)
+        db.commit()
+        print("  Файлы контрагентов (firmsrc): скопированы")
     else:
         print("  DOCS_FILES_ROOT не задан — копирование файлов пропущено")
 
