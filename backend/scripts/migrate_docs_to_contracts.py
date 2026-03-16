@@ -71,7 +71,7 @@ def dec(v) -> Decimal:
 
 
 def main() -> None:
-    mysql_host = os.getenv("MYSQL_DOCS_HOST", "127.0.0.1")
+    mysql_host = os.getenv("MYSQL_DOCS_HOST", "10.20.30.81")
     mysql_user = os.getenv("MYSQL_DOCS_USER", "Jonny")
     mysql_password = os.getenv("MYSQL_DOCS_PASSWORD", "John-Pon-21356")
     mysql_db = os.getenv("MYSQL_DOCS_DATABASE", "docs_circ")
