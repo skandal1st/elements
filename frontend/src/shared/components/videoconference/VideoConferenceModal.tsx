@@ -36,7 +36,7 @@ export function VideoConferenceModal({ isOpen, onClose }: VideoConferenceModalPr
     setSelected(new Set());
     setError("");
     setLoading(true);
-    apiGet<UserItem[]>("/hr/users/")
+    apiGet<UserItem[]>("/it/videoconference/users")
       .then((data) => {
         setUsers(data.filter((u) => u.is_active));
       })

@@ -15,6 +15,16 @@ from backend.modules.it.models import Notification
 router = APIRouter(prefix="/videoconference", tags=["videoconference"])
 
 
+class VideoConferenceUser(BaseModel):
+    id: UUID
+    full_name: str
+    email: str | None = None
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
 class VideoConferenceStartRequest(BaseModel):
     user_ids: List[UUID]
 
@@ -23,6 +33,16 @@ class VideoConferenceStartResponse(BaseModel):
     room_url: str
     room_id: str
     invited_count: int
+
+
+@router.get("/users", response_model=List[VideoConferenceUser])
+async def list_videoconference_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Список активных пользователей для видеоконференции, доступный всем авторизованным."""
+    users = db.query(User).filter(User.is_active == True).all()
+    return users
 
 
 @router.post("/start", response_model=VideoConferenceStartResponse)
