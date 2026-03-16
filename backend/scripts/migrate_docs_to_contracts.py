@@ -43,6 +43,9 @@ from backend.modules.contracts.models import (
     ContractAct,
     ContractFile,
 )
+# Важно: регистрируем модель Document в SQLAlchemy, чтобы связь Contract.document
+# могла корректно резолвиться при конфигурации мапперов.
+from backend.modules.documents.models import Document  # noqa: F401
 
 
 def parse_date(v) -> date | None:

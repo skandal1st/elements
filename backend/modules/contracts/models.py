@@ -20,6 +20,7 @@ from sqlalchemy.orm import backref, relationship
 from sqlalchemy.sql import func
 
 from backend.core.database import Base
+from backend.modules.documents.models import Document  # noqa: F401
 
 
 class Counterparty(Base):
