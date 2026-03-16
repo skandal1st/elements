@@ -33,6 +33,8 @@ except ImportError:
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from backend.core.config import settings
+from backend.modules.hr.models.user import User  # noqa: F401
+from backend.modules.documents.models import Document  # noqa: F401
 from backend.modules.contracts.models import (
     Counterparty,
     ContractType,
@@ -43,9 +45,6 @@ from backend.modules.contracts.models import (
     ContractAct,
     ContractFile,
 )
-# Важно: регистрируем модель Document в SQLAlchemy, чтобы связь Contract.document
-# могла корректно резолвиться при конфигурации мапперов.
-from backend.modules.documents.models import Document  # noqa: F401
 
 
 def parse_date(v) -> date | None:
