@@ -92,3 +92,10 @@ class ContractDetailOut(ContractListOut):
     created_by_id: UUID | None = None
     acts: List[ContractActOut] = []
     files: List[ContractFileOut] = []
+
+
+class ContractsListResponse(BaseModel):
+    """Ответ списка договоров с пагинацией."""
+
+    items: List[ContractListOut]
+    total: int

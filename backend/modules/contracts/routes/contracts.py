@@ -12,11 +12,12 @@ from backend.modules.contracts.dependencies import (
     get_current_user,
     require_contracts_roles,
 )
-from backend.modules.contracts.models import Contract, ContractAct
+from backend.modules.contracts.models import Contract, ContractAct, Counterparty
 from backend.modules.contracts.schemas.contract import (
     ContractCreate,
     ContractDetailOut,
     ContractListOut,
+    ContractsListResponse,
     ContractUpdate,
 )
 from backend.modules.hr.models.user import User
@@ -66,7 +67,7 @@ def _to_list_out(contract: Contract) -> ContractListOut:
     )
 
 
-@router.get("/", response_model=List[ContractListOut])
+@router.get("/", response_model=ContractsListResponse)
 def list_contracts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -77,21 +78,21 @@ def list_contracts(
     contract_type_id: Optional[UUID] = Query(None),
     funding_id: Optional[UUID] = Query(None),
     subunit_id: Optional[UUID] = Query(None),
-    order_by: str = Query("date_begin", description="date_begin | updated_at"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    order_by: str = Query(
+        "date_begin",
+        description="date_begin | updated_at | counterparty",
+    ),
 ):
-    q = (
-        db.query(Contract)
-        .options(
-            joinedload(Contract.counterparty),
-            joinedload(Contract.contract_type),
-            joinedload(Contract.funding),
-            joinedload(Contract.subunit),
-            joinedload(Contract.acts).joinedload(ContractAct.files),
-        )
-        .order_by(
-            Contract.updated_at.desc() if order_by == "updated_at" else Contract.date_begin.desc()
-        )
+    q = db.query(Contract).options(
+        joinedload(Contract.counterparty),
+        joinedload(Contract.contract_type),
+        joinedload(Contract.funding),
+        joinedload(Contract.subunit),
+        joinedload(Contract.acts).joinedload(ContractAct.files),
     )
+
     if number:
         q = q.filter(Contract.number.ilike(f"%{number}%"))
     if date_begin_from:
@@ -106,8 +107,21 @@ def list_contracts(
         q = q.filter(Contract.funding_id == funding_id)
     if subunit_id:
         q = q.filter(Contract.subunit_id == subunit_id)
-    contracts = q.all()
-    return [_to_list_out(c) for c in contracts]
+
+    total = q.count()
+
+    if order_by == "updated_at":
+        q = q.order_by(Contract.updated_at.desc())
+    elif order_by == "counterparty":
+        q = q.join(Counterparty, Contract.counterparty).order_by(
+            Counterparty.name.asc(), Contract.date_begin.desc()
+        )
+    else:
+        q = q.order_by(Contract.date_begin.desc())
+
+    contracts = q.offset(offset).limit(limit).all()
+    items = [_to_list_out(c) for c in contracts]
+    return ContractsListResponse(items=items, total=total)
 
 
 @router.post("/", response_model=ContractDetailOut, status_code=201)

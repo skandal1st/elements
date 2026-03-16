@@ -82,6 +82,11 @@ export interface ContractDetail extends ContractListItem {
   files: ContractFileItem[]
 }
 
+export interface ContractsListResponse {
+  items: ContractListItem[]
+  total: number
+}
+
 export interface Funding {
   id: string
   legacy_num?: number | null
@@ -118,13 +123,15 @@ export const contractsService = {
     funding_id?: string
     subunit_id?: string
     order_by?: string
-  }): Promise<ContractListItem[]> {
+    limit?: number
+    offset?: number
+  }): Promise<ContractsListResponse> {
     const search = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([k, v]) => { if (v != null && v !== '') search.set(k, v) })
     }
     const q = search.toString()
-    return apiGet<ContractListItem[]>(q ? `${BASE}/?${q}` : `${BASE}/`)
+    return apiGet<ContractsListResponse>(q ? `${BASE}/?${q}` : `${BASE}/`)
   },
 
   getContract(id: string): Promise<ContractDetail> {

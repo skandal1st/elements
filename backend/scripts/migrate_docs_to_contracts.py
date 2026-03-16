@@ -248,12 +248,18 @@ def main() -> None:
                 contract_id = dog_num_to_id.get(row["dogNum"]) if row.get("dogNum") else None
                 if not contract_id:
                     continue
-                src_file = base_dir / f"actsrc{row['num']}.pdf"
+                # В старом PHP-модуле файлы договоров лежат как src{num}.pdf в каталоге base/
+                src_file = base_dir / f"src{row['num']}.pdf"
                 if src_file.exists():
                     dest = uploads_contracts / "contracts" / f"{contract_id}_{row['num']}.pdf"
                     shutil.copy2(src_file, dest)
                     rel = f"/uploads/documents/contracts/contracts/{dest.name}"
-                    cf = ContractFile(contract_id=contract_id, kind="contract", file_path=rel, file_name=dest.name)
+                    cf = ContractFile(
+                        contract_id=contract_id,
+                        kind="contract",
+                        file_path=rel,
+                        file_name=dest.name,
+                    )
                     db.add(cf)
         db.commit()
         print("  Файлы договоров (src): скопированы")
