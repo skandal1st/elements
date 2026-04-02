@@ -318,7 +318,6 @@ def ensure_rustdesk_column() -> None:
         _exec_best_effort(sql)
 
 
-<<<<<<< HEAD
 def ensure_license_assignments_employee_id() -> None:
     """Добавить employee_id в license_assignments для привязки к сотрудникам."""
     _exec_best_effort("""
@@ -448,72 +447,6 @@ def ensure_mail_tables() -> None:
             t.create(bind=engine, checkfirst=True)
         except Exception as e:
             logger.warning("startup table create skipped (%s): %s", t.name, e)
-=======
-def ensure_infrastructure_settings() -> None:
-    """
-    Добавляет настройки инфраструктуры в system_settings.
-
-    Эти настройки позволяют управлять конфигурацией через UI
-    без перезапуска приложения.
-    """
-    try:
-        from backend.modules.hr.models.system_settings import SystemSettings
-        from backend.core.database import SessionLocal
-
-        db = SessionLocal()
-        try:
-            # Список настроек по умолчанию
-            default_settings = [
-                # MinIO (S3-compatible storage)
-                ("minio_endpoint", "minio:9000", "infrastructure", False),
-                ("minio_access_key", "minio", "infrastructure", True),
-                ("minio_secret_key", "minio123", "infrastructure", True),
-                ("minio_bucket_name", "elements", "infrastructure", False),
-                ("minio_use_ssl", "false", "infrastructure", False),
-
-                # RabbitMQ (Enterprise - for Tasks module)
-                ("rabbitmq_url", "amqp://rabbitmq:rabbitmq123@rabbitmq:5672", "infrastructure", True),
-
-                # Qdrant (Enterprise - for Knowledge Core)
-                ("qdrant_url", "http://qdrant:6333", "infrastructure", False),
-                ("qdrant_collection", "knowledge", "infrastructure", False),
-                ("qdrant_api_key", "", "infrastructure", True),
-
-                # Security
-                ("access_token_expire_minutes", "10080", "security", False),
-                ("cors_origins", "*", "security", False),
-                ("password_min_length", "8", "security", False),
-                ("password_require_uppercase", "false", "security", False),
-                ("password_require_numbers", "false", "security", False),
-                ("password_require_special", "false", "security", False),
-            ]
-
-            added_count = 0
-            for key, default_value, category, is_sensitive in default_settings:
-                existing = db.query(SystemSettings).filter(
-                    SystemSettings.key == key
-                ).first()
-
-                if not existing:
-                    setting = SystemSettings(
-                        key=key,
-                        value=default_value,
-                        category=category,
-                        is_sensitive=is_sensitive
-                    )
-                    db.add(setting)
-                    added_count += 1
-
-            if added_count > 0:
-                db.commit()
-                logger.info(f"✅ Added {added_count} infrastructure settings to database")
-
-        finally:
-            db.close()
-
-    except Exception as e:
-        logger.warning(f"ensure_infrastructure_settings skipped: {e}")
->>>>>>> 1c0b322 (поправлены выпадающие меню)
 
 
 def apply_startup_migrations() -> None:
@@ -525,20 +458,12 @@ def apply_startup_migrations() -> None:
         ensure_knowledge_core_article_extensions()
         ensure_zabbix_integration_columns()
         ensure_equipment_category_network()
-<<<<<<< HEAD
         ensure_documents_tables()
         ensure_contracts_tables()
         ensure_portal_tables()
         ensure_mail_tables()
         logger.info(
             "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat, rustdesk, portal, documents, contracts и mail готовы"
-=======
-        ensure_rocketchat_columns()
-        ensure_rustdesk_column()
-        ensure_infrastructure_settings()
-        logger.info(
-            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat, rustdesk и infrastructure settings готовы"
->>>>>>> 1c0b322 (поправлены выпадающие меню)
         )
     except Exception as e:
         # Не блокируем запуск приложения, но логируем проблему.
