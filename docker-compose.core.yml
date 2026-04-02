@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: elements-core-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-elements}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-elements}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - elements-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-elements}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: elements-core-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - elements-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # MinIO S3-compatible storage
+  minio:
+    image: minio/minio:latest
+    container_name: elements-core-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    networks:
+      - elements-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Backend API (Core Edition)
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.core
+    container_name: elements-core-backend
+    environment:
+      # Edition & Environment
+      - EDITION=core
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-elements}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-elements}
+
+      # Security
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+
+      # License
+      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL}
+      - COMPANY_ID=${COMPANY_ID}
+
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+
+      # MinIO
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minio}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME:-elements}
+      - MINIO_USE_SSL=false
+
+      # Modules (Core)
+      - ENABLED_MODULES=portal,hr,it
+
+      # Seed admin
+      - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-admin@elements.local}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin123}
+
+    volumes:
+      - instance_data:/app/data
+      - upload_data:/app/uploads
+
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+    networks:
+      - elements-network
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+  # Frontend (Core Edition)
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile.core
+      args:
+        VITE_API_BASE: /api
+        VITE_EDITION: core
+    container_name: elements-core-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    networks:
+      - elements-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  elements-network:
+    name: elements-core-network
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: elements-core-postgres-data
+  redis_data:
+    name: elements-core-redis-data
+  minio_data:
+    name: elements-core-minio-data
+  instance_data:
+    name: elements-core-instance-data
+  upload_data:
+    name: elements-core-upload-data

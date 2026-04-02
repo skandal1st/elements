@@ -1,23 +1,28 @@
 # Elements Platform - Архитектура проекта
 
 > Comprehensive документация для AI-ассистентов и разработчиков
+<<<<<<< HEAD
 > Последнее обновление: 2026-02-15
+=======
+> Последнее обновление: 2026-02-03
+>>>>>>> 1c0b322 (поправлены выпадающие меню)
 
 ---
 
 ## Оглавление
 
 1. [Обзор системы](#обзор-системы)
-2. [Технологический стек](#технологический-стек)
-3. [Структура проекта](#структура-проекта)
-4. [Архитектура Backend](#архитектура-backend)
-5. [Архитектура Frontend](#архитектура-frontend)
-6. [Модули системы](#модули-системы)
-7. [Аутентификация и авторизация](#аутентификация-и-авторизация)
-8. [База данных](#база-данных)
-9. [Интеграции](#интеграции)
-10. [Deployment](#deployment)
-11. [Конфигурация](#конфигурация)
+2. [Коммерческая модель](#коммерческая-модель) **NEW**
+3. [Технологический стек](#технологический-стек)
+4. [Структура проекта](#структура-проекта)
+5. [Архитектура Backend](#архитектура-backend)
+6. [Архитектура Frontend](#архитектура-frontend)
+7. [Модули системы](#модули-системы)
+8. [Аутентификация и авторизация](#аутентификация-и-авторизация)
+9. [База данных](#база-данных)
+10. [Интеграции](#интеграции)
+11. [Deployment](#deployment)
+12. [Конфигурация](#конфигурация)
 
 ---
 
@@ -38,6 +43,255 @@
 - Polling-based интеграции (Telegram, RocketChat, Email IMAP)
 - Векторный поиск (Qdrant) для базы знаний
 - LLM-интеграция через OpenRouter
+
+---
+
+## Коммерческая модель
+
+Elements Platform доступен в двух редакциях с различным набором функций:
+
+### Редакции продукта
+
+#### **Core Edition**
+Базовая редакция для малого и среднего бизнеса.
+
+**Модули:**
+- ✓ Portal (Портал, дашборд)
+- ✓ HR (Управление персоналом)
+- ✓ IT (Helpdesk, оборудование)
+
+**Интеграции:**
+- ✓ Email (IMAP/SMTP)
+- ✓ Telegram Bot
+- ✓ LDAP/Active Directory
+
+**Инфраструктура:**
+- PostgreSQL
+- Redis
+- MinIO (S3-compatible storage)
+
+#### **Enterprise Edition**
+Полнофункциональная редакция для крупных организаций.
+
+**Все из Core, плюс:**
+
+**Модули:**
+- ✓ Tasks (Управление проектами и задачами)
+- ✓ Knowledge Core (База знаний с AI)
+
+**Интеграции:**
+- ✓ RocketChat (чат-платформа)
+- ✓ Zabbix (мониторинг)
+- ✓ LLM через OpenRouter
+
+**Инфраструктура:**
+- Все из Core +
+- Qdrant (векторная БД для семантического поиска)
+- RabbitMQ (очереди сообщений)
+
+### Система лицензирования
+
+**Архитектура:**
+```
+┌─────────────────┐         ┌──────────────────┐
+│ Elements        │         │ License Server   │
+│ Platform        │◄────────┤ (FastAPI)        │
+│ (Core/Ent)      │  HTTPS  │                  │
+└─────────────────┘         └──────────────────┘
+                                     │
+                            ┌────────┴─────────┐
+                            │ PostgreSQL       │
+                            │ (licenses DB)    │
+                            └──────────────────┘
+```
+
+**Компоненты:**
+
+1. **License Server** - отдельный сервер для валидации лицензий
+   - REST API для проверки лицензий
+   - База данных компаний и лицензий
+   - Логирование активаций
+   - Admin API для управления
+
+2. **License Client** - встроен в Elements Platform
+   - Проверка при старте (blocking в production)
+   - Периодическая реваlidация (каждые 30 минут)
+   - Hardware fingerprinting для привязки к серверу
+   - Redis кеширование (TTL 5 минут)
+
+**Формат лицензионного ключа:**
+```
+ELEM-CORE-A3F2-B8C1-D5E7-F4A9-8B3C-E2D5
+│    │    └──────────────┬─────────────┘
+│    │                   └─ Блоки (hex) + checksum
+│    └─ Edition код (CORE/ENTP)
+└─ Префикс
+```
+
+**Hardware Fingerprinting:**
+- Генерируется из: MAC address + CPU info + hostname
+- SHA256 хеш для анонимизации
+- Persistent ID сохраняется в Docker volume `/app/data/.instance_id`
+- Опциональная привязка лицензии к hardware ID
+
+**License Validation Flow:**
+```
+1. Elements стартует
+2. Генерирует/загружает hardware_id
+3. POST /api/v1/license/validate
+   {
+     "company_id": "uuid",
+     "hardware_id": "sha256...",
+     "edition": "core",
+     "version": "1.0.0"
+   }
+4. License Server проверяет:
+   - Компания активна
+   - Лицензия активна и не истекла
+   - Edition совпадает
+   - Hardware ID в allowed list (если binding включен)
+5. Логирует activation в БД
+6. Возвращает:
+   - valid: true/false
+   - modules: ["portal", "hr", "it"]
+   - expires_at: "2026-12-31"
+   - max_users: 100
+7. Elements кеширует результат (5 минут)
+8. При ошибке в production - блокирует запуск
+```
+
+### Edition Management
+
+**Backend (`backend/core/edition.py`):**
+```python
+class Edition(str, Enum):
+    CORE = "core"
+    ENTERPRISE = "enterprise"
+
+EDITION_MODULES = {
+    Edition.CORE: ["portal", "hr", "it"],
+    Edition.ENTERPRISE: ["portal", "hr", "it", "tasks", "knowledge_core"]
+}
+
+EDITION_INTEGRATIONS = {
+    Edition.CORE: ["email", "telegram", "ldap"],
+    Edition.ENTERPRISE: ["email", "telegram", "ldap", "rocketchat", "zabbix"]
+}
+```
+
+**Условная загрузка модулей:**
+```python
+# backend/main.py
+if is_module_allowed("tasks"):
+    from backend.modules.tasks import api as tasks_api
+    app.include_router(tasks_api.router)
+
+if is_integration_allowed("rocketchat"):
+    from backend.modules.it.routes import rocketchat
+    router.include_router(rocketchat.router)
+```
+
+**Frontend (`frontend/src/config/edition.ts`):**
+```typescript
+export const CURRENT_EDITION = import.meta.env.VITE_EDITION || 'core';
+
+export function isModuleAvailable(module: string): boolean {
+  return EDITION_MODULES[CURRENT_EDITION].includes(module);
+}
+```
+
+**Условные роуты:**
+```tsx
+{isModuleAvailable('tasks') && (
+  <Route path="/tasks/*" element={<TasksLayout />} />
+)}
+```
+
+### Docker Images
+
+**Отдельные образы для каждой редакции:**
+
+**Core Edition:**
+- `elements-core-backend:VERSION` - только Core модули
+- `elements-core-frontend:VERSION` - UI для Core
+
+**Enterprise Edition:**
+- `elements-enterprise-backend:VERSION` - все модули
+- `elements-enterprise-frontend:VERSION` - полный UI
+
+**Build-time edition setup:**
+```dockerfile
+# Dockerfile.core
+ENV EDITION=core
+COPY backend/modules/portal /app/backend/modules/portal
+COPY backend/modules/hr /app/backend/modules/hr
+COPY backend/modules/it /app/backend/modules/it
+# Tasks и Knowledge Core НЕ копируются
+
+# Dockerfile.enterprise
+ENV EDITION=enterprise
+COPY backend /app/backend
+# Копируются все модули
+```
+
+### Runtime Settings
+
+**Управление настройками через UI:**
+
+Настройки инфраструктуры перенесены из `.env` в базу данных (`system_settings`) для управления через веб-интерфейс без перезапуска.
+
+**Группы настроек:**
+- `infrastructure` - MinIO, RabbitMQ, Qdrant
+- `security` - JWT expiry, CORS, password rules
+- `email` - SMTP, IMAP
+- `telegram` - Bot token, настройки
+- `ldap` - AD integration
+- `rocketchat` - Integration (Enterprise)
+- `zabbix` - Integration (Enterprise)
+- `llm` - OpenRouter, Qdrant (Enterprise)
+
+**API:**
+```python
+from backend.core.runtime_settings import runtime_settings
+
+# Получить значение с кешированием (60 сек)
+value = runtime_settings.get("minio_endpoint", "minio:9000")
+
+# Обновить значение (инвалидирует кеш)
+runtime_settings.set("minio_endpoint", "new-value", db)
+```
+
+### Deployment Strategy
+
+**Private Docker Registry:**
+- Harbor или аналог
+- Проекты: `elements-core`, `elements-enterprise`
+- Robot accounts для CI/CD
+- Image signing (Docker Content Trust)
+
+**Version Tagging:**
+- Core: `v1.0.0-core`
+- Enterprise: `v1.0.0-enterprise`
+- Latest tags: `elements-core:latest`
+
+**Release Process:**
+```bash
+# 1. Build
+./scripts/build-core.sh 1.0.0
+./scripts/build-enterprise.sh 1.0.0
+
+# 2. Test locally
+docker-compose -f docker-compose.core.yml up
+
+# 3. Push to registry
+./scripts/push-core.sh 1.0.0
+./scripts/push-enterprise.sh 1.0.0
+
+# 4. Create git tags
+git tag v1.0.0-core
+git tag v1.0.0-enterprise
+git push origin --tags
+```
 
 ---
 

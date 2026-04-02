@@ -1,0 +1,46 @@
+# Elements Platform Enterprise Edition - Backend
+# Includes: Portal, HR, IT, Tasks, Knowledge Core modules
+# Integrations: Email, Telegram, LDAP, RocketChat, Zabbix, Qdrant
+
+FROM python:3.12-slim AS base
+
+# Set edition at build time
+ENV EDITION=enterprise
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    libpq-dev \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY backend/requirements.enterprise.txt /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy application code
+# All modules (including Enterprise ones)
+COPY backend /app/backend
+
+# Set edition in code (replace CURRENT_EDITION value)
+RUN sed -i 's/CURRENT_EDITION = Edition.CORE/CURRENT_EDITION = Edition.ENTERPRISE/' \
+    /app/backend/core/edition.py
+
+# Create data directory for instance ID persistence
+RUN mkdir -p /app/data
+
+ENV PYTHONPATH=/app
+
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)" || exit 1
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

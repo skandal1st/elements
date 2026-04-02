@@ -159,6 +159,28 @@ code {
   }
 }
 
+/* Native select dropdown (options) sometimes keeps OS default styling.
+   Force consistent background/text for our themes. */
+@layer base {
+  select option {
+    background-color: var(--color-dark-800);
+    color: #e5e7eb;
+  }
+
+  select option:hover {
+    background-color: var(--color-dark-700);
+  }
+
+  html:not(.dark) select option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  html:not(.dark) select option:hover {
+    background-color: #f1f5f9;
+  }
+}
+
 /* Gradient text */
 .gradient-text {
   background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%);

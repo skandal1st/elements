@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Схемы для системных настроек IT модуля."""
 
 from datetime import datetime
@@ -191,3 +192,201 @@ class AllSettings(BaseModel):
     zup: ZupSettings = ZupSettings()
     llm: LlmSettings = LlmSettings()
     fns: FnsSettings = FnsSettings()
+=======
+"""Схемы для системных настроек IT модуля."""
+
+from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict
+
+
+class SettingBase(BaseModel):
+    """Базовая схема настройки."""
+
+    setting_key: str
+    setting_value: Optional[str] = None
+    setting_type: str = "general"
+    description: Optional[str] = None
+
+
+class SettingCreate(SettingBase):
+    """Схема для создания настройки."""
+
+    pass
+
+
+class SettingUpdate(BaseModel):
+    """Схема для обновления настройки."""
+
+    setting_value: Optional[str] = None
+    description: Optional[str] = None
+
+
+class SettingOut(SettingBase):
+    """Схема для вывода настройки."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class SettingsBulkUpdate(BaseModel):
+    """Схема для массового обновления настроек."""
+
+    settings: List[SettingBase]
+
+
+# Группы настроек для удобства
+class EmailSettings(BaseModel):
+    """Настройки SMTP для отправки email."""
+
+    # Флаг включения email-синхронизации (входящие письма + уведомления)
+    email_enabled: Optional[bool] = False
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = 587
+    smtp_user: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_from_email: Optional[str] = None
+    smtp_from_name: Optional[str] = None
+    smtp_use_tls: Optional[bool] = True
+
+
+class ImapSettings(BaseModel):
+    """Настройки IMAP для получения email."""
+
+    imap_host: Optional[str] = None
+    imap_port: Optional[int] = 993
+    imap_user: Optional[str] = None
+    imap_password: Optional[str] = None
+    imap_use_ssl: Optional[bool] = True
+    imap_folder: Optional[str] = "INBOX"
+    email_check_interval: Optional[int] = 5  # минуты
+
+
+class TelegramSettings(BaseModel):
+    """Настройки Telegram бота."""
+
+    telegram_bot_token: Optional[str] = None
+    telegram_bot_enabled: Optional[bool] = False
+    telegram_webhook_url: Optional[str] = None
+
+
+class RocketChatSettings(BaseModel):
+    """Настройки интеграции с RocketChat."""
+
+    rocketchat_enabled: Optional[bool] = False
+    rocketchat_url: Optional[str] = None
+    rocketchat_user_id: Optional[str] = None
+    rocketchat_auth_token: Optional[str] = None
+    rocketchat_webhook_token: Optional[str] = None
+    rocketchat_channel_name: Optional[str] = None
+    rocketchat_bot_user_id: Optional[str] = None
+
+
+class ZabbixSettings(BaseModel):
+    """Настройки интеграции с Zabbix."""
+
+    zabbix_url: Optional[str] = None
+    zabbix_api_token: Optional[str] = None
+    zabbix_enabled: Optional[bool] = False
+
+
+class LdapSettings(BaseModel):
+    """Настройки Active Directory / LDAP и сканера ПК (через WinRM)."""
+
+    ldap_server: Optional[str] = None
+    ldap_port: Optional[int] = 389
+    ldap_use_ssl: Optional[bool] = False
+    ldap_base_dn: Optional[str] = None
+    ldap_bind_dn: Optional[str] = None
+    ldap_bind_password: Optional[str] = None
+    ldap_user_filter: Optional[str] = "(objectClass=user)"
+    ldap_enabled: Optional[bool] = False
+    # Шлюз для сканирования ПК (Windows с WinRM; пароль — ldap_bind_password)
+    scan_gateway_host: Optional[str] = None
+    scan_gateway_port: Optional[int] = 5985
+    scan_gateway_use_ssl: Optional[bool] = False
+    # Пользователь для входа на шлюз: DOMAIN\user или user@domain.local (если пусто — ldap_bind_dn)
+    scan_gateway_username: Optional[str] = None
+
+
+class LlmSettings(BaseModel):
+    """Настройки LLM / OpenRouter."""
+
+    llm_normalization_enabled: Optional[bool] = False
+    llm_suggestions_enabled: Optional[bool] = False
+
+    openrouter_api_key: Optional[str] = None
+    openrouter_base_url: Optional[str] = "https://openrouter.ai/api/v1"
+    openrouter_model: Optional[str] = "openai/gpt-4o-mini"
+    openrouter_embedding_model: Optional[str] = "openai/text-embedding-3-small"
+
+    qdrant_url: Optional[str] = None
+    qdrant_collection: Optional[str] = "knowledge_articles_v1"
+
+
+class InfrastructureSettings(BaseModel):
+    """Настройки инфраструктуры (хранилища, очереди, векторная БД)."""
+
+    # MinIO (S3-compatible storage)
+    minio_endpoint: Optional[str] = "minio:9000"
+    minio_access_key: Optional[str] = "minio"
+    minio_secret_key: Optional[str] = None
+    minio_bucket_name: Optional[str] = "elements"
+    minio_use_ssl: Optional[bool] = False
+
+    # RabbitMQ (Enterprise - for Tasks module)
+    rabbitmq_url: Optional[str] = None
+
+    # Qdrant (Enterprise - for Knowledge Core)
+    qdrant_url: Optional[str] = "http://qdrant:6333"
+    qdrant_collection: Optional[str] = "knowledge"
+    qdrant_api_key: Optional[str] = None
+
+
+class SecuritySettings(BaseModel):
+    """Настройки безопасности."""
+
+    # JWT token expiration (in minutes)
+    access_token_expire_minutes: Optional[int] = 10080  # 7 days
+
+    # CORS origins (comma-separated)
+    cors_origins: Optional[str] = "*"
+
+    # Password requirements
+    password_min_length: Optional[int] = 8
+    password_require_uppercase: Optional[bool] = False
+    password_require_numbers: Optional[bool] = False
+    password_require_special: Optional[bool] = False
+
+
+class GeneralSettings(BaseModel):
+    """Общие настройки системы."""
+
+    company_name: Optional[str] = None
+    company_logo_url: Optional[str] = None
+    system_email: Optional[str] = None
+    # Публичный URL системы (нужен для ссылок в Telegram)
+    public_app_url: Optional[str] = None
+    default_ticket_priority: Optional[str] = "medium"
+    auto_assign_tickets: Optional[bool] = False
+    ticket_notifications_enabled: Optional[bool] = True
+
+
+class AllSettings(BaseModel):
+    """Все настройки системы."""
+
+    general: GeneralSettings = GeneralSettings()
+    email: EmailSettings = EmailSettings()
+    imap: ImapSettings = ImapSettings()
+    telegram: TelegramSettings = TelegramSettings()
+    rocketchat: RocketChatSettings = RocketChatSettings()
+    zabbix: ZabbixSettings = ZabbixSettings()
+    ldap: LdapSettings = LdapSettings()
+    llm: LlmSettings = LlmSettings()
+    infrastructure: InfrastructureSettings = InfrastructureSettings()
+    security: SecuritySettings = SecuritySettings()
+>>>>>>> 1c0b322 (поправлены выпадающие меню)
