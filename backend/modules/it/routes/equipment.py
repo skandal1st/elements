@@ -1,10 +1,13 @@
 """Роуты /it/equipment — IT-оборудование."""
 
+import io
 import logging
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -343,6 +346,225 @@ def sync_equipment_from_scan(
             result.owner_name = owner.full_name
             result.owner_email = owner.email
     return result
+
+
+@router.get(
+    "/export",
+    dependencies=[Depends(require_it_roles(["admin", "it_specialist", "auditor"]))],
+)
+def export_equipment_excel(
+    db: Session = Depends(get_db),
+    status: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    owner_id: Optional[int] = Query(None),
+    room_id: Optional[UUID] = Query(None),
+    search: Optional[str] = Query(None),
+    # Список колонок для выгрузки (через запятую)
+    columns: Optional[str] = Query(None),
+) -> StreamingResponse:
+    """Экспорт каталога оборудования в Excel с выбором колонок."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Alignment, Font, PatternFill
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openpyxl не установлен")
+
+    # Все доступные колонки
+    ALL_COLUMNS = {
+        "inventory_number": "Инв. номер",
+        "name": "Наименование",
+        "category": "Категория",
+        "status": "Статус",
+        "manufacturer": "Производитель",
+        "model": "Модель",
+        "serial_number": "Серийный номер",
+        "owner_name": "Ответственный",
+        "owner_email": "Email ответственного",
+        "department": "Отдел",
+        "building_name": "Здание",
+        "room_name": "Кабинет",
+        "ip_address": "IP-адрес",
+        "hostname": "Имя компьютера",
+        "purchase_date": "Дата покупки",
+        "warranty_until": "Гарантия до",
+        "cost": "Стоимость",
+    }
+
+    CATEGORY_LABELS = {
+        "computer": "Компьютер",
+        "monitor": "Монитор",
+        "printer": "Принтер",
+        "network": "Сетевое оборудование",
+        "server": "Сервер",
+        "mobile": "Мобильное устройство",
+        "peripheral": "Периферия",
+        "other": "Прочее",
+    }
+
+    STATUS_LABELS = {
+        "in_stock": "На складе",
+        "in_use": "В использовании",
+        "in_repair": "В ремонте",
+        "written_off": "Списано",
+    }
+
+    # Определяем нужные колонки
+    if columns:
+        selected = [c.strip() for c in columns.split(",") if c.strip() in ALL_COLUMNS]
+    else:
+        selected = list(ALL_COLUMNS.keys())
+
+    if not selected:
+        selected = list(ALL_COLUMNS.keys())
+
+    # Запрос оборудования (без пагинации — выгружаем всё)
+    from backend.modules.hr.models.department import Department
+
+    q = db.query(Equipment)
+    if status:
+        q = q.filter(Equipment.status == status)
+    if category:
+        q = q.filter(Equipment.category == category)
+    if owner_id:
+        q = q.filter(Equipment.current_owner_id == owner_id)
+    if room_id:
+        q = q.filter(Equipment.room_id == room_id)
+    if search and search.strip():
+        s = f"%{search.strip()}%"
+        q = q.filter(
+            or_(
+                Equipment.name.ilike(s),
+                Equipment.inventory_number.ilike(s),
+                Equipment.serial_number.ilike(s),
+            )
+        )
+    q = q.order_by(Equipment.category, Equipment.name)
+    equipment_list = q.all()
+
+    # Предзагружаем связанные данные
+    room_ids = [eq.room_id for eq in equipment_list if eq.room_id]
+    rooms_map: dict = {}
+    if room_ids:
+        rooms = db.query(Room).filter(Room.id.in_(room_ids)).all()
+        building_ids = [r.building_id for r in rooms if r.building_id]
+        buildings_map: dict = {}
+        if building_ids:
+            buildings = db.query(Building).filter(Building.id.in_(building_ids)).all()
+            buildings_map = {b.id: b.name for b in buildings}
+        rooms_map = {r.id: (r.name, buildings_map.get(r.building_id)) for r in rooms}
+
+    owner_ids = [eq.current_owner_id for eq in equipment_list if eq.current_owner_id]
+    owners_map: dict = {}
+    departments_map: dict = {}
+    if owner_ids:
+        from backend.modules.hr.models.employee import Employee
+        owners = (
+            db.query(Employee)
+            .filter(Employee.id.in_(owner_ids))
+            .all()
+        )
+        dept_ids = [o.department_id for o in owners if o.department_id]
+        if dept_ids:
+            depts = db.query(Department).filter(Department.id.in_(dept_ids)).all()
+            departments_map = {d.id: d.name for d in depts}
+        owners_map = {
+            o.id: (o.full_name, o.email, departments_map.get(o.department_id, ""))
+            for o in owners
+        }
+
+    # Создаём книгу Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Оборудование"
+
+    # Стиль заголовка
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_font = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
+    cell_font = Font(name="Calibri", size=10)
+    center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left_align = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    # Заголовки
+    for col_idx, col_key in enumerate(selected, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=ALL_COLUMNS[col_key])
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center_align
+
+    ws.row_dimensions[1].height = 30
+
+    # Данные
+    for row_idx, eq in enumerate(equipment_list, start=2):
+        room_name, building_name, owner_name, owner_email, department = (
+            None, None, None, None, None
+        )
+        if eq.room_id and eq.room_id in rooms_map:
+            room_name, building_name = rooms_map[eq.room_id]
+        if eq.current_owner_id and eq.current_owner_id in owners_map:
+            owner_name, owner_email, department = owners_map[eq.current_owner_id]
+
+        row_data: dict = {
+            "inventory_number": eq.inventory_number or "",
+            "name": eq.name or "",
+            "category": CATEGORY_LABELS.get(eq.category, eq.category or ""),
+            "status": STATUS_LABELS.get(eq.status, eq.status or ""),
+            "manufacturer": eq.manufacturer or "",
+            "model": eq.model or "",
+            "serial_number": eq.serial_number or "",
+            "owner_name": owner_name or "",
+            "owner_email": owner_email or "",
+            "department": department or "",
+            "building_name": building_name or "",
+            "room_name": room_name or "",
+            "ip_address": eq.ip_address or "",
+            "hostname": eq.hostname or "",
+            "purchase_date": eq.purchase_date.strftime("%d.%m.%Y") if eq.purchase_date else "",
+            "warranty_until": eq.warranty_until.strftime("%d.%m.%Y") if eq.warranty_until else "",
+            "cost": float(eq.cost) if eq.cost is not None else "",
+        }
+
+        for col_idx, col_key in enumerate(selected, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=row_data.get(col_key, ""))
+            cell.font = cell_font
+            cell.alignment = left_align
+
+        # Чередование строк
+        if row_idx % 2 == 0:
+            alt_fill = PatternFill(start_color="EBF3FB", end_color="EBF3FB", fill_type="solid")
+            for col_idx in range(1, len(selected) + 1):
+                ws.cell(row=row_idx, column=col_idx).fill = alt_fill
+
+    # Авто-ширина колонок
+    for col_idx, col_key in enumerate(selected, start=1):
+        col_letter = openpyxl.utils.get_column_letter(col_idx)
+        header_len = len(ALL_COLUMNS[col_key])
+        max_len = header_len
+        for row_idx in range(2, len(equipment_list) + 2):
+            val = ws.cell(row=row_idx, column=col_idx).value
+            if val:
+                max_len = max(max_len, len(str(val)))
+        ws.column_dimensions[col_letter].width = min(max_len + 4, 50)
+
+    # Заморозить первую строку
+    ws.freeze_panes = "A2"
+
+    # Добавляем автофильтр
+    if equipment_list:
+        ws.auto_filter.ref = ws.dimensions
+
+    # Сохраняем в буфер
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"equipment_{timestamp}.xlsx"
+
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get(

@@ -228,6 +228,32 @@ export function EquipmentPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [editing, setEditing] = useState<Equipment | null>(null);
 
+  // Экспорт в Excel
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const ALL_EXPORT_COLUMNS = [
+    { key: "inventory_number", label: "Инв. номер" },
+    { key: "name", label: "Наименование" },
+    { key: "category", label: "Категория" },
+    { key: "status", label: "Статус" },
+    { key: "manufacturer", label: "Производитель" },
+    { key: "model", label: "Модель" },
+    { key: "serial_number", label: "Серийный номер" },
+    { key: "owner_name", label: "Ответственный" },
+    { key: "owner_email", label: "Email ответственного" },
+    { key: "department", label: "Отдел" },
+    { key: "building_name", label: "Здание" },
+    { key: "room_name", label: "Кабинет" },
+    { key: "ip_address", label: "IP-адрес" },
+    { key: "hostname", label: "Имя компьютера" },
+    { key: "purchase_date", label: "Дата покупки" },
+    { key: "warranty_until", label: "Гарантия до" },
+    { key: "cost", label: "Стоимость" },
+  ];
+  const [selectedExportColumns, setSelectedExportColumns] = useState<string[]>(
+    ["inventory_number", "name", "category", "status", "owner_name", "department", "building_name", "room_name"]
+  );
+
   // Модалка «Сканировать ПК» (WinRM + обновление записи в Elements)
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [scanComputerNameOrIp, setScanComputerNameOrIp] = useState("");
@@ -584,6 +610,43 @@ export function EquipmentPage() {
   const handleSearch = () => {
     setPage(1); // Сбрасываем на первую страницу при поиске
     load();
+  };
+
+  const handleExportExcel = async () => {
+    if (selectedExportColumns.length === 0) return;
+    setExportLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (activeTab) params.set("status", activeTab);
+      if (filterCategory) params.set("category", filterCategory);
+      if (filterRoomId) params.set("room_id", filterRoomId);
+      if (filterEmployeeId) params.set("owner_id", filterEmployeeId);
+      params.set("columns", selectedExportColumns.join(","));
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/v1/it/equipment/export?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || "Ошибка экспорта");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const cd = response.headers.get("Content-Disposition") || "";
+      const match = cd.match(/filename="([^"]+)"/);
+      a.download = match ? match[1] : "equipment.xlsx";
+      a.href = url;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportModalOpen(false);
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const applyFilters = () => {
@@ -1185,6 +1248,13 @@ export function EquipmentPage() {
             <p className="text-gray-400">Учет IT-оборудования</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setExportModalOpen(true)}
+              className="glass-button-secondary px-4 py-2.5 flex items-center gap-2"
+              title="Экспортировать список оборудования в Excel"
+            >
+              <Download className="w-5 h-5" /> Экспорт в Excel
+            </button>
             <button
               onClick={() => {
                 setScanModalOpen(true);
@@ -2725,6 +2795,88 @@ export function EquipmentPage() {
               <button onClick={() => setAddToZabbixModalOpen(false)} className="glass-button-secondary px-4 py-2 text-sm font-medium">Отмена</button>
               <button onClick={handleAddToZabbix} disabled={addToZabbixLoading || addToZabbixGroupIds.length === 0} className="glass-button px-4 py-2 text-sm font-medium disabled:opacity-50">
                 {addToZabbixLoading ? "Добавление…" : "Добавить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно «Экспорт в Excel» */}
+      {exportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-card w-full max-w-lg p-6 space-y-5 mx-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Экспорт в Excel</h3>
+                <p className="text-sm text-gray-400">
+                  Выберите поля для выгрузки. Применяются текущие фильтры.
+                </p>
+              </div>
+              <button
+                onClick={() => setExportModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-gray-700">Колонки</span>
+                <div className="flex gap-3">
+                  <button
+                    className="text-xs text-blue-600 hover:underline"
+                    onClick={() => setSelectedExportColumns(ALL_EXPORT_COLUMNS.map((c) => c.key))}
+                  >
+                    Выбрать все
+                  </button>
+                  <button
+                    className="text-xs text-gray-500 hover:underline"
+                    onClick={() => setSelectedExportColumns([])}
+                  >
+                    Снять все
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+                {ALL_EXPORT_COLUMNS.map((col) => (
+                  <label key={col.key} className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      className="accent-blue-600 w-4 h-4"
+                      checked={selectedExportColumns.includes(col.key)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedExportColumns((prev) => [...prev, col.key]);
+                        } else {
+                          setSelectedExportColumns((prev) => prev.filter((k) => k !== col.key));
+                        }
+                      }}
+                    />
+                    <span className="text-sm text-gray-700 group-hover:text-gray-900">{col.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {selectedExportColumns.length === 0 && (
+              <p className="text-xs text-red-500">Выберите хотя бы одну колонку</p>
+            )}
+
+            <div className="flex gap-3 justify-end pt-1">
+              <button
+                className="glass-button-secondary px-4 py-2"
+                onClick={() => setExportModalOpen(false)}
+              >
+                Отмена
+              </button>
+              <button
+                className="glass-button px-4 py-2 flex items-center gap-2 disabled:opacity-50"
+                disabled={exportLoading || selectedExportColumns.length === 0}
+                onClick={handleExportExcel}
+              >
+                <Download className="w-4 h-4" />
+                {exportLoading ? "Формирование..." : "Скачать Excel"}
               </button>
             </div>
           </div>

@@ -39,6 +39,9 @@ pywinrm==0.4.3
 python-docx==1.1.2
 reportlab==4.2.5
 
+# Excel экспорт
+openpyxl==3.1.5
+
 # Утилиты
 python-multipart==0.0.12
 
