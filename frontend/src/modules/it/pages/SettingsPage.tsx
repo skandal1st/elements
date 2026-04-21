@@ -974,6 +974,7 @@ export function SettingsPage() {
                             { key: "in_app", label: "В системе", icon: Bell },
                             { key: "telegram", label: "Telegram", icon: MessageCircle },
                             { key: "email", label: "Email", icon: Mail },
+                            { key: "rocketchat", label: "RocketChat", icon: Rocket },
                           ].map((ch) => {
                             const channels = (settings.tickets?.ticket_notification_channels || "in_app,telegram").split(",");
                             const active = channels.includes(ch.key);

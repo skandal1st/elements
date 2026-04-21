@@ -576,6 +576,61 @@ class RocketChatService:
 
     # ── Уведомления ──────────────────────────────────────────
 
+    async def notify_new_ticket(self, db: Session, ticket: "Ticket") -> bool:
+        """Уведомить в канале о создании новой заявки."""
+        if not self._is_enabled(db):
+            return False
+
+        priority_labels = {
+            "low": "Низкий",
+            "medium": "Средний",
+            "high": "Высокий",
+            "critical": "Критический",
+        }
+        category_labels = {
+            "hardware": "Оборудование",
+            "software": "ПО",
+            "network": "Сеть",
+            "access": "Доступ",
+            "other": "Другое",
+        }
+        source_labels = {
+            "web": "Веб",
+            "email": "Email",
+            "telegram": "Telegram",
+            "rocketchat": "RocketChat",
+            "api": "API",
+        }
+
+        short_id = str(ticket.id)[:8]
+        priority = priority_labels.get(ticket.priority or "medium", ticket.priority or "—")
+        category = category_labels.get(ticket.category or "other", ticket.category or "—")
+        source = source_labels.get(ticket.source or "web", ticket.source or "—")
+
+        requester = "—"
+        if ticket.employee_id:
+            from backend.modules.hr.models.employee import Employee
+            emp = db.query(Employee).filter(Employee.id == ticket.employee_id).first()
+            if emp:
+                requester = emp.full_name
+        if requester == "—" and ticket.rocketchat_sender:
+            requester = f"@{ticket.rocketchat_sender}"
+        if requester == "—" and ticket.email_sender:
+            requester = ticket.email_sender
+
+        lines = [
+            f"*Новая заявка #{short_id}*",
+            f"*{ticket.title}*",
+            f"Инициатор: {requester}",
+            f"Категория: {category} | Приоритет: {priority} | Источник: {source}",
+        ]
+
+        url = self._ticket_url(db, ticket.id)
+        if url:
+            lines.append(url)
+
+        return await self.send_channel_message(db, "\n".join(lines))
+
     async def notify_ticket_status_changed(
         self, db: Session, ticket: Ticket
     ) -> bool:

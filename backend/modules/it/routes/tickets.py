@@ -554,15 +554,13 @@ async def create_ticket(
             except Exception as e:
                 print(f"[Tickets] Ошибка Telegram-уведомлений: {e}")
 
-    # Уведомление в RocketChat (только если тикет не из RocketChat)
-    if t.source != "rocketchat":
-        try:
-            from backend.modules.it.services.rocketchat_service import rocketchat_service
-            await rocketchat_service.send_channel_message(
-                db, f"Новая заявка #{str(t.id)[:8]}: {t.title}"
-            )
-        except Exception:
-            pass
+        # RocketChat уведомление (только если тикет не из RocketChat)
+        if "rocketchat" in channels and t.source != "rocketchat":
+            try:
+                from backend.modules.it.services.rocketchat_service import rocketchat_service
+                await rocketchat_service.notify_new_ticket(db, t)
+            except Exception as e:
+                print(f"[Tickets] Ошибка RocketChat-уведомлений: {e}")
 
     return t
 

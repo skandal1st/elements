@@ -462,6 +462,31 @@ class EmailReceiverService:
                                     )
                                 finally:
                                     _loop.close()
+                    # RocketChat уведомление
+                    try:
+                        from backend.modules.hr.models.system_settings import SystemSettings
+                        _channels_row = db.query(SystemSettings).filter(
+                            SystemSettings.setting_key == "ticket_notification_channels"
+                        ).first()
+                        _channels = (_channels_row.setting_value if _channels_row else "") or "in_app,telegram"
+                        if "rocketchat" in _channels.split(","):
+                            from backend.modules.it.services.rocketchat_service import rocketchat_service
+                            if loop and loop.is_running():
+                                asyncio.ensure_future(
+                                    rocketchat_service.notify_new_ticket(db, ticket),
+                                    loop=loop,
+                                )
+                            else:
+                                _loop2 = asyncio.new_event_loop()
+                                try:
+                                    _loop2.run_until_complete(
+                                        rocketchat_service.notify_new_ticket(db, ticket)
+                                    )
+                                finally:
+                                    _loop2.close()
+                    except Exception as e:
+                        print(f"[Email Receiver] Ошибка RocketChat-уведомления: {e}")
+
                 except Exception as e:
                     print(f"[Email Receiver] Ошибка уведомления для тикета #{str(ticket.id)[:8]}: {e}")
         except Exception as e:

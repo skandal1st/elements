@@ -53,6 +53,7 @@ type Ticket = {
   source?: "web" | "email" | "api" | "telegram" | "rocketchat";
   email_sender?: string;
   email_message_id?: string;
+  rocketchat_sender?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -1457,6 +1458,11 @@ export function TicketsPage() {
                         ({t.email_sender})
                       </span>
                     )}
+                    {t.status === "pending_user" && t.rocketchat_sender && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (@{t.rocketchat_sender})
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-4 text-gray-400">
                     {categoryLabel[t.category] ?? t.category}
@@ -1772,7 +1778,9 @@ export function TicketsPage() {
                       ? detail.employee_name
                       : detail.email_sender
                         ? `Email: ${detail.email_sender}`
-                        : "—"}
+                        : detail.rocketchat_sender
+                          ? `RocketChat: @${detail.rocketchat_sender}`
+                          : "—"}
                   </p>
                   {detail.status === "pending_user" && (
                     <p className="text-xs text-orange-400 mt-1">
@@ -1797,6 +1805,16 @@ export function TicketsPage() {
                 <p className="text-xs text-gray-600">
                   <Mail className="w-4 h-4 inline mr-2 text-gray-500" />
                   Email отправителя: <strong className="text-gray-900">{detail.email_sender}</strong>
+                </p>
+              </div>
+            )}
+
+            {/* RocketChat sender info */}
+            {detail.rocketchat_sender && (
+              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                <p className="text-xs text-gray-600">
+                  <Rocket className="w-4 h-4 inline mr-2 text-red-400" />
+                  RocketChat пользователь: <strong className="text-gray-900">@{detail.rocketchat_sender}</strong>
                 </p>
               </div>
             )}
