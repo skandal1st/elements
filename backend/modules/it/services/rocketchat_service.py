@@ -34,6 +34,7 @@ class RocketChatService:
         self._polling_active = False
         self._last_processed_ts: Optional[str] = None
         self._processed_ids: set = set()
+        self._ts_by_room: dict = {}  # room_id -> last processed timestamp (DM-режим)
 
     # ── helpers ──────────────────────────────────────────────
 
@@ -240,6 +241,24 @@ class RocketChatService:
             logger.error(f"[RocketChat] Ошибка отправки сообщения: {e}")
             return False
 
+    async def _send_dm(self, db: Session, room_id: str, text: str) -> bool:
+        """Отправить личное сообщение пользователю по room_id DM-комнаты."""
+        base_url = self._get_base_url(db)
+        headers = self._get_auth_headers(db)
+        if not base_url or not headers or not room_id:
+            return False
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{base_url}/api/v1/chat.sendMessage",
+                    headers=headers,
+                    json={"message": {"rid": room_id, "msg": text}},
+                )
+                return response.status_code == 200
+        except Exception as e:
+            logger.error(f"[RocketChat] Ошибка отправки DM: {e}")
+            return False
+
     # ── Обработка Webhook ────────────────────────────────────
 
     async def process_webhook_message(self, db: Session, payload: dict) -> Optional[dict]:
@@ -304,7 +323,8 @@ class RocketChatService:
         return await self._create_ticket_from_message(db, text, user_name, message_id)
 
     async def _add_comment_from_thread(
-        self, db: Session, tmid: str, text: str, rc_username: str
+        self, db: Session, tmid: str, text: str, rc_username: str,
+        room_id: Optional[str] = None,
     ) -> Optional[dict]:
         """Добавить комментарий к тикету из тредового сообщения."""
         ticket = (
@@ -315,17 +335,16 @@ class RocketChatService:
         if not ticket:
             return None
 
-        # Ищем пользователя по username
         user = db.query(User).filter(User.username == rc_username).first()
         if not user:
-            # Пробуем без учёта регистра
             user = db.query(User).filter(User.username.ilike(rc_username)).first()
 
         if not user:
-            logger.info(
-                f"[RocketChat] Пользователь '{rc_username}' не найден, комментарий не добавлен"
-            )
-            return {"text": f"Пользователь @{rc_username} не найден в системе"}
+            logger.info(f"[RocketChat] Пользователь '{rc_username}' не найден, комментарий не добавлен")
+            reply = f"Пользователь @{rc_username} не найден в системе"
+            if room_id:
+                await self._send_dm(db, room_id, reply)
+            return {"text": reply}
 
         comment = TicketComment(
             ticket_id=ticket.id,
@@ -336,12 +355,16 @@ class RocketChatService:
         db.commit()
 
         short_id = str(ticket.id)[:8]
-        return {"text": f"Комментарий добавлен к заявке #{short_id}"}
+        reply = f"Комментарий добавлен к заявке #{short_id}"
+        if room_id:
+            await self._send_dm(db, room_id, reply)
+        return {"text": reply}
 
     async def _create_ticket_from_message(
-        self, db: Session, text: str, rc_username: str, message_id: str
+        self, db: Session, text: str, rc_username: str, message_id: str,
+        room_id: Optional[str] = None,
     ) -> Optional[dict]:
-        """Создать тикет из сообщения в канале."""
+        """Создать тикет из DM или сообщения в канале."""
         # Первая строка -> title (до 255 символов), весь текст -> description
         lines = text.split("\n", 1)
         title = lines[0][:255].strip()
@@ -363,6 +386,7 @@ class RocketChatService:
             source="rocketchat",
             rocketchat_message_id=message_id or None,
             rocketchat_sender=rc_username,
+            rocketchat_room_id=room_id or None,
         )
 
         if user:
@@ -412,52 +436,29 @@ class RocketChatService:
             print(f"[RocketChat] Ошибка автоназначения/уведомлений: {e}")
 
         url = self._ticket_url(db, ticket.id)
-        if url:
-            return {"text": f"Заявка #{short_id} создана\n{url}"}
-        return {"text": f"Заявка #{short_id} создана"}
+        reply = f"Ваша заявка #{short_id} принята\n{url}" if url else f"Ваша заявка #{short_id} принята"
+        if room_id:
+            await self._send_dm(db, room_id, reply)
+        return {"text": reply}
 
-    # ── Polling (основной режим) ─────────────────────────────
+    # ── Polling ─────────────────────────────────────────────
 
-    async def _process_polled_message(
-        self, db: Session, msg_id: str, text: str, rc_username: str, tmid: Optional[str]
-    ) -> None:
-        """Обработать сообщение, полученное через polling channels.history."""
-        # Дедупликация по rocketchat_message_id в БД
-        if msg_id:
-            existing = (
-                db.query(Ticket)
-                .filter(Ticket.rocketchat_message_id == msg_id)
-                .first()
-            )
-            if existing:
-                return
-
-        # Если тред — добавляем комментарий к существующему тикету
-        if tmid:
-            result = await self._add_comment_from_thread(db, tmid, text, rc_username)
-            if result:
-                await self.send_channel_message(db, result["text"])
-            return
-
-        # Создаём новый тикет
-        result = await self._create_ticket_from_message(db, text, rc_username, msg_id)
-        if result:
-            await self.send_channel_message(db, result["text"])
-
-    async def _poll_loop(self) -> None:
-        """Основной цикл polling через channels.history."""
+    async def _poll_dm_loop(self) -> None:
+        """
+        Polling входящих DM (личных сообщений боту).
+        Каждые 10с получает im.list, находит комнаты с новыми сообщениями,
+        опрашивает im.history для каждой из них.
+        """
         from backend.core.database import SessionLocal
 
-        POLL_INTERVAL = 10  # секунд между запросами
-        MAX_PROCESSED_IDS = 1000
+        POLL_INTERVAL = 10
+        MAX_PROCESSED_IDS = 2000
 
-        # При первом запуске берём текущее время, чтобы не обрабатывать старые сообщения
-        self._last_processed_ts = datetime.now(timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%S.%fZ"
-        )
+        start_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        self._ts_by_room = {}   # room_id -> last processed ts
         self._processed_ids = set()
 
-        logger.info("[RocketChat] Polling запущен")
+        logger.info("[RocketChat] DM-polling запущен")
 
         while self._polling_active:
             db = SessionLocal()
@@ -472,125 +473,124 @@ class RocketChatService:
                     await asyncio.sleep(15)
                     continue
 
-                rid = await self.get_channel_id(db)
-                if not rid:
-                    await asyncio.sleep(15)
-                    continue
-
                 bot_user_id = self._get_setting(db, "rocketchat_bot_user_id")
 
-                params = {
-                    "roomId": rid,
-                    "oldest": self._last_processed_ts,
-                    "count": 50,
-                }
-
+                # 1. Получаем список всех DM-комнат бота
                 try:
-                    # Используем правильный endpoint в зависимости от типа канала
-                    history_endpoint = f"{base_url}/api/v1/{self._channel_type or 'channels'}.history"
-
                     async with httpx.AsyncClient(timeout=15.0) as client:
-                        response = await client.get(
-                            history_endpoint,
+                        resp = await client.get(
+                            f"{base_url}/api/v1/im.list",
                             headers=headers,
-                            params=params,
+                            params={"count": 200},
                         )
-
-                    if response.status_code != 200:
-                        logger.warning(
-                            f"[RocketChat] channels.history вернул {response.status_code}"
-                        )
+                    if resp.status_code != 200 or not resp.json().get("success"):
                         await asyncio.sleep(POLL_INTERVAL)
                         continue
-
-                    data = response.json()
-                    if not data.get("success"):
-                        logger.warning("[RocketChat] channels.history ошибка")
-                        await asyncio.sleep(POLL_INTERVAL)
-                        continue
-
-                    messages = data.get("messages", [])
-                    # channels.history возвращает newest-first — сортируем хронологически
-                    messages.sort(key=lambda m: m.get("ts", ""))
-
-                    for msg in messages:
-                        msg_id = msg.get("_id", "")
-
-                        # Пропускаем уже обработанные
-                        if msg_id in self._processed_ids:
-                            continue
-
-                        msg_ts = msg.get("ts", "")
-                        user_info = msg.get("u", {})
-                        sender_id = user_info.get("_id", "")
-                        username = user_info.get("username", "")
-                        text = (msg.get("msg") or "").strip()
-                        tmid = msg.get("tmid")
-
-                        # Системные сообщения (user joined, etc.) имеют поле "t"
-                        if msg.get("t"):
-                            self._processed_ids.add(msg_id)
-                            if msg_ts:
-                                self._last_processed_ts = msg_ts
-                            continue
-
-                        # Пропуск сообщений бота
-                        if msg.get("bot"):
-                            self._processed_ids.add(msg_id)
-                            if msg_ts:
-                                self._last_processed_ts = msg_ts
-                            continue
-                        if bot_user_id and sender_id == bot_user_id:
-                            self._processed_ids.add(msg_id)
-                            if msg_ts:
-                                self._last_processed_ts = msg_ts
-                            continue
-
-                        if not text:
-                            self._processed_ids.add(msg_id)
-                            if msg_ts:
-                                self._last_processed_ts = msg_ts
-                            continue
-
-                        try:
-                            await self._process_polled_message(
-                                db, msg_id, text, username, tmid
-                            )
-                        except Exception as e:
-                            logger.error(
-                                f"[RocketChat] Ошибка обработки сообщения {msg_id}: {e}"
-                            )
-
-                        self._processed_ids.add(msg_id)
-                        if msg_ts:
-                            self._last_processed_ts = msg_ts
-
-                    # Ограничиваем размер множества обработанных ID
-                    if len(self._processed_ids) > MAX_PROCESSED_IDS:
-                        self._processed_ids = set(
-                            list(self._processed_ids)[-MAX_PROCESSED_IDS // 2 :]
-                        )
-
-                except httpx.TimeoutException:
-                    pass
+                    dm_rooms = resp.json().get("ims", [])
                 except httpx.ConnectError as e:
-                    logger.warning(f"[RocketChat] Нет связи с сервером: {e}")
+                    logger.warning(f"[RocketChat] Нет связи: {e}")
                     await asyncio.sleep(POLL_INTERVAL)
                     continue
-                except Exception as e:
-                    logger.error(f"[RocketChat] Ошибка polling: {e}")
+                except httpx.TimeoutException:
                     await asyncio.sleep(POLL_INTERVAL)
                     continue
+
+                # 2. Для каждой DM-комнаты опрашиваем историю
+                for room in dm_rooms:
+                    room_id = room.get("_id", "")
+                    if not room_id:
+                        continue
+
+                    # Используем start_ts для новых комнат (не обрабатываем старые сообщения)
+                    oldest = self._ts_by_room.get(room_id, start_ts)
+
+                    try:
+                        async with httpx.AsyncClient(timeout=10.0) as client:
+                            resp = await client.get(
+                                f"{base_url}/api/v1/im.history",
+                                headers=headers,
+                                params={"roomId": room_id, "oldest": oldest, "count": 50},
+                            )
+                        if resp.status_code != 200 or not resp.json().get("success"):
+                            continue
+
+                        messages = resp.json().get("messages", [])
+                        messages.sort(key=lambda m: m.get("ts", ""))
+
+                        for msg in messages:
+                            msg_id = msg.get("_id", "")
+                            if msg_id in self._processed_ids:
+                                continue
+
+                            msg_ts = msg.get("ts", "")
+                            user_info = msg.get("u", {})
+                            sender_id = user_info.get("_id", "")
+                            username = user_info.get("username", "")
+                            text = (msg.get("msg") or "").strip()
+                            tmid = msg.get("tmid")
+
+                            # Пропускаем системные и сообщения бота
+                            if msg.get("t") or msg.get("bot"):
+                                self._processed_ids.add(msg_id)
+                                if msg_ts:
+                                    self._ts_by_room[room_id] = msg_ts
+                                continue
+                            if bot_user_id and sender_id == bot_user_id:
+                                self._processed_ids.add(msg_id)
+                                if msg_ts:
+                                    self._ts_by_room[room_id] = msg_ts
+                                continue
+                            if not text:
+                                self._processed_ids.add(msg_id)
+                                if msg_ts:
+                                    self._ts_by_room[room_id] = msg_ts
+                                continue
+
+                            try:
+                                # Дедупликация по БД
+                                existing = (
+                                    db.query(Ticket)
+                                    .filter(Ticket.rocketchat_message_id == msg_id)
+                                    .first()
+                                )
+                                if existing:
+                                    self._processed_ids.add(msg_id)
+                                    if msg_ts:
+                                        self._ts_by_room[room_id] = msg_ts
+                                    continue
+
+                                if tmid:
+                                    await self._add_comment_from_thread(
+                                        db, tmid, text, username, room_id=room_id
+                                    )
+                                else:
+                                    await self._create_ticket_from_message(
+                                        db, text, username, msg_id, room_id=room_id
+                                    )
+                            except Exception as e:
+                                logger.error(f"[RocketChat] Ошибка обработки DM {msg_id}: {e}")
+
+                            self._processed_ids.add(msg_id)
+                            if msg_ts:
+                                self._ts_by_room[room_id] = msg_ts
+
+                    except Exception as e:
+                        logger.error(f"[RocketChat] Ошибка polling DM room {room_id}: {e}")
+
+                # Ограничиваем размер кэша обработанных ID
+                if len(self._processed_ids) > MAX_PROCESSED_IDS:
+                    self._processed_ids = set(
+                        list(self._processed_ids)[-MAX_PROCESSED_IDS // 2:]
+                    )
 
             except Exception as e:
-                logger.error(f"[RocketChat] Критическая ошибка в poll_loop: {e}")
-                await asyncio.sleep(POLL_INTERVAL)
+                logger.error(f"[RocketChat] Критическая ошибка DM poll_loop: {e}")
             finally:
                 db.close()
 
             await asyncio.sleep(POLL_INTERVAL)
 
-        logger.info("[RocketChat] Polling остановлен")
+        logger.info("[RocketChat] DM-polling остановлен")
 
     async def start_polling(self) -> None:
         """Запустить фоновый polling."""
@@ -614,8 +614,8 @@ class RocketChatService:
             return
 
         self._polling_active = True
-        self._polling_task = asyncio.create_task(self._poll_loop())
-        logger.info("[RocketChat] Фоновый polling запущен")
+        self._polling_task = asyncio.create_task(self._poll_dm_loop())
+        logger.info("[RocketChat] Фоновый DM-polling запущен")
 
     async def stop_polling(self) -> None:
         """Остановить фоновый polling."""
@@ -637,6 +637,7 @@ class RocketChatService:
         self._channel_type = None
         self._notify_channel_id = None
         self._notify_channel_type = None
+        self._ts_by_room = {}
         await self.start_polling()
 
     # ── Уведомления ──────────────────────────────────────────
@@ -699,7 +700,7 @@ class RocketChatService:
     async def notify_ticket_status_changed(
         self, db: Session, ticket: Ticket
     ) -> bool:
-        """Уведомить в канале об изменении статуса тикета."""
+        """Уведомить пользователя в DM и IT-канал об изменении статуса."""
         if not self._is_enabled(db) or not ticket.rocketchat_sender:
             return False
 
@@ -713,45 +714,64 @@ class RocketChatService:
         }
         status_label = status_labels.get(ticket.status, ticket.status)
         short_id = str(ticket.id)[:8]
-        text = f"@{ticket.rocketchat_sender} Статус заявки #{short_id} изменён на «{status_label}»"
-
         url = self._ticket_url(db, ticket.id)
-        if url:
-            text += f"\n{url}"
 
-        return await self.send_notify_message(db, text)
+        # DM пользователю
+        if ticket.rocketchat_room_id:
+            dm_text = f"Статус вашей заявки #{short_id} изменён на «{status_label}»"
+            if url:
+                dm_text += f"\n{url}"
+            await self._send_dm(db, ticket.rocketchat_room_id, dm_text)
+
+        # Уведомление в IT-канал
+        notify_text = f"@{ticket.rocketchat_sender} Заявка #{short_id}: статус изменён на «{status_label}»"
+        if url:
+            notify_text += f"\n{url}"
+        return await self.send_notify_message(db, notify_text)
 
     async def notify_ticket_assigned(
         self, db: Session, ticket: Ticket, assignee_name: str
     ) -> bool:
-        """Уведомить в канале о назначении исполнителя."""
+        """Уведомить пользователя в DM и IT-канал о назначении исполнителя."""
         if not self._is_enabled(db) or not ticket.rocketchat_sender:
             return False
 
         short_id = str(ticket.id)[:8]
-        text = f"@{ticket.rocketchat_sender} По заявке #{short_id} назначен исполнитель: {assignee_name}"
-
         url = self._ticket_url(db, ticket.id)
-        if url:
-            text += f"\n{url}"
 
-        return await self.send_notify_message(db, text)
+        if ticket.rocketchat_room_id:
+            dm_text = f"По вашей заявке #{short_id} назначен исполнитель: {assignee_name}"
+            if url:
+                dm_text += f"\n{url}"
+            await self._send_dm(db, ticket.rocketchat_room_id, dm_text)
+
+        notify_text = f"Заявка #{short_id} (@{ticket.rocketchat_sender}): назначен {assignee_name}"
+        if url:
+            notify_text += f"\n{url}"
+        return await self.send_notify_message(db, notify_text)
 
     async def notify_ticket_comment(
         self, db: Session, ticket: Ticket, commenter_name: str
     ) -> bool:
-        """Уведомить в канале о новом комментарии."""
+        """Уведомить пользователя в DM о новом комментарии к его заявке."""
         if not self._is_enabled(db) or not ticket.rocketchat_sender:
             return False
 
         short_id = str(ticket.id)[:8]
-        text = f"@{ticket.rocketchat_sender} Новый комментарий к заявке #{short_id} от {commenter_name}"
-
         url = self._ticket_url(db, ticket.id)
-        if url:
-            text += f"\n{url}"
 
-        return await self.send_notify_message(db, text)
+        if ticket.rocketchat_room_id:
+            dm_text = f"Новый комментарий к заявке #{short_id} от {commenter_name}"
+            if url:
+                dm_text += f"\n{url}"
+            await self._send_dm(db, ticket.rocketchat_room_id, dm_text)
+            return True
+
+        # Fallback: IT-канал если нет room_id (старые заявки из канала)
+        notify_text = f"@{ticket.rocketchat_sender} Новый комментарий к заявке #{short_id} от {commenter_name}"
+        if url:
+            notify_text += f"\n{url}"
+        return await self.send_notify_message(db, notify_text)
 
 
 # Singleton instance

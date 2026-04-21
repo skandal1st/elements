@@ -304,6 +304,7 @@ def ensure_rocketchat_columns() -> None:
     statements = [
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rocketchat_message_id VARCHAR(255)",
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rocketchat_sender VARCHAR(255)",
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rocketchat_room_id VARCHAR(255)",
     ]
     for sql in statements:
         _exec_best_effort(sql)
@@ -462,6 +463,7 @@ def apply_startup_migrations() -> None:
         ensure_contracts_tables()
         ensure_portal_tables()
         ensure_mail_tables()
+        ensure_rocketchat_columns()
         logger.info(
             "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat, rustdesk, portal, documents, contracts и mail готовы"
         )
