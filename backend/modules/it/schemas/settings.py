@@ -88,6 +88,7 @@ class RocketChatSettings(BaseModel):
     rocketchat_auth_token: Optional[str] = None
     rocketchat_webhook_token: Optional[str] = None
     rocketchat_channel_name: Optional[str] = None
+    rocketchat_notify_channel_name: Optional[str] = None
     rocketchat_bot_user_id: Optional[str] = None
 
 

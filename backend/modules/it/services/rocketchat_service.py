@@ -28,6 +28,8 @@ class RocketChatService:
     def __init__(self):
         self._channel_id: Optional[str] = None
         self._channel_type: Optional[str] = None  # "channels" или "groups"
+        self._notify_channel_id: Optional[str] = None
+        self._notify_channel_type: Optional[str] = None
         self._polling_task: Optional[asyncio.Task] = None
         self._polling_active = False
         self._last_processed_ts: Optional[str] = None
@@ -149,6 +151,67 @@ class RocketChatService:
             logger.error(f"[RocketChat] Ошибка получения ID канала '{name}': {e}")
 
         return None
+
+    async def _get_notify_channel_id(self, db: Session) -> Optional[str]:
+        """ID канала для уведомлений. Если не задан отдельно — использует основной канал."""
+        notify_name = self._get_setting(db, "rocketchat_notify_channel_name")
+        if not notify_name:
+            return await self.get_channel_id(db)
+
+        if self._notify_channel_id:
+            return self._notify_channel_id
+
+        base_url = self._get_base_url(db)
+        headers = self._get_auth_headers(db)
+        if not base_url or not headers:
+            return None
+
+        name = notify_name.lstrip("#")
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                for endpoint, key in [("channels.info", "channel"), ("groups.info", "group")]:
+                    response = await client.get(
+                        f"{base_url}/api/v1/{endpoint}",
+                        headers=headers,
+                        params={"roomName": name},
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get("success"):
+                            self._notify_channel_id = data[key]["_id"]
+                            self._notify_channel_type = "channels" if key == "channel" else "groups"
+                            logger.info(f"[RocketChat] Канал уведомлений '{name}' найден, ID: {self._notify_channel_id}")
+                            return self._notify_channel_id
+            logger.warning(f"[RocketChat] Канал уведомлений '{name}' не найден")
+        except Exception as e:
+            logger.error(f"[RocketChat] Ошибка получения ID канала уведомлений: {e}")
+        return None
+
+    async def send_notify_message(self, db: Session, text: str) -> bool:
+        """Отправить уведомление в канал уведомлений (отдельный от канала заявок)."""
+        if not self._is_enabled(db):
+            return False
+
+        base_url = self._get_base_url(db)
+        headers = self._get_auth_headers(db)
+        if not base_url or not headers:
+            return False
+
+        rid = await self._get_notify_channel_id(db)
+        if not rid:
+            return False
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{base_url}/api/v1/chat.sendMessage",
+                    headers=headers,
+                    json={"message": {"rid": rid, "msg": text}},
+                )
+                return response.status_code == 200
+        except Exception as e:
+            logger.error(f"[RocketChat] Ошибка отправки уведомления: {e}")
+            return False
 
     async def send_channel_message(self, db: Session, text: str) -> bool:
         """Отправить сообщение в настроенный канал."""
@@ -569,9 +632,11 @@ class RocketChatService:
     async def restart_polling(self) -> None:
         """Перезапустить polling (после изменения настроек)."""
         await self.stop_polling()
-        # Сбрасываем кэш канала — настройки могли измениться
+        # Сбрасываем кэш каналов — настройки могли измениться
         self._channel_id = None
         self._channel_type = None
+        self._notify_channel_id = None
+        self._notify_channel_type = None
         await self.start_polling()
 
     # ── Уведомления ──────────────────────────────────────────
@@ -629,7 +694,7 @@ class RocketChatService:
         if url:
             lines.append(url)
 
-        return await self.send_channel_message(db, "\n".join(lines))
+        return await self.send_notify_message(db, "\n".join(lines))
 
     async def notify_ticket_status_changed(
         self, db: Session, ticket: Ticket
@@ -654,7 +719,7 @@ class RocketChatService:
         if url:
             text += f"\n{url}"
 
-        return await self.send_channel_message(db, text)
+        return await self.send_notify_message(db, text)
 
     async def notify_ticket_assigned(
         self, db: Session, ticket: Ticket, assignee_name: str
@@ -670,7 +735,7 @@ class RocketChatService:
         if url:
             text += f"\n{url}"
 
-        return await self.send_channel_message(db, text)
+        return await self.send_notify_message(db, text)
 
     async def notify_ticket_comment(
         self, db: Session, ticket: Ticket, commenter_name: str
@@ -686,7 +751,7 @@ class RocketChatService:
         if url:
             text += f"\n{url}"
 
-        return await self.send_channel_message(db, text)
+        return await self.send_notify_message(db, text)
 
 
 # Singleton instance

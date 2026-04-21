@@ -75,7 +75,7 @@ SETTING_TYPE_MAP = {
     "rocketchat": [
         "rocketchat_enabled", "rocketchat_url", "rocketchat_user_id",
         "rocketchat_auth_token", "rocketchat_webhook_token",
-        "rocketchat_channel_name", "rocketchat_bot_user_id",
+        "rocketchat_channel_name", "rocketchat_notify_channel_name", "rocketchat_bot_user_id",
     ],
     "zabbix": ["zabbix_url", "zabbix_api_token", "zabbix_enabled"],
     "ldap": [
@@ -253,6 +253,7 @@ def get_all_settings(db: Session = Depends(get_db)) -> AllSettings:
                 get_val("rocketchat_webhook_token"), "rocketchat_webhook_token"
             ),
             rocketchat_channel_name=get_val("rocketchat_channel_name"),
+            rocketchat_notify_channel_name=get_val("rocketchat_notify_channel_name"),
             rocketchat_bot_user_id=get_val("rocketchat_bot_user_id"),
         ),
         zabbix=ZabbixSettings(

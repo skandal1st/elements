@@ -43,6 +43,7 @@ type RocketChatSettings = {
   rocketchat_auth_token?: string;
   rocketchat_webhook_token?: string;
   rocketchat_channel_name?: string;
+  rocketchat_notify_channel_name?: string;
   rocketchat_bot_user_id?: string;
 };
 
@@ -1777,11 +1778,18 @@ export function SettingsPage() {
                   "Токен для валидации Outgoing Webhook",
                 )}
                 {renderInput(
-                  "Канал для заявок",
+                  "Канал для заявок (входящие сообщения)",
                   "rocketchat",
                   "rocketchat_channel_name",
                   "text",
                   "helpdesk",
+                )}
+                {renderInput(
+                  "Канал для уведомлений (если пустой — используется канал заявок)",
+                  "rocketchat",
+                  "rocketchat_notify_channel_name",
+                  "text",
+                  "it-notifications",
                 )}
                 {renderInput(
                   "User ID бота в RocketChat",
