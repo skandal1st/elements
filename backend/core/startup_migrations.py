@@ -71,8 +71,10 @@ def ensure_tickets_columns() -> None:
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ",
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rating INTEGER",
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rating_comment TEXT",
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS feedback_token VARCHAR(36)",
         # indices (best-effort)
         "CREATE INDEX IF NOT EXISTS idx_tickets_source ON tickets(source)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_feedback_token ON tickets(feedback_token) WHERE feedback_token IS NOT NULL",
     ]
     for sql in statements:
         _exec_best_effort(sql)

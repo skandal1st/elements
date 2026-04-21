@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 import time
 from typing import List, Optional
+import uuid
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -626,6 +627,10 @@ async def update_ticket(
     if t.status == "closed" and t.closed_at is None:
         t.closed_at = now
 
+    # Генерируем feedback_token при первом переводе в resolved
+    if t.status == "resolved" and t.feedback_token is None:
+        t.feedback_token = str(uuid.uuid4())
+
     # Сохраняем расходники если переданы
     if consumables_data is not None:
         # Удаляем старые несписанные расходники
@@ -679,6 +684,7 @@ async def update_ticket(
                     assignee_name=assignee_name,
                     in_reply_to=t.email_message_id,
                     references=[t.email_message_id] if t.email_message_id else None,
+                    feedback_token=t.feedback_token,
                 )
                 if msg_id:
                     # Обновляем message_id, чтобы ответы на последующие письма корректно цеплялись
@@ -694,6 +700,7 @@ async def update_ticket(
                     ticket_title=t.title,
                     new_status=t.status,
                     assignee_name=assignee_name,
+                    feedback_token=t.feedback_token,
                 )
 
             # Telegram (если привязан)

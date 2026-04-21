@@ -235,6 +235,7 @@ class EmailService:
         ticket_id: str,
         ticket_title: str,
         assignee_name: Optional[str] = None,
+        feedback_token: Optional[str] = None,
     ) -> Tuple[str, str]:
         """Получить тему и HTML шаблон письма о статусе"""
         short_id = ticket_id[:8]
@@ -287,6 +288,45 @@ class EmailService:
       </tr>
             """
 
+        # Блок кнопок обратной связи (только для статуса "resolved")
+        feedback_block = ""
+        if status == "resolved" and feedback_token:
+            from backend.core.config import settings as _cfg
+            base = _cfg.app_base_url.rstrip("/")
+            reopen_url = f"{base}/api/v1/it/feedback/{feedback_token}/reopen"
+            rate_up_url = f"{base}/api/v1/it/feedback/{feedback_token}/rate/up"
+            rate_down_url = f"{base}/api/v1/it/feedback/{feedback_token}/rate/down"
+            feedback_block = f"""
+    <div style="margin-top: 24px; padding: 20px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+      <p style="margin: 0 0 16px; font-size: 14px; color: #166534; font-weight: 500; text-align: center;">
+        Проблема не решена? Вы можете вернуть заявку в работу:
+      </p>
+      <div style="text-align: center; margin-bottom: 20px;">
+        <a href="{reopen_url}"
+           style="display: inline-block; background-color: #f59e0b; color: #ffffff; text-decoration: none;
+                  padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+          ↩ Вернуть в работу
+        </a>
+      </div>
+      <hr style="border: none; border-top: 1px solid #bbf7d0; margin: 0 0 16px;">
+      <p style="margin: 0 0 14px; font-size: 14px; color: #166534; font-weight: 500; text-align: center;">
+        Оцените работу специалиста:
+      </p>
+      <div style="text-align: center;">
+        <a href="{rate_up_url}"
+           style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none;
+                  padding: 10px 24px; border-radius: 8px; font-size: 20px; margin-right: 12px;">
+          👍
+        </a>
+        <a href="{rate_down_url}"
+           style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none;
+                  padding: 10px 24px; border-radius: 8px; font-size: 20px;">
+          👎
+        </a>
+      </div>
+    </div>
+            """
+
         html = f"""
 <!DOCTYPE html>
 <html lang="ru">
@@ -335,14 +375,10 @@ class EmailService:
         {info["text"]}
       </p>
     </div>
+    {feedback_block}
   </div>
 
   <div style="background-color: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-    <div style="padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; margin-bottom: 15px;">
-      <p style="margin: 0; font-size: 13px; color: #92400e;">
-        <strong>Важно:</strong> Это автоматическое уведомление. Пожалуйста, не отвечайте на это письмо.
-      </p>
-    </div>
     <p style="margin: 0; font-size: 12px; color: #9ca3af; text-align: center;">
       © {datetime.now().year} Elements IT. Система управления IT-заявками.
     </p>
@@ -422,6 +458,7 @@ class EmailService:
         ticket_title: str,
         new_status: str,
         assignee_name: Optional[str] = None,
+        feedback_token: Optional[str] = None,
     ) -> bool:
         """Отправить уведомление об изменении статуса заявки"""
         user = db.query(User).filter(User.id == user_id).first()
@@ -433,7 +470,7 @@ class EmailService:
             return False
 
         subject, html = self._get_status_email_template(
-            new_status, ticket_id, ticket_title, assignee_name
+            new_status, ticket_id, ticket_title, assignee_name, feedback_token
         )
 
         # Пытаемся отправить с threading заголовками, чтобы ответы цеплялись в тикет
@@ -456,6 +493,7 @@ class EmailService:
         assignee_name: Optional[str] = None,
         in_reply_to: Optional[str] = None,
         references: Optional[List[str]] = None,
+        feedback_token: Optional[str] = None,
     ) -> Optional[str]:
         """
         Отправить уведомление об изменении статуса на произвольный email
@@ -467,7 +505,7 @@ class EmailService:
             return None
 
         subject, html = self._get_status_email_template(
-            new_status, ticket_id, ticket_title, assignee_name
+            new_status, ticket_id, ticket_title, assignee_name, feedback_token
         )
         message_id = self._generate_message_id(ticket_id, f"status-{new_status}")
 

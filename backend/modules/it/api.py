@@ -16,6 +16,7 @@ from .routes import (
     equipment_catalog,
     equipment_history,
     equipment_requests,
+    feedback,
     licenses,
     notifications,
     reports,
@@ -37,6 +38,7 @@ router = APIRouter(prefix=f"{settings.api_v1_prefix}/it", tags=["it"])
 
 router.include_router(equipment.router)
 router.include_router(tickets.router)
+router.include_router(feedback.router)
 router.include_router(ticket_comments.router)
 router.include_router(equipment_history.router)
 router.include_router(consumables.router)

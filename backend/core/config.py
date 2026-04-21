@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     # Jitsi Meet (видеоконференции)
     jitsi_base_url: str = "https://meet.teplocentral.org"
 
+    # Базовый URL приложения (используется в email-ссылках)
+    app_base_url: str = "http://localhost:8000"
+
 
 # Глобальный экземпляр настроек
 settings = Settings()

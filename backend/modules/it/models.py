@@ -199,6 +199,7 @@ class Ticket(Base):
     closed_at = Column(DateTime(timezone=True), nullable=True)
     rating = Column(Integer, nullable=True)  # 1-5
     rating_comment = Column(Text, nullable=True)
+    feedback_token = Column(String(36), nullable=True, unique=True)  # UUID для публичных ссылок в письме
 
     # Источник создания тикета
     source = Column(
