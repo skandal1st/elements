@@ -691,6 +691,28 @@ class ModelConsumable(Base):
     )
 
 
+class UserRcToken(Base):
+    """RC-токены пользователей Elements для proxy-запросов к RocketChat"""
+
+    __tablename__ = "user_rc_tokens"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    rc_user_id = Column(String(128), nullable=False)
+    rc_token = Column(String(512), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
 class ConsumableSupply(Base):
     """Поставка расходных материалов"""
 

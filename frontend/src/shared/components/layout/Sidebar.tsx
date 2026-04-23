@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useUIStore } from "../../store/ui.store";
 import { useAuthStore } from "../../store/auth.store";
+import { useChatStore } from "../../store/chat.store";
 
 interface Module {
   code: string;
@@ -47,6 +48,9 @@ export function Sidebar() {
   const location = useLocation();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const logout = useAuthStore((state) => state.logout);
+  const chatUnreadTotal = useChatStore(
+    (s) => Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0)
+  );
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -195,11 +199,20 @@ export function Sidebar() {
                   <Icon className={`w-[22px] h-[22px] flex-shrink-0 ${isActive ? "text-brand-green" : ""}`} strokeWidth={isActive ? 2.5 : 2} />
                   {!sidebarCollapsed && <span className="text-[15px]">{module.name}</span>}
                   
-                  {/* Счётчик непрочитанных писем в папке Входящие */}
+                  {/* Счётчик непрочитанных писем */}
                   {module.code === "mail" && !sidebarCollapsed && mailUnreadCount > 0 && (
                     <span className="ml-auto min-w-[20px] h-5 px-1 rounded-full bg-brand-yellow text-white text-[10px] font-bold flex items-center justify-center">
                       {mailUnreadCount > 99 ? "99+" : mailUnreadCount}
                     </span>
+                  )}
+                  {/* Счётчик непрочитанных сообщений чата */}
+                  {module.code === "chat" && chatUnreadTotal > 0 && !sidebarCollapsed && (
+                    <span className="ml-auto min-w-[20px] h-5 px-1 rounded-full bg-brand-green text-white text-[10px] font-bold flex items-center justify-center">
+                      {chatUnreadTotal > 99 ? "99+" : chatUnreadTotal}
+                    </span>
+                  )}
+                  {module.code === "chat" && chatUnreadTotal > 0 && sidebarCollapsed && (
+                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-brand-green" />
                   )}
                 </Link>
               );

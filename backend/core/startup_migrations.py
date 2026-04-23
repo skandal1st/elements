@@ -452,6 +452,15 @@ def ensure_mail_tables() -> None:
             logger.warning("startup table create skipped (%s): %s", t.name, e)
 
 
+def ensure_user_rc_tokens_table() -> None:
+    """Создаёт таблицу user_rc_tokens для хранения RC-токенов пользователей."""
+    try:
+        from backend.modules.it.models import UserRcToken
+        UserRcToken.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning("ensure_user_rc_tokens_table skipped: %s", e)
+
+
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
     try:
@@ -466,8 +475,9 @@ def apply_startup_migrations() -> None:
         ensure_portal_tables()
         ensure_mail_tables()
         ensure_rocketchat_columns()
+        ensure_user_rc_tokens_table()
         logger.info(
-            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat, rustdesk, portal, documents, contracts и mail готовы"
+            "✅ Startup migrations: users.telegram_*, tickets.*, knowledge_core, zabbix, rocketchat, rustdesk, portal, documents, contracts, mail, user_rc_tokens готовы"
         )
     except Exception as e:
         # Не блокируем запуск приложения, но логируем проблему.

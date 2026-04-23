@@ -1,0 +1,150 @@
+"""
+Chat proxy routes — проксируют запросы к RocketChat REST API от имени текущего пользователя.
+"""
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from sqlalchemy.orm import Session
+
+from backend.core.auth import decode_token
+from backend.modules.hr.models.user import User
+from backend.modules.it.dependencies import get_current_user, get_db
+from backend.modules.it.schemas.chat import (
+    RcMessagesResponse,
+    RcRoomsResponse,
+    RcSubscription,
+    SendMessageRequest,
+)
+from backend.modules.it.services.rocketchat_service import rocketchat_service
+from backend.modules.it.services.ws_manager import ws_manager
+
+router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+async def _get_rc_credentials(
+    db: Session,
+    current_user: User,
+) -> tuple[str, str]:
+    """Получить RC-токен пользователя или бросить 503."""
+    if not rocketchat_service._is_enabled(db):
+        raise HTTPException(status_code=503, detail="RocketChat интеграция отключена")
+
+    result = await rocketchat_service.get_or_create_user_token(db, current_user)
+    if not result:
+        raise HTTPException(
+            status_code=503,
+            detail="Не удалось получить токен RocketChat. Проверьте настройки интеграции.",
+        )
+    return result
+
+
+@router.get("/rooms", response_model=RcRoomsResponse)
+async def get_rooms(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rc_user_id, rc_token = await _get_rc_credentials(db, current_user)
+    rooms_raw = await rocketchat_service.proxy_get_rooms(db, rc_user_id, rc_token)
+    rooms = [
+        {
+            "id": r["id"] or "",
+            "name": r["name"] or "",
+            "display_name": r["display_name"] or r["name"] or "",
+            "type": r["type"] or "c",
+            "unread": r.get("unread", 0),
+            "alert": r.get("alert", False),
+            "last_message": r.get("last_message"),
+        }
+        for r in rooms_raw
+        if r.get("id")
+    ]
+    return {"rooms": rooms}
+
+
+@router.get("/rooms/{room_id}/messages", response_model=RcMessagesResponse)
+async def get_messages(
+    room_id: str,
+    room_type: str = Query("c", description="Тип комнаты: c, p, d"),
+    count: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rc_user_id, rc_token = await _get_rc_credentials(db, current_user)
+    data = await rocketchat_service.proxy_get_messages(
+        db, rc_user_id, rc_token, room_id, room_type, count, offset
+    )
+    messages = [
+        {
+            "id": m["id"] or "",
+            "room_id": room_id,
+            "text": m.get("text", ""),
+            "sender_name": m.get("sender_name", ""),
+            "sender_username": m.get("sender_username", ""),
+            "ts": m.get("ts"),
+            "attachments": m.get("attachments", []),
+            "t": m.get("t"),
+        }
+        for m in data["messages"]
+        if m.get("id")
+    ]
+    return {"messages": messages, "total": data["total"]}
+
+
+@router.post("/rooms/{room_id}/messages")
+async def send_message(
+    room_id: str,
+    body: SendMessageRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rc_user_id, rc_token = await _get_rc_credentials(db, current_user)
+    result = await rocketchat_service.proxy_send_message(
+        db, rc_user_id, rc_token, room_id, body.text
+    )
+    if not result:
+        raise HTTPException(status_code=502, detail="Не удалось отправить сообщение в RocketChat")
+    return result
+
+
+@router.get("/subscriptions", response_model=list[RcSubscription])
+async def get_subscriptions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rc_user_id, rc_token = await _get_rc_credentials(db, current_user)
+    subs = await rocketchat_service.proxy_get_subscriptions(db, rc_user_id, rc_token)
+    return subs
+
+
+@router.post("/rooms/{room_id}/read")
+async def mark_room_read(
+    room_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rc_user_id, rc_token = await _get_rc_credentials(db, current_user)
+    ok = await rocketchat_service.proxy_mark_read(db, rc_user_id, rc_token, room_id)
+    return {"success": ok}
+
+
+@router.websocket("/ws")
+async def chat_websocket(
+    websocket: WebSocket,
+    token: str = Query(...),
+):
+    """WebSocket для real-time push новых сообщений из RocketChat в браузер."""
+    payload = decode_token(token)
+    if not payload or not payload.get("sub"):
+        await websocket.close(code=4001)
+        return
+
+    user_id = UUID(payload["sub"])
+    await ws_manager.connect(user_id, websocket)
+    try:
+        while True:
+            # Держим соединение живым; клиентские сообщения игнорируем
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(user_id, websocket)

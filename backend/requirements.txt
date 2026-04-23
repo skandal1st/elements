@@ -50,3 +50,6 @@ pymysql==1.1.1
 
 # Email client
 aiosmtplib==3.0.1
+
+# WebSocket клиент (DDP к RocketChat)
+websockets>=12.0

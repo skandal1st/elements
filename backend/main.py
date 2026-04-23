@@ -127,6 +127,13 @@ async def on_startup():
     except Exception as e:
         logger.warning(f"Не удалось запустить RocketChat polling: {e}")
 
+    # Запускаем RC DDP (real-time push новых сообщений в браузеры)
+    try:
+        from backend.modules.it.services.ddp_client import rc_realtime_manager
+        await rc_realtime_manager.start()
+    except Exception as e:
+        logger.warning(f"Не удалось запустить RC Realtime DDP: {e}")
+
     # Запускаем ЗУП синхронизацию
     try:
         from backend.modules.hr.services.zup_sync_service import zup_sync_service
@@ -155,6 +162,11 @@ async def on_shutdown():
     try:
         from backend.modules.it.services.rocketchat_service import rocketchat_service
         await rocketchat_service.stop_polling()
+    except Exception:
+        pass
+    try:
+        from backend.modules.it.services.ddp_client import rc_realtime_manager
+        await rc_realtime_manager.stop()
     except Exception:
         pass
     try:

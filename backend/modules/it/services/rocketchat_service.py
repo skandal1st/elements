@@ -842,5 +842,270 @@ class RocketChatService:
             return None
 
 
+    # ── Proxy (REST от имени пользователя) ───────────────────
+
+    def _get_user_headers(self, rc_user_id: str, rc_token: str) -> dict:
+        return {"X-Auth-Token": rc_token, "X-User-Id": rc_user_id}
+
+    async def get_or_create_user_token(
+        self, db: Session, user
+    ) -> Optional[tuple]:
+        """
+        Возвращает (rc_user_id, rc_token) для пользователя Elements.
+        Создаёт/обновляет токен через бот-credentials если отсутствует или старше 7 дней.
+        """
+        from datetime import timedelta
+        from backend.modules.it.models import UserRcToken
+
+        TOKEN_TTL_DAYS = 7
+
+        record = db.query(UserRcToken).filter(UserRcToken.user_id == user.id).first()
+        now = datetime.now(timezone.utc)
+
+        if record:
+            age = now - record.updated_at.replace(tzinfo=timezone.utc)
+            if age < timedelta(days=TOKEN_TTL_DAYS):
+                return (record.rc_user_id, record.rc_token)
+
+        base_url = self._get_base_url(db)
+        headers = self._get_auth_headers(db)
+        if not base_url or not headers:
+            return None
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # Найти пользователя RC по email
+                r = await client.get(
+                    f"{base_url}/api/v1/users.list",
+                    headers=headers,
+                    params={"query": json.dumps({"emails.address": user.email})},
+                )
+                users_data = r.json().get("users", []) if r.status_code == 200 else []
+
+                if users_data:
+                    rc_user_id = users_data[0]["_id"]
+                else:
+                    username = user.email.split("@")[0]
+                    cr = await client.post(
+                        f"{base_url}/api/v1/users.create",
+                        headers=headers,
+                        json={
+                            "email": user.email,
+                            "name": getattr(user, "full_name", None) or username,
+                            "username": username,
+                            "password": secrets.token_hex(16),
+                            "verified": True,
+                        },
+                    )
+                    cr_data = cr.json()
+                    if not cr_data.get("success"):
+                        logger.error(f"[RocketChat] Не удалось создать пользователя {user.email}: {cr_data}")
+                        return None
+                    rc_user_id = cr_data.get("user", {}).get("_id")
+                    if not rc_user_id:
+                        return None
+
+                tr = await client.post(
+                    f"{base_url}/api/v1/users.createToken",
+                    headers=headers,
+                    json={"userId": rc_user_id},
+                )
+                token_data = tr.json().get("data", {})
+                rc_token = token_data.get("authToken")
+                if not rc_token:
+                    return None
+
+            if record:
+                record.rc_user_id = rc_user_id
+                record.rc_token = rc_token
+                record.updated_at = now
+            else:
+                record = UserRcToken(
+                    user_id=user.id,
+                    rc_user_id=rc_user_id,
+                    rc_token=rc_token,
+                )
+                db.add(record)
+            db.commit()
+            return (rc_user_id, rc_token)
+
+        except Exception as e:
+            logger.error(f"[RocketChat] Ошибка получения токена для {user.email}: {e}")
+            return None
+
+    async def proxy_get_rooms(
+        self, db: Session, rc_user_id: str, rc_token: str
+    ) -> list:
+        """Список комнат пользователя: каналы, приватные группы, DM."""
+        base_url = self._get_base_url(db)
+        if not base_url:
+            return []
+
+        headers = self._get_user_headers(rc_user_id, rc_token)
+        rooms = []
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                # Подписки содержат unread counts и последние сообщения
+                subs_r = await client.get(
+                    f"{base_url}/api/v1/subscriptions.get",
+                    headers=headers,
+                )
+                if subs_r.status_code == 200 and subs_r.json().get("success"):
+                    for sub in subs_r.json().get("update", []):
+                        rooms.append({
+                            "id": sub.get("rid"),
+                            "name": sub.get("name") or sub.get("fname") or "",
+                            "type": sub.get("t"),  # c=channel, p=private, d=dm
+                            "display_name": sub.get("fname") or sub.get("name") or "",
+                            "unread": sub.get("unread", 0),
+                            "last_message": sub.get("lastMessage"),
+                            "alert": sub.get("alert", False),
+                        })
+        except Exception as e:
+            logger.error(f"[RocketChat Proxy] proxy_get_rooms: {e}")
+
+        return rooms
+
+    async def proxy_get_messages(
+        self,
+        db: Session,
+        rc_user_id: str,
+        rc_token: str,
+        room_id: str,
+        room_type: str,
+        count: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        """История сообщений комнаты. room_type: c/channels, p/groups, d/im."""
+        base_url = self._get_base_url(db)
+        if not base_url:
+            return {"messages": [], "total": 0}
+
+        headers = self._get_user_headers(rc_user_id, rc_token)
+
+        endpoint_map = {
+            "c": "channels.history",
+            "channels": "channels.history",
+            "p": "groups.history",
+            "groups": "groups.history",
+            "d": "im.history",
+            "im": "im.history",
+        }
+        endpoint = endpoint_map.get(room_type, "channels.history")
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                r = await client.get(
+                    f"{base_url}/api/v1/{endpoint}",
+                    headers=headers,
+                    params={"roomId": room_id, "count": count, "offset": offset},
+                )
+                if r.status_code == 200 and r.json().get("success"):
+                    data = r.json()
+                    messages = []
+                    for m in data.get("messages", []):
+                        messages.append({
+                            "id": m.get("_id"),
+                            "room_id": room_id,
+                            "text": m.get("msg", ""),
+                            "sender_name": m.get("u", {}).get("name", ""),
+                            "sender_username": m.get("u", {}).get("username", ""),
+                            "ts": m.get("ts"),
+                            "attachments": m.get("attachments", []),
+                            "t": m.get("t"),  # системный тип сообщения
+                        })
+                    return {"messages": messages, "total": data.get("total", len(messages))}
+        except Exception as e:
+            logger.error(f"[RocketChat Proxy] proxy_get_messages: {e}")
+
+        return {"messages": [], "total": 0}
+
+    async def proxy_send_message(
+        self,
+        db: Session,
+        rc_user_id: str,
+        rc_token: str,
+        room_id: str,
+        text: str,
+    ) -> Optional[dict]:
+        """Отправить сообщение от имени пользователя."""
+        base_url = self._get_base_url(db)
+        if not base_url:
+            return None
+
+        headers = self._get_user_headers(rc_user_id, rc_token)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.post(
+                    f"{base_url}/api/v1/chat.sendMessage",
+                    headers=headers,
+                    json={"message": {"rid": room_id, "msg": text}},
+                )
+                if r.status_code == 200 and r.json().get("success"):
+                    m = r.json().get("message", {})
+                    return {
+                        "id": m.get("_id"),
+                        "room_id": room_id,
+                        "text": m.get("msg", ""),
+                        "sender_name": m.get("u", {}).get("name", ""),
+                        "sender_username": m.get("u", {}).get("username", ""),
+                        "ts": m.get("ts"),
+                        "attachments": [],
+                    }
+        except Exception as e:
+            logger.error(f"[RocketChat Proxy] proxy_send_message: {e}")
+        return None
+
+    async def proxy_get_subscriptions(
+        self, db: Session, rc_user_id: str, rc_token: str
+    ) -> list:
+        """Список подписок с unread counts."""
+        base_url = self._get_base_url(db)
+        if not base_url:
+            return []
+
+        headers = self._get_user_headers(rc_user_id, rc_token)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(
+                    f"{base_url}/api/v1/subscriptions.get",
+                    headers=headers,
+                )
+                if r.status_code == 200 and r.json().get("success"):
+                    result = []
+                    for sub in r.json().get("update", []):
+                        result.append({
+                            "room_id": sub.get("rid"),
+                            "unread": sub.get("unread", 0),
+                            "alert": sub.get("alert", False),
+                        })
+                    return result
+        except Exception as e:
+            logger.error(f"[RocketChat Proxy] proxy_get_subscriptions: {e}")
+        return []
+
+    async def proxy_mark_read(
+        self, db: Session, rc_user_id: str, rc_token: str, room_id: str
+    ) -> bool:
+        """Отметить комнату как прочитанную."""
+        base_url = self._get_base_url(db)
+        if not base_url:
+            return False
+
+        headers = self._get_user_headers(rc_user_id, rc_token)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.post(
+                    f"{base_url}/api/v1/subscriptions.read",
+                    headers=headers,
+                    json={"rid": room_id},
+                )
+                return r.status_code == 200 and r.json().get("success", False)
+        except Exception as e:
+            logger.error(f"[RocketChat Proxy] proxy_mark_read: {e}")
+        return False
+
+
 # Singleton instance
 rocketchat_service = RocketChatService()

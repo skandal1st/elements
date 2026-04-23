@@ -9,6 +9,7 @@ from backend.core.config import settings
 
 from .routes import (
     buildings,
+    chat,
     consumables,
     dictionaries,
     email,
@@ -55,6 +56,7 @@ router.include_router(settings_routes.router)
 router.include_router(zabbix.router)
 router.include_router(telegram.router)
 router.include_router(rocketchat.router)
+router.include_router(chat.router)
 router.include_router(email.router)
 router.include_router(videoconference.router)
 router.include_router(knowledge_api.router)
