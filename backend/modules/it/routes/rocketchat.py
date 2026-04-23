@@ -5,7 +5,7 @@ RocketChat API Routes
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -75,3 +75,20 @@ async def test_rocketchat_connection(
         "status": "error",
         "message": "Не удалось подключиться к RocketChat. Проверьте URL, User ID и Auth Token.",
     }
+
+
+@router.get("/sso-token")
+async def get_rocketchat_sso_token(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Получить SSO-токен для встраивания RocketChat через iframe."""
+    if not rocketchat_service._is_enabled(db):
+        raise HTTPException(status_code=503, detail="RocketChat не включён")
+
+    result = await rocketchat_service.get_user_sso_token(
+        db, current_user.email, current_user.full_name
+    )
+    if not result:
+        raise HTTPException(status_code=503, detail="Не удалось получить SSO-токен RocketChat")
+    return result

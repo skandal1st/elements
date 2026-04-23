@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  MessagesSquare,
 } from "lucide-react";
 import { useUIStore } from "../../store/ui.store";
 import { useAuthStore } from "../../store/auth.store";
@@ -30,6 +31,7 @@ const modules: Module[] = [
   { code: "portal", name: "Главная", icon: LayoutDashboard, path: "/" },
   { code: "hr", name: "Сотрудники", icon: Users, path: "/hr" },
   { code: "mail", name: "Почта", icon: MessageCircle, path: "/mail" },
+  { code: "chat", name: "Чат", icon: MessagesSquare, path: "/chat" },
   { code: "tasks", name: "Задачи", icon: CheckSquare, path: "/tasks" },
   { code: "news", name: "Новости", icon: Newspaper, path: "/news" },
   { code: "it", name: "IT", icon: Wrench, path: "/it" },
@@ -53,7 +55,7 @@ export function Sidebar() {
         const payload = JSON.parse(atob(token.split(".")[1]));
         const mods = payload.modules || [];
         const su = !!payload.is_superuser;
-        const requiredMods = ["portal", "news", "mail"].concat(mods);
+        const requiredMods = ["portal", "news", "mail", "chat"].concat(mods);
         setAvailableModules(su ? modules.map(m => m.code) : requiredMods);
       } catch (e) {
         console.error("Ошибка декодирования токена:", e);

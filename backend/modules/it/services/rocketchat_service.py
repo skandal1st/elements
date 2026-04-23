@@ -7,7 +7,9 @@ Webhook-режим доступен как альтернатива, если Ro
 """
 
 import asyncio
+import json
 import logging
+import secrets
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -772,6 +774,72 @@ class RocketChatService:
         if url:
             notify_text += f"\n{url}"
         return await self.send_notify_message(db, notify_text)
+
+    # ── SSO / iframe embedding ────────────────────────────────
+
+    async def get_user_sso_token(
+        self, db: Session, user_email: str, user_display_name: str
+    ) -> Optional[dict]:
+        """Создать или найти пользователя в RC и вернуть login token для iframe SSO."""
+        base_url = self._get_base_url(db)
+        headers = self._get_auth_headers(db)
+        if not base_url or not headers:
+            return None
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # Найти пользователя по email
+                r = await client.get(
+                    f"{base_url}/api/v1/users.list",
+                    headers=headers,
+                    params={"query": json.dumps({"emails.address": user_email})},
+                )
+                users = r.json().get("users", [])
+
+                if users:
+                    rc_user_id = users[0]["_id"]
+                else:
+                    # Создать пользователя автоматически
+                    username = user_email.split("@")[0]
+                    cr = await client.post(
+                        f"{base_url}/api/v1/users.create",
+                        headers=headers,
+                        json={
+                            "email": user_email,
+                            "name": user_display_name,
+                            "username": username,
+                            "password": secrets.token_hex(16),
+                            "verified": True,
+                        },
+                    )
+                    cr_data = cr.json()
+                    if not cr_data.get("success"):
+                        logger.error(f"[RocketChat SSO] Не удалось создать пользователя {user_email}: {cr_data}")
+                        return None
+                    rc_user_id = cr_data.get("user", {}).get("_id")
+                    if not rc_user_id:
+                        return None
+
+                # Создать одноразовый login token
+                tr = await client.post(
+                    f"{base_url}/api/v1/users.createToken",
+                    headers=headers,
+                    json={"userId": rc_user_id},
+                )
+                token_data = tr.json().get("data", {})
+                login_token = token_data.get("authToken")
+                if not login_token:
+                    logger.error(f"[RocketChat SSO] Не удалось создать token для {user_email}")
+                    return None
+
+                return {
+                    "rocketchat_url": base_url,
+                    "login_token": login_token,
+                    "user_id": rc_user_id,
+                }
+        except Exception as e:
+            logger.error(f"[RocketChat SSO] Ошибка: {e}")
+            return None
 
 
 # Singleton instance

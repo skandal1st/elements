@@ -57,6 +57,8 @@ import { ContractTypesPage } from "./modules/contracts/pages/ContractTypesPage";
 import { ContractCreatePage } from "./modules/contracts/pages/ContractCreatePage";
 import { MailLayout } from "./modules/mail/MailLayout";
 import { MailPage } from "./modules/mail/pages/MailPage";
+import { ChatPage } from "./modules/chat/pages/ChatPage";
+import { ChatWidget } from "./shared/components/chat/ChatWidget";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token);
@@ -237,6 +239,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           onDecline={handleDecline}
         />
       )}
+      {isAuthenticated && <ChatWidget />}
     </>
   );
 }
@@ -282,6 +285,14 @@ function AppRoutes() {
         >
           <Route index element={<MailPage />} />
         </Route>
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/it"
           element={
