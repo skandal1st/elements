@@ -913,7 +913,7 @@ class RocketChatService:
                 tr = await client.post(
                     f"{base_url}/api/v1/users.createToken",
                     headers=headers,
-                    json={"userId": rc_user_id},
+                    json={"userId": rc_user_id, "secret": "elements-sso"},
                 )
                 logger.debug(f"[RocketChat] users.createToken status={tr.status_code} body={tr.text[:200]}")
                 token_data = tr.json().get("data", {})
