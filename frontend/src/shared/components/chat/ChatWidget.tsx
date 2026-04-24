@@ -8,7 +8,7 @@ export function ChatWidget() {
   if (isOnChatPage) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+    <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2 pointer-events-none">
       {/* Панель — скрывается через CSS, не размонтируется чтобы не терять состояние */}
       <div
         className={`
@@ -41,6 +41,7 @@ export function ChatWidget() {
       <button
         onClick={toggle}
         className={`
+          pointer-events-auto
           w-14 h-14 rounded-full shadow-xl flex items-center justify-center
           transition-all duration-200 hover:scale-105 active:scale-95
           ${isOpen ? "bg-gray-700" : "bg-brand-green"}
