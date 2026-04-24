@@ -7,6 +7,7 @@ interface Props {
 }
 
 export function RcLoginModal({ onSuccess }: Props) {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -14,14 +15,14 @@ export function RcLoginModal({ onSuccess }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password.trim()) return;
+    if (!username.trim() || !password.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      await chatService.connect(password);
+      await chatService.connect(username.trim(), password);
       onSuccess();
     } catch {
-      setError("Неверный пароль или ошибка подключения к RocketChat");
+      setError("Неверный логин или пароль RocketChat");
     } finally {
       setLoading(false);
     }
@@ -37,17 +38,27 @@ export function RcLoginModal({ onSuccess }: Props) {
         Войдите в RocketChat
       </h2>
       <p className="text-sm text-gray-500 mb-6 max-w-xs">
-        Введите пароль от вашего аккаунта RocketChat, чтобы начать общение
+        Введите логин и пароль от вашего аккаунта RocketChat
       </p>
 
       <form onSubmit={handleSubmit} className="w-full max-w-xs space-y-3">
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Логин RocketChat"
+          autoFocus
+          autoComplete="username"
+          className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-green transition-colors"
+        />
+
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Пароль RocketChat"
-            autoFocus
+            placeholder="Пароль"
+            autoComplete="current-password"
             className="w-full px-3 py-2.5 pr-10 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-green transition-colors"
           />
           <button
@@ -65,7 +76,7 @@ export function RcLoginModal({ onSuccess }: Props) {
 
         <button
           type="submit"
-          disabled={loading || !password.trim()}
+          disabled={loading || !username.trim() || !password.trim()}
           className="w-full py-2.5 rounded-xl bg-brand-green text-white text-sm font-medium hover:bg-brand-green/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
         >
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -74,7 +85,7 @@ export function RcLoginModal({ onSuccess }: Props) {
       </form>
 
       <p className="text-xs text-gray-400 mt-4">
-        Ваш пароль используется только для авторизации в RocketChat
+        Используйте логин и пароль от RocketChat, а не от Elements
       </p>
     </div>
   );

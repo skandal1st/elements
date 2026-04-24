@@ -40,6 +40,7 @@ async def _get_rc_credentials(
 
 
 class RcConnectRequest(BaseModel):
+    username: str
     password: str
 
 
@@ -49,13 +50,15 @@ async def connect_with_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Авторизация в RocketChat с паролем пользователя."""
+    """Авторизация в RocketChat с логином и паролем пользователя."""
     if not rocketchat_service._is_enabled(db):
         raise HTTPException(status_code=503, detail="RocketChat интеграция отключена")
 
-    result = await rocketchat_service.connect_user_with_password(db, current_user, body.password)
+    result = await rocketchat_service.connect_user_with_password(
+        db, current_user, body.username, body.password
+    )
     if not result:
-        raise HTTPException(status_code=401, detail="Неверный логин или пароль RocketChat")
+        raise HTTPException(status_code=400, detail="Неверный логин или пароль RocketChat")
     return {"success": True}
 
 

@@ -878,11 +878,11 @@ class RocketChatService:
         return None
 
     async def connect_user_with_password(
-        self, db: Session, user, rc_password: str
+        self, db: Session, user, rc_username: str, rc_password: str
     ) -> Optional[tuple]:
         """
-        Авторизует пользователя в RC с его паролем, сохраняет токен.
-        Вызывается из POST /chat/connect когда пользователь вводит пароль вручную.
+        Авторизует пользователя в RC с его логином и паролем, сохраняет токен.
+        Вызывается из POST /chat/connect когда пользователь вводит credentials вручную.
         """
         from backend.modules.it.models import UserRcToken
 
@@ -894,7 +894,7 @@ class RocketChatService:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 lr = await client.post(
                     f"{base_url}/api/v1/login",
-                    json={"user": user.email, "password": rc_password},
+                    json={"user": rc_username, "password": rc_password},
                 )
                 login_data = lr.json().get("data", {})
                 rc_token = login_data.get("authToken")

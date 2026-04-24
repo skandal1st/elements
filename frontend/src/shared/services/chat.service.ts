@@ -52,6 +52,6 @@ export const chatService = {
   markRead: (roomId: string) =>
     apiPost<{ success: boolean }>(`${BASE}/rooms/${roomId}/read`, {}),
 
-  connect: (password: string) =>
-    apiPost<{ success: boolean }>(`${BASE}/connect`, { password }),
+  connect: (username: string, password: string) =>
+    apiPost<{ success: boolean }>(`${BASE}/connect`, { username, password }),
 };
