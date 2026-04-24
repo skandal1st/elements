@@ -165,7 +165,7 @@ async def get_chat_users(
 
     employees = (
         db.query(Employee)
-        .filter(Employee.is_active == True)  # noqa: E712
+        .filter(Employee.status.notin_(["fired", "dismissed", "archived"]))
         .order_by(Employee.full_name)
         .all()
     )
