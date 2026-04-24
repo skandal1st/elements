@@ -873,86 +873,42 @@ class RocketChatService:
             logger.error(f"[RocketChat] get_or_create_user_token: нет base_url или headers")
             return None
 
+        # Пароль неизвестен — нужна явная авторизация пользователя через /chat/connect
+        logger.info(f"[RocketChat] Нет сохранённого пароля для {user.email}, требуется rc_login")
+        return None
+
+    async def connect_user_with_password(
+        self, db: Session, user, rc_password: str
+    ) -> Optional[tuple]:
+        """
+        Авторизует пользователя в RC с его паролем, сохраняет токен.
+        Вызывается из POST /chat/connect когда пользователь вводит пароль вручную.
+        """
+        from backend.modules.it.models import UserRcToken
+
+        base_url = self._get_base_url(db)
+        if not base_url:
+            return None
+
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Шаг 1: найти пользователя RC по email
-                r = await client.get(
-                    f"{base_url}/api/v1/users.list",
-                    headers=headers,
-                    params={"query": json.dumps({"emails.address": user.email})},
+                lr = await client.post(
+                    f"{base_url}/api/v1/login",
+                    json={"user": user.email, "password": rc_password},
                 )
-                users_data = r.json().get("users", []) if r.status_code == 200 else []
+                login_data = lr.json().get("data", {})
+                rc_token = login_data.get("authToken")
+                rc_user_id = login_data.get("userId")
 
-                rc_password: Optional[str] = None
+                if not rc_token or not rc_user_id:
+                    err = lr.json().get("error", "неизвестная ошибка")
+                    logger.warning(f"[RocketChat] Логин {user.email} не удался: {err}")
+                    return None
 
-                if users_data:
-                    rc_user_id = users_data[0]["_id"]
-                    logger.info(f"[RocketChat] Пользователь найден: {user.email} → rc_id={rc_user_id}")
-                    # Берём сохранённый пароль если есть
-                    if record and record.rc_password:
-                        rc_password = record.rc_password
-                else:
-                    # Шаг 2: создать пользователя с нашим паролем
-                    logger.info(f"[RocketChat] Пользователь не найден в RC, создаём: {user.email}")
-                    rc_password = secrets.token_hex(16)
-                    username = user.email.split("@")[0]
-                    cr = await client.post(
-                        f"{base_url}/api/v1/users.create",
-                        headers=headers,
-                        json={
-                            "email": user.email,
-                            "name": getattr(user, "full_name", None) or username,
-                            "username": username,
-                            "password": rc_password,
-                            "verified": True,
-                        },
-                    )
-                    cr_data = cr.json()
-                    if not cr_data.get("success"):
-                        logger.error(f"[RocketChat] Не удалось создать пользователя {user.email}: {cr_data}")
-                        return None
-                    rc_user_id = cr_data.get("user", {}).get("_id")
-                    if not rc_user_id:
-                        return None
-                    logger.info(f"[RocketChat] Пользователь создан: {user.email} → rc_id={rc_user_id}")
+            logger.info(f"[RocketChat] Логин успешен: {user.email} → rc_id={rc_user_id}")
 
-                # Шаг 3: получить токен сессии через /api/v1/login (не требует admin PAT)
-                if rc_password:
-                    lr = await client.post(
-                        f"{base_url}/api/v1/login",
-                        json={"user": user.email, "password": rc_password},
-                    )
-                    login_data = lr.json().get("data", {})
-                    rc_token = login_data.get("authToken")
-                    rc_user_id_from_login = login_data.get("userId") or rc_user_id
-                    if rc_token:
-                        rc_user_id = rc_user_id_from_login
-                        logger.info(f"[RocketChat] Логин через /api/v1/login успешен: {user.email}")
-                    else:
-                        logger.error(f"[RocketChat] /api/v1/login не вернул authToken: {lr.json()}")
-                        return None
-                else:
-                    # Пароль неизвестен (старая запись без пароля) — сбрасываем через admin
-                    rc_password = secrets.token_hex(16)
-                    sr = await client.post(
-                        f"{base_url}/api/v1/users.update",
-                        headers=headers,
-                        json={"userId": rc_user_id, "data": {"password": rc_password}},
-                    )
-                    if not sr.json().get("success"):
-                        logger.error(f"[RocketChat] Не удалось сбросить пароль: {sr.json()}")
-                        return None
-                    lr = await client.post(
-                        f"{base_url}/api/v1/login",
-                        json={"user": user.email, "password": rc_password},
-                    )
-                    login_data = lr.json().get("data", {})
-                    rc_token = login_data.get("authToken")
-                    if not rc_token:
-                        logger.error(f"[RocketChat] /api/v1/login после сброса пароля не сработал: {lr.json()}")
-                        return None
-                    logger.info(f"[RocketChat] Пароль сброшен и логин выполнен: {user.email}")
-
+            now = datetime.now(timezone.utc)
+            record = db.query(UserRcToken).filter(UserRcToken.user_id == user.id).first()
             if record:
                 record.rc_user_id = rc_user_id
                 record.rc_token = rc_token
@@ -970,7 +926,7 @@ class RocketChatService:
             return (rc_user_id, rc_token)
 
         except Exception as e:
-            logger.error(f"[RocketChat] Ошибка получения токена для {user.email}: {e}")
+            logger.error(f"[RocketChat] connect_user_with_password {user.email}: {e}")
             return None
 
     async def proxy_get_rooms(

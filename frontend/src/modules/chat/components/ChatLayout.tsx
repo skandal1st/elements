@@ -3,6 +3,7 @@ import { Hash, Lock, MessageSquare } from "lucide-react";
 import { RoomList } from "./RoomList";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
+import { RcLoginModal } from "./RcLoginModal";
 import { useChatStore } from "@/shared/store/chat.store";
 import { chatService } from "@/shared/services/chat.service";
 import type { RcMessage } from "@/shared/services/chat.service";
@@ -130,6 +131,7 @@ export function ChatLayout() {
   useChatWebSocket();
 
   const [hasMore, setHasMore] = useState(false);
+  const [needRcLogin, setNeedRcLogin] = useState(false);
   const offsetRef = useRef(0);
   const loadedRoomRef = useRef<string | null>(null);
 
@@ -138,8 +140,14 @@ export function ChatLayout() {
     try {
       const rooms = await chatService.getRooms();
       setRooms(rooms);
-    } catch (e) {
-      console.error("Ошибка загрузки комнат:", e);
+      setNeedRcLogin(false);
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message ?? "";
+      if (msg.includes("rc_login_required")) {
+        setNeedRcLogin(true);
+      } else {
+        console.error("Ошибка загрузки комнат:", e);
+      }
     } finally {
       setLoadingRooms(false);
     }
@@ -190,6 +198,10 @@ export function ChatLayout() {
     setHasMore(false);
     loadMessages(currentRoomId, currentRoomType);
   }, [currentRoomId]);
+
+  if (needRcLogin) {
+    return <RcLoginModal onSuccess={loadRooms} />;
+  }
 
   return (
     <div className="flex h-full overflow-hidden">

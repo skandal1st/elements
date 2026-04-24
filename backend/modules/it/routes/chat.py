@@ -5,6 +5,7 @@ Chat proxy routes — проксируют запросы к RocketChat REST API
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.core.auth import decode_token
@@ -26,17 +27,36 @@ async def _get_rc_credentials(
     db: Session,
     current_user: User,
 ) -> tuple[str, str]:
-    """Получить RC-токен пользователя или бросить 503."""
     if not rocketchat_service._is_enabled(db):
         raise HTTPException(status_code=503, detail="RocketChat интеграция отключена")
 
     result = await rocketchat_service.get_or_create_user_token(db, current_user)
     if not result:
         raise HTTPException(
-            status_code=503,
-            detail="Не удалось получить токен RocketChat. Проверьте настройки интеграции.",
+            status_code=403,
+            detail="rc_login_required",
         )
     return result
+
+
+class RcConnectRequest(BaseModel):
+    password: str
+
+
+@router.post("/connect")
+async def connect_with_password(
+    body: RcConnectRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Авторизация в RocketChat с паролем пользователя."""
+    if not rocketchat_service._is_enabled(db):
+        raise HTTPException(status_code=503, detail="RocketChat интеграция отключена")
+
+    result = await rocketchat_service.connect_user_with_password(db, current_user, body.password)
+    if not result:
+        raise HTTPException(status_code=401, detail="Неверный логин или пароль RocketChat")
+    return {"success": True}
 
 
 @router.get("/rooms", response_model=RcRoomsResponse)
@@ -144,7 +164,6 @@ async def chat_websocket(
     await ws_manager.connect(user_id, websocket)
     try:
         while True:
-            # Держим соединение живым; клиентские сообщения игнорируем
             await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(user_id, websocket)
