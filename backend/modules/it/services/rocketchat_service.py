@@ -1103,6 +1103,40 @@ class RocketChatService:
         return False
 
 
+    async def _ensure_rc_user_exists(
+        self, client: "httpx.AsyncClient", base_url: str, bot_headers: dict,
+        target_username: str
+    ) -> bool:
+        """Убедиться что пользователь RC существует, создать если нет."""
+        r = await client.get(
+            f"{base_url}/api/v1/users.list",
+            headers=bot_headers,
+            params={"query": json.dumps({"username": target_username})},
+        )
+        users = r.json().get("users", []) if r.status_code == 200 else []
+        if users:
+            return True
+
+        # Создаём пользователя через бота (admin)
+        cr = await client.post(
+            f"{base_url}/api/v1/users.create",
+            headers=bot_headers,
+            json={
+                "username": target_username,
+                "email": f"{target_username}@elements.local",
+                "name": target_username,
+                "password": secrets.token_hex(16),
+                "verified": True,
+                "joinDefaultChannels": True,
+            },
+        )
+        ok = cr.json().get("success", False)
+        if ok:
+            logger.info(f"[RocketChat Proxy] RC-пользователь создан: {target_username}")
+        else:
+            logger.warning(f"[RocketChat Proxy] Не удалось создать RC-пользователя {target_username}: {cr.json()}")
+        return ok
+
     async def proxy_create_dm(
         self, db: Session, rc_user_id: str, rc_token: str, target_username: str
     ) -> Optional[dict]:
@@ -1110,20 +1144,33 @@ class RocketChatService:
         base_url = self._get_base_url(db)
         if not base_url:
             return None
-        headers = self._get_user_headers(rc_user_id, rc_token)
+
+        bot_headers = self._get_auth_headers(db)
+        user_headers = self._get_user_headers(rc_user_id, rc_token)
+
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                logger.info(f"[RocketChat Proxy] proxy_create_dm: target_username={target_username!r}")
+                logger.info(f"[RocketChat Proxy] proxy_create_dm: target={target_username!r}")
+
+                # Гарантируем что целевой пользователь существует в RC
+                await self._ensure_rc_user_exists(client, base_url, bot_headers, target_username)
+
                 r = await client.post(
                     f"{base_url}/api/v1/im.create",
-                    headers=headers,
+                    headers=user_headers,
                     json={"username": target_username},
                 )
                 data = r.json()
                 if r.status_code == 200 and data.get("success"):
                     room = data.get("room", {})
-                    logger.info(f"[RocketChat Proxy] DM создан: room_id={room.get('_id')}")
-                    return {"room_id": room.get("_id", ""), "room_type": "d"}
+                    room_id = room.get("_id", "")
+                    # Проверка: если вернулся self-DM (rc_user_id совпадает с target)
+                    usernames = room.get("usernames", [])
+                    if len(usernames) == 1 or (len(usernames) == 2 and usernames[0] == usernames[1]):
+                        logger.warning(f"[RocketChat Proxy] im.create вернул self-DM, target={target_username!r}")
+                        return None
+                    logger.info(f"[RocketChat Proxy] DM создан: room_id={room_id} usernames={usernames}")
+                    return {"room_id": room_id, "room_type": "d"}
                 logger.error(f"[RocketChat Proxy] proxy_create_dm failed: {data}")
         except Exception as e:
             logger.error(f"[RocketChat Proxy] proxy_create_dm: {e}")

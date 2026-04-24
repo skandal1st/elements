@@ -162,6 +162,8 @@ async def get_chat_users(
     """Список активных сотрудников, сгруппированных по отделам."""
     from backend.modules.hr.models.employee import Employee
     from backend.modules.hr.models.department import Department
+    from backend.modules.it.models import UserRcToken
+    from backend.modules.hr.models.user import User as ElementsUser
 
     employees = (
         db.query(Employee)
@@ -170,13 +172,25 @@ async def get_chat_users(
         .all()
     )
 
+    # Маппинг email → реальный RC username (из user_rc_tokens через users)
+    rc_username_by_email: dict[str, str] = {}
+    tokens = (
+        db.query(ElementsUser.email, UserRcToken.rc_user_id)
+        .join(UserRcToken, UserRcToken.user_id == ElementsUser.id)
+        .all()
+    )
+    for row in tokens:
+        if row.email:
+            # rc_user_id здесь — ID, не username; username = email prefix как мы задаём
+            rc_username_by_email[row.email] = row.email.split("@")[0]
+
     dept_map: dict[int, dict] = {}
     no_dept: list[dict] = []
 
     for emp in employees:
-        rc_username = emp.email.split("@")[0] if emp.email else None
-        if not rc_username:
+        if not emp.email:
             continue
+        rc_username = rc_username_by_email.get(emp.email) or emp.email.split("@")[0]
         user_data = {
             "full_name": emp.full_name,
             "email": emp.email,

@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search, User, Loader2 } from "lucide-react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { ChevronDown, ChevronRight, Search, User, Loader2, AtSign, Send } from "lucide-react";
 import { chatService } from "@/shared/services/chat.service";
 import type { RcChatUser } from "@/shared/services/chat.service";
 
@@ -46,6 +46,8 @@ export function UserList({ onStartDm }: Props) {
   const [loadingUser, setLoadingUser] = useState<string | null>(null);
   const [dmError, setDmError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [manualUsername, setManualUsername] = useState("");
+  const manualRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -66,18 +68,28 @@ export function UserList({ onStartDm }: Props) {
       return next;
     });
 
-  const handleSelect = async (user: RcChatUser) => {
-    setLoadingUser(user.rc_username);
+  const openDm = async (rcUsername: string, label: string) => {
+    setLoadingUser(rcUsername);
     setDmError(null);
     try {
-      const dm = await chatService.createDm(user.rc_username);
+      const dm = await chatService.createDm(rcUsername);
       onStartDm(dm.room_id);
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? "Не удалось открыть переписку";
-      setDmError(`${user.full_name}: ${msg}`);
+      setDmError(`${label}: ${msg}`);
     } finally {
       setLoadingUser(null);
     }
+  };
+
+  const handleSelect = (user: RcChatUser) => openDm(user.rc_username, user.full_name);
+
+  const handleManualOpen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const username = manualUsername.trim().replace(/^@/, "");
+    if (!username) return;
+    await openDm(username, `@${username}`);
+    setManualUsername("");
   };
 
   const q = search.toLowerCase();
@@ -190,6 +202,35 @@ export function UserList({ onStartDm }: Props) {
             <p className="text-xs text-gray-400">Сотрудники не найдены</p>
           </div>
         )}
+      </div>
+
+      {/* Открыть DM по RC-логину вручную */}
+      <div className="border-t border-gray-100 px-3 py-2">
+        <p className="text-[10px] text-gray-400 mb-1.5 flex items-center gap-1">
+          <AtSign className="w-3 h-3" />
+          Написать по логину RC
+        </p>
+        <form onSubmit={handleManualOpen} className="flex gap-1.5">
+          <input
+            ref={manualRef}
+            type="text"
+            value={manualUsername}
+            onChange={(e) => setManualUsername(e.target.value)}
+            placeholder="rc.username"
+            className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-brand-green transition-colors"
+          />
+          <button
+            type="submit"
+            disabled={!manualUsername.trim() || loadingUser === manualUsername.trim().replace(/^@/, "")}
+            className="p-1.5 rounded-lg bg-brand-green text-white hover:bg-brand-green/90 disabled:opacity-40 transition-colors flex-shrink-0"
+          >
+            {loadingUser === manualUsername.trim().replace(/^@/, "") ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Send className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </form>
       </div>
     </div>
   );
