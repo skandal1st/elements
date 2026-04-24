@@ -136,10 +136,12 @@ class DDPClient:
 
     async def listen(self) -> None:
         """Основной цикл чтения сообщений. Блокирует до разрыва соединения."""
+        logger.info("[DDP] listen() запущен, ожидаю сообщения...")
         while True:
             try:
                 msg = await self._recv()
-            except Exception:
+            except Exception as e:
+                logger.warning(f"[DDP] listen() завершён: {e}")
                 break
 
             msg_type = msg.get("msg")
@@ -147,13 +149,23 @@ class DDPClient:
             if msg_type == "ping":
                 await self._send({"msg": "pong"})
 
-            elif msg_type == "changed" and msg.get("collection") == "stream-room-messages":
-                await self._dispatch_message(msg)
+            elif msg_type == "changed":
+                collection = msg.get("collection", "")
+                event_name = msg.get("fields", {}).get("eventName", "")
+                logger.info(f"[DDP] changed: collection={collection!r} eventName={event_name!r}")
+                if collection == "stream-room-messages":
+                    await self._dispatch_message(msg)
 
             elif msg_type == "result":
                 fut = self._pending.pop(msg.get("id", ""), None)
                 if fut and not fut.done():
                     fut.set_result(msg.get("result") or msg)
+
+            elif msg_type == "ready":
+                logger.info(f"[DDP] ready: subs={msg.get('subs')}")
+
+            elif msg_type == "nosub":
+                logger.warning(f"[DDP] nosub (подписка отклонена): {msg}")
 
             elif msg_type == "error":
                 logger.warning(f"[DDP] Ошибка от сервера: {msg}")
