@@ -72,4 +72,3 @@ export const chatService = {
   createDm: (rc_username: string) =>
     apiPost<{ room_id: string; room_type: string }>(`${BASE}/dm`, { rc_username }),
 };
-};
