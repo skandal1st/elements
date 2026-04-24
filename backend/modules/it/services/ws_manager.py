@@ -20,7 +20,7 @@ class WSConnectionManager:
     async def connect(self, user_id: UUID, ws: WebSocket) -> None:
         await ws.accept()
         self._connections.setdefault(user_id, set()).add(ws)
-        logger.debug(f"[WS] Подключён user={user_id}, всего соединений: {self._total()}")
+        logger.info(f"[WS] Подключён user={user_id}, всего соединений: {self._total()}")
 
     def disconnect(self, user_id: UUID, ws: WebSocket) -> None:
         conns = self._connections.get(user_id)

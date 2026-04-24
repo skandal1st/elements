@@ -27,6 +27,14 @@ export interface RcSubscription {
   alert: boolean;
 }
 
+export interface RcChatUser {
+  full_name: string;
+  email?: string;
+  rc_username: string;
+  department_id?: number;
+  department_name?: string;
+}
+
 const BASE = "/it/chat";
 
 export const chatService = {
@@ -54,4 +62,14 @@ export const chatService = {
 
   connect: (username: string, password: string) =>
     apiPost<{ success: boolean }>(`${BASE}/connect`, { username, password }),
+
+  getUsers: () =>
+    apiGet<{
+      departments: { id: number; name: string; users: RcChatUser[] }[];
+      without_department: RcChatUser[];
+    }>(`${BASE}/users`),
+
+  createDm: (rc_username: string) =>
+    apiPost<{ room_id: string; room_type: string }>(`${BASE}/dm`, { rc_username }),
+};
 };

@@ -1103,5 +1103,29 @@ class RocketChatService:
         return False
 
 
+    async def proxy_create_dm(
+        self, db: Session, rc_user_id: str, rc_token: str, target_username: str
+    ) -> Optional[dict]:
+        """Открыть или создать DM с пользователем по его RC-username."""
+        base_url = self._get_base_url(db)
+        if not base_url:
+            return None
+        headers = self._get_user_headers(rc_user_id, rc_token)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.post(
+                    f"{base_url}/api/v1/im.create",
+                    headers=headers,
+                    json={"username": target_username},
+                )
+                if r.status_code == 200 and r.json().get("success"):
+                    room = r.json().get("room", {})
+                    return {"room_id": room.get("_id", ""), "room_type": "d"}
+                logger.error(f"[RocketChat Proxy] proxy_create_dm: {r.json()}")
+        except Exception as e:
+            logger.error(f"[RocketChat Proxy] proxy_create_dm: {e}")
+        return None
+
+
 # Singleton instance
 rocketchat_service = RocketChatService()

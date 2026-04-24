@@ -47,3 +47,25 @@ class RcSubscription(BaseModel):
 
 class SendMessageRequest(BaseModel):
     text: str
+
+
+class RcChatUser(BaseModel):
+    full_name: str
+    email: Optional[str] = None
+    rc_username: str
+    department_id: Optional[int] = None
+    department_name: Optional[str] = None
+
+
+class RcChatUsersResponse(BaseModel):
+    departments: list[dict]  # [{id, name, users: [...]}]
+    without_department: list[RcChatUser]
+
+
+class DmCreateRequest(BaseModel):
+    rc_username: str
+
+
+class DmCreateResponse(BaseModel):
+    room_id: str
+    room_type: str = "d"

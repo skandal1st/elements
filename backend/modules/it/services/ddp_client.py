@@ -111,10 +111,8 @@ class DDPClient:
     async def subscribe_my_messages(self) -> str:
         """Подписка на все сообщения бота (все доступные комнаты)."""
         sub_id = str(uuid4())
-        params = [
-            "__my_messages__",
-            {"useCollection": False, "args": [{"$all": True}]},
-        ]
+        # Стандартный формат RC DDP для подписки на все комнаты бота
+        params = ["__my_messages__", False]
         await self._send({
             "msg": "sub",
             "id": sub_id,
@@ -207,13 +205,18 @@ class DDPClient:
         if not self._msg_callback:
             return
         try:
-            args = ddp_msg.get("fields", {}).get("args", [])
+            fields = ddp_msg.get("fields", {})
+            args = fields.get("args", [])
+            logger.debug(f"[DDP] dispatch: eventName={fields.get('eventName')} args_len={len(args)}")
             if not args:
                 return
             rc_msg = args[0]
-            room_id = rc_msg.get("rid") or ddp_msg.get("fields", {}).get("eventName", "")
-            if room_id and "__my_messages__" not in room_id:
-                await self._msg_callback(room_id, rc_msg)
+            room_id = rc_msg.get("rid") or fields.get("eventName", "")
+            if not room_id or "__my_messages__" in room_id:
+                logger.debug(f"[DDP] пропускаем: room_id={room_id!r}")
+                return
+            logger.info(f"[DDP] новое сообщение: room={room_id} from={rc_msg.get('u', {}).get('username')!r} text={rc_msg.get('msg', '')[:50]!r}")
+            await self._msg_callback(room_id, rc_msg)
         except Exception as e:
             logger.error(f"[DDP] Ошибка dispatch_message: {e}")
 
@@ -340,15 +343,13 @@ class RCRealtimeManager:
             },
         }
 
-        # Найти пользователей Elements у которых есть RC-токен для этой комнаты.
-        # Упрощённо: рассылаем всем у кого есть rc_token (они авторизованы в RC)
-        # и пусть фронтенд сам фильтрует по текущей открытой комнате.
         db = SessionLocal()
         try:
             user_ids = [row.user_id for row in db.query(UserRcToken.user_id).all()]
         finally:
             db.close()
 
+        logger.info(f"[DDP] рассылка события room={room_id} → {len(user_ids)} пользователей, ws_active={ws_manager._total()}")
         for user_id in user_ids:
             await ws_manager.send_to_user(user_id, event)
 

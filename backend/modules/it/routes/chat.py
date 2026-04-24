@@ -12,6 +12,8 @@ from backend.core.auth import decode_token
 from backend.modules.hr.models.user import User
 from backend.modules.it.dependencies import get_current_user, get_db
 from backend.modules.it.schemas.chat import (
+    DmCreateRequest,
+    DmCreateResponse,
     RcMessagesResponse,
     RcRoomsResponse,
     RcSubscription,
@@ -150,6 +152,60 @@ async def mark_room_read(
     rc_user_id, rc_token = await _get_rc_credentials(db, current_user)
     ok = await rocketchat_service.proxy_mark_read(db, rc_user_id, rc_token, room_id)
     return {"success": ok}
+
+
+@router.get("/users")
+async def get_chat_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Список активных сотрудников, сгруппированных по отделам."""
+    from backend.modules.hr.models.employee import Employee
+    from backend.modules.hr.models.department import Department
+
+    employees = (
+        db.query(Employee)
+        .filter(Employee.is_active == True)  # noqa: E712
+        .order_by(Employee.full_name)
+        .all()
+    )
+
+    dept_map: dict[int, dict] = {}
+    no_dept: list[dict] = []
+
+    for emp in employees:
+        rc_username = emp.email.split("@")[0] if emp.email else None
+        if not rc_username:
+            continue
+        user_data = {
+            "full_name": emp.full_name,
+            "email": emp.email,
+            "rc_username": rc_username,
+        }
+        if emp.department_id and emp.department:
+            did = emp.department_id
+            if did not in dept_map:
+                dept_map[did] = {"id": did, "name": emp.department.name, "users": []}
+            dept_map[did]["users"].append(user_data)
+        else:
+            no_dept.append(user_data)
+
+    departments = sorted(dept_map.values(), key=lambda d: d["name"])
+    return {"departments": departments, "without_department": no_dept}
+
+
+@router.post("/dm", response_model=DmCreateResponse)
+async def create_dm(
+    body: DmCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Открыть или создать DM-комнату с пользователем RC."""
+    rc_user_id, rc_token = await _get_rc_credentials(db, current_user)
+    result = await rocketchat_service.proxy_create_dm(db, rc_user_id, rc_token, body.rc_username)
+    if not result:
+        raise HTTPException(status_code=502, detail="Не удалось открыть переписку")
+    return result
 
 
 @router.websocket("/ws")
