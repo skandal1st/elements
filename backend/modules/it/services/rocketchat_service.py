@@ -870,6 +870,7 @@ class RocketChatService:
         base_url = self._get_base_url(db)
         headers = self._get_auth_headers(db)
         if not base_url or not headers:
+            logger.error(f"[RocketChat] get_or_create_user_token: нет base_url или headers")
             return None
 
         try:
@@ -880,11 +881,14 @@ class RocketChatService:
                     headers=headers,
                     params={"query": json.dumps({"emails.address": user.email})},
                 )
+                logger.debug(f"[RocketChat] users.list status={r.status_code} body={r.text[:200]}")
                 users_data = r.json().get("users", []) if r.status_code == 200 else []
 
                 if users_data:
                     rc_user_id = users_data[0]["_id"]
+                    logger.info(f"[RocketChat] Пользователь найден: {user.email} → rc_id={rc_user_id}")
                 else:
+                    logger.info(f"[RocketChat] Пользователь не найден в RC, создаём: {user.email}")
                     username = user.email.split("@")[0]
                     cr = await client.post(
                         f"{base_url}/api/v1/users.create",
@@ -904,15 +908,18 @@ class RocketChatService:
                     rc_user_id = cr_data.get("user", {}).get("_id")
                     if not rc_user_id:
                         return None
+                    logger.info(f"[RocketChat] Пользователь создан: {user.email} → rc_id={rc_user_id}")
 
                 tr = await client.post(
                     f"{base_url}/api/v1/users.createToken",
                     headers=headers,
                     json={"userId": rc_user_id},
                 )
+                logger.debug(f"[RocketChat] users.createToken status={tr.status_code} body={tr.text[:200]}")
                 token_data = tr.json().get("data", {})
                 rc_token = token_data.get("authToken")
                 if not rc_token:
+                    logger.error(f"[RocketChat] users.createToken не вернул authToken: {tr.json()}")
                     return None
 
             if record:

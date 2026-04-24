@@ -69,11 +69,40 @@ class DDPClient:
         self._session_id = msg.get("session")
         logger.info(f"[DDP] Подключён, session={self._session_id}")
 
-        # Логин через resume token
-        result = await self._call("login", [{"resume": self._bot_token}])
-        if not result or result.get("error"):
-            logger.error(f"[DDP] Ошибка логина: {result}")
-            return False
+        # Логин через resume token.
+        # Нельзя использовать _call() — listen() ещё не запущен, некому читать ответ.
+        # Читаем ответ вручную в цикле (RC может прислать ping до result).
+        call_id = str(uuid4())
+        await self._send({
+            "msg": "method",
+            "method": "login",
+            "id": call_id,
+            "params": [{"resume": self._bot_token}],
+        })
+
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + 15.0
+        while True:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                logger.error("[DDP] Таймаут ожидания результата логина")
+                return False
+            try:
+                reply = await asyncio.wait_for(self._recv(), timeout=remaining)
+            except asyncio.TimeoutError:
+                logger.error("[DDP] Таймаут ожидания результата логина")
+                return False
+
+            if reply.get("msg") == "ping":
+                await self._send({"msg": "pong"})
+                continue
+
+            if reply.get("msg") == "result" and reply.get("id") == call_id:
+                err = reply.get("error")
+                if err:
+                    logger.error(f"[DDP] Ошибка логина: {err}")
+                    return False
+                break
 
         self._connected = True
         logger.info("[DDP] Логин успешен")
