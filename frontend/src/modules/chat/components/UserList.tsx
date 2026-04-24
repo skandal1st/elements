@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from "react";
 import { ChevronDown, ChevronRight, Search, User, Loader2 } from "lucide-react";
 import { chatService } from "@/shared/services/chat.service";
 import type { RcChatUser } from "@/shared/services/chat.service";
-import { useChatStore } from "@/shared/store/chat.store";
 
 interface Department {
   id: number;
