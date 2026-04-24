@@ -1113,15 +1113,18 @@ class RocketChatService:
         headers = self._get_user_headers(rc_user_id, rc_token)
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
+                logger.info(f"[RocketChat Proxy] proxy_create_dm: target_username={target_username!r}")
                 r = await client.post(
                     f"{base_url}/api/v1/im.create",
                     headers=headers,
                     json={"username": target_username},
                 )
-                if r.status_code == 200 and r.json().get("success"):
-                    room = r.json().get("room", {})
+                data = r.json()
+                if r.status_code == 200 and data.get("success"):
+                    room = data.get("room", {})
+                    logger.info(f"[RocketChat Proxy] DM создан: room_id={room.get('_id')}")
                     return {"room_id": room.get("_id", ""), "room_type": "d"}
-                logger.error(f"[RocketChat Proxy] proxy_create_dm: {r.json()}")
+                logger.error(f"[RocketChat Proxy] proxy_create_dm failed: {data}")
         except Exception as e:
             logger.error(f"[RocketChat Proxy] proxy_create_dm: {e}")
         return None

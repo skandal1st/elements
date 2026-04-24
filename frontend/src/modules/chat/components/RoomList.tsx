@@ -29,7 +29,7 @@ export function RoomList({ onRefresh, isLoading }: Props) {
 
   const handleDmOpen = (roomId: string) => {
     setCurrentRoom(roomId, "d");
-    // Если комнаты нет в списке — обновим
+    setTab("rooms"); // переключаемся на вкладку каналов чтобы показать чат
     if (!rooms.find((r) => r.id === roomId)) {
       onRefresh();
     }

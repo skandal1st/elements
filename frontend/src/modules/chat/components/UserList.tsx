@@ -44,6 +44,7 @@ export function UserList({ onStartDm }: Props) {
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState("");
   const [loadingUser, setLoadingUser] = useState<string | null>(null);
+  const [dmError, setDmError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -67,11 +68,13 @@ export function UserList({ onStartDm }: Props) {
 
   const handleSelect = async (user: RcChatUser) => {
     setLoadingUser(user.rc_username);
+    setDmError(null);
     try {
       const dm = await chatService.createDm(user.rc_username);
       onStartDm(dm.room_id);
-    } catch (e) {
-      console.error("Ошибка открытия DM:", e);
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message ?? "Не удалось открыть переписку";
+      setDmError(`${user.full_name}: ${msg}`);
     } finally {
       setLoadingUser(null);
     }
@@ -118,6 +121,12 @@ export function UserList({ onStartDm }: Props) {
           />
         </div>
       </div>
+
+      {dmError && (
+        <div className="px-3 py-1.5 bg-red-50 border-b border-red-100">
+          <p className="text-[11px] text-red-500">{dmError}</p>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto py-1 px-2 space-y-0.5">
         {filteredDepts.map((dept) => {
