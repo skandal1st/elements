@@ -705,6 +705,7 @@ class UserRcToken(Base):
     )
     rc_user_id = Column(String(128), nullable=False)
     rc_token = Column(String(512), nullable=False)
+    rc_password = Column(String(256), nullable=True)  # пароль RC-пользователя для re-login
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

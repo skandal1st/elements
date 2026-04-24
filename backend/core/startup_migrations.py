@@ -453,12 +453,20 @@ def ensure_mail_tables() -> None:
 
 
 def ensure_user_rc_tokens_table() -> None:
-    """Создаёт таблицу user_rc_tokens для хранения RC-токенов пользователей."""
+    """Создаёт таблицу user_rc_tokens и добавляет колонку rc_password если отсутствует."""
     try:
         from backend.modules.it.models import UserRcToken
         UserRcToken.__table__.create(bind=engine, checkfirst=True)
     except Exception as e:
         logger.warning("ensure_user_rc_tokens_table skipped: %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                "ALTER TABLE user_rc_tokens ADD COLUMN IF NOT EXISTS rc_password VARCHAR(256)"
+            ))
+            conn.commit()
+    except Exception as e:
+        logger.warning("ensure_user_rc_tokens rc_password column skipped: %s", e)
 
 
 def apply_startup_migrations() -> None:
