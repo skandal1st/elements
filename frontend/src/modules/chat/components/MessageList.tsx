@@ -53,6 +53,7 @@ export function MessageList({ roomId, onLoadMore, hasMore }: Props) {
   const isFirstRender = useRef(true);
   const isPrepending = useRef(false);
   const prevScrollHeight = useRef(0);
+  const prevMsgCount = useRef(0);
 
   // Скролл вниз при первой загрузке комнаты
   useEffect(() => {
@@ -74,7 +75,24 @@ export function MessageList({ roomId, onLoadMore, hasMore }: Props) {
       const newScrollHeight = containerRef.current.scrollHeight;
       containerRef.current.scrollTop += newScrollHeight - prevScrollHeight.current;
       isPrepending.current = false;
+      prevMsgCount.current = roomMessages.length;
+      return;
     }
+
+    // Авто-скролл при новом входящем сообщении (appended, не первая загрузка)
+    const container = containerRef.current;
+    if (!container || isFirstRender.current) {
+      prevMsgCount.current = roomMessages.length;
+      return;
+    }
+    if (roomMessages.length > prevMsgCount.current) {
+      // Скроллим вниз только если пользователь уже был близко к низу (< 150px до конца)
+      const distFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distFromBottom < 150) {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+    prevMsgCount.current = roomMessages.length;
   }, [roomMessages.length]);
 
   // IntersectionObserver: когда верхний sentinel виден — грузим историю

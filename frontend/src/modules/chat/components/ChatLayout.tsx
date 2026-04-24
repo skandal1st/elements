@@ -40,6 +40,25 @@ function requestNotificationPermission() {
   }
 }
 
+function playNotificationSound() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch {
+    // игнорируем — браузер может блокировать AudioContext без жеста пользователя
+  }
+}
+
 function showNotification(senderName: string, text: string) {
   if (
     !("Notification" in window) ||
@@ -93,6 +112,7 @@ function useChatWebSocket() {
             setUnreadCount(roomId, (useChatStore.getState().unreadCounts[roomId] ?? 0) + 1);
             showNotification(msg.sender_name || msg.sender_username, msg.text);
           }
+          playNotificationSound();
         } catch {
           // ignore parse errors
         }
