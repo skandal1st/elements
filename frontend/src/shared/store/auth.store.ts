@@ -7,6 +7,7 @@ interface User {
   role?: string;
   roles: Record<string, string>;
   is_superuser: boolean;
+  is_owner: boolean;
   is_active: boolean;
   modules: string[];
 }
@@ -62,6 +63,7 @@ function getUserFromToken(token: string): User | null {
     role: payload.role,
     roles: payload.roles || {},
     is_superuser: payload.is_superuser || false,
+    is_owner: payload.is_owner || false,
     is_active: payload.is_active !== false,
     modules: payload.modules || [],
   };

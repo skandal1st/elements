@@ -41,10 +41,18 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     algorithm: str = "HS256"
 
-    # Лицензирование
+    # Лицензирование (онлайн — устаревший license-server; офлайн — основной путь)
     license_server_url: str = ""
     company_id: str = ""
     license_check_cache_ttl: int = 300
+    license_grace_days: int = 14
+    license_public_key_path: str = "backend/core/license_pubkey.pem"
+
+    # Центр обновлений
+    update_server_url: str = ""
+    update_channel: str = "stable"
+    internal_update_token: str = ""
+    update_check_cache_ttl: int = 3600
 
     # Модули — в .env строка "hr,it,tasks" (не JSON)
     enabled_modules: str = "hr,it,tasks,documents,contracts"

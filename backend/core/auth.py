@@ -51,6 +51,7 @@ def create_access_token(
     role: Optional[str] = None,
     roles: Optional[Dict[str, str]] = None,
     is_superuser: bool = False,
+    is_owner: bool = False,
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
@@ -113,7 +114,10 @@ def create_access_token(
     
     if is_superuser:
         to_encode["is_superuser"] = True
-    
+
+    if is_owner:
+        to_encode["is_owner"] = True
+
     return jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
 
 

@@ -49,6 +49,23 @@ def ensure_users_telegram_columns() -> None:
         _exec_best_effort(sql)
 
 
+def ensure_users_owner_column() -> None:
+    """
+    Добавляет is_owner в users + частичный уникальный индекс.
+    Промоушн: если owner отсутствует, первым становится самый ранний is_superuser.
+    """
+    statements = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_owner BOOLEAN DEFAULT FALSE NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_single_owner ON users(is_owner) WHERE is_owner = TRUE",
+        """UPDATE users SET is_owner = TRUE WHERE id = (
+              SELECT id FROM users WHERE is_superuser = TRUE
+              ORDER BY created_at LIMIT 1
+           ) AND NOT EXISTS (SELECT 1 FROM users WHERE is_owner = TRUE)""",
+    ]
+    for sql in statements:
+        _exec_best_effort(sql)
+
+
 def ensure_tickets_columns() -> None:
     """
     Добавляет недостающие колонки в tickets согласно текущей модели Ticket.
@@ -469,10 +486,31 @@ def ensure_user_rc_tokens_table() -> None:
         logger.warning("ensure_user_rc_tokens rc_password column skipped: %s", e)
 
 
+def ensure_platform_licenses_table() -> None:
+    """Создаёт таблицу platform_licenses, если её ещё нет."""
+    try:
+        from backend.modules.hr.models.platform_license import PlatformLicense  # noqa: WPS433
+        PlatformLicense.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning("ensure_platform_licenses_table skipped: %s", e)
+
+
+def ensure_update_tasks_table() -> None:
+    """Создаёт таблицу update_tasks, если её ещё нет."""
+    try:
+        from backend.modules.platform.models.update_task import UpdateTask  # noqa: WPS433
+        UpdateTask.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning("ensure_update_tasks_table skipped: %s", e)
+
+
 def apply_startup_migrations() -> None:
     """Применяет минимальные миграции (best-effort)."""
     try:
         ensure_users_telegram_columns()
+        ensure_users_owner_column()
+        ensure_platform_licenses_table()
+        ensure_update_tasks_table()
         ensure_tickets_columns()
         ensure_knowledge_core_tables()
         ensure_knowledge_core_article_extensions()

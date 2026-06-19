@@ -708,6 +708,7 @@ def seed_admin_user():
             full_name="System Administrator",
             roles={"hr": "admin", "it": "admin"},
             is_superuser=True,
+            is_owner=True,
             is_active=True,
         )
 

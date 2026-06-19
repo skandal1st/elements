@@ -5,16 +5,24 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.core.auth import get_password_hash
+from backend.core.auth import get_password_hash, verify_password
 from backend.modules.hr.dependencies import (
     get_db,
     get_current_user,
     require_can_list_users,
+    require_owner,
     require_superuser,
 )
 from backend.modules.hr.models.user import User
 from backend.modules.hr.models.employee import Employee
-from backend.modules.hr.schemas.user import PasswordReset, UserCreate, UserOut, UserUpdate
+from backend.modules.hr.schemas.user import (
+    OwnerTransfer,
+    PasswordReset,
+    SuperuserToggle,
+    UserCreate,
+    UserOut,
+    UserUpdate,
+)
 from backend.modules.hr.services.audit import log_action
 
 # Модели IT модуля, ссылающиеся на users — нужны для корректного удаления пользователя
@@ -68,6 +76,114 @@ def create_user(
     return user
 
 
+# ВАЖНО: статические пути /owner и /owner/transfer регистрируются ДО /{user_id},
+# иначе FastAPI попробует распарсить "owner" как UUID и вернёт 422.
+
+
+@router.get("/owner", response_model=UserOut)
+def get_owner(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Текущий владелец системы (owner). Доступно всем авторизованным."""
+    owner = db.query(User).filter(User.is_owner == True).first()  # noqa: E712
+    if not owner:
+        raise HTTPException(status_code=404, detail="Владелец системы не назначен")
+    return owner
+
+
+@router.post("/owner/transfer", response_model=UserOut)
+def transfer_ownership(
+    payload: OwnerTransfer,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_owner),
+) -> User:
+    """
+    Передача прав владельца системы. Текущий owner подтверждает паролем,
+    новый owner становится также суперпользователем.
+    """
+    if not current_user.password_hash or not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Неверный пароль")
+
+    new_owner = db.query(User).filter(User.id == payload.new_owner_id).first()
+    if not new_owner:
+        raise HTTPException(status_code=404, detail="Новый владелец не найден")
+    if new_owner.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Вы уже являетесь владельцем системы")
+    if not new_owner.is_active:
+        raise HTTPException(status_code=400, detail="Нельзя назначить владельцем деактивированного пользователя")
+
+    try:
+        current_user.is_owner = False
+        # Частичный уникальный индекс idx_users_single_owner запрещает двух одновременных owner,
+        # поэтому сначала снимаем флаг у текущего, затем ставим новому.
+        db.flush()
+        new_owner.is_owner = True
+        new_owner.is_superuser = True
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Не удалось передать права владельца")
+
+    db.refresh(new_owner)
+    log_action(
+        db,
+        _audit_user(current_user),
+        "owner_transfer",
+        "user",
+        f"from={current_user.id}, to={new_owner.id}",
+    )
+    return new_owner
+
+
+@router.patch("/{user_id}/superuser", response_model=UserOut, dependencies=[Depends(require_superuser)])
+def toggle_superuser(
+    user_id: UUID,
+    payload: SuperuserToggle,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Назначить/снять флаг суперпользователя. Owner-а трогать нельзя."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    if user.is_owner:
+        raise HTTPException(
+            status_code=400,
+            detail="Нельзя изменять флаг суперпользователя у владельца системы",
+        )
+
+    if not payload.is_superuser and user.is_superuser:
+        # Lockout-защита: не оставить систему без активных суперпользователей.
+        active_superusers = (
+            db.query(User)
+            .filter(User.is_superuser == True, User.is_active == True)  # noqa: E712
+            .count()
+        )
+        if active_superusers <= 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Это последний активный суперпользователь. Назначьте другого, прежде чем снимать права.",
+            )
+        if user.id == current_user.id:
+            raise HTTPException(
+                status_code=400,
+                detail="Нельзя снять права суперпользователя с самого себя",
+            )
+
+    was_superuser = user.is_superuser
+    user.is_superuser = bool(payload.is_superuser)
+    db.commit()
+    db.refresh(user)
+
+    action = "superuser_grant" if (payload.is_superuser and not was_superuser) else (
+        "superuser_revoke" if (not payload.is_superuser and was_superuser) else "superuser_noop"
+    )
+    log_action(db, _audit_user(current_user), action, "user", f"id={user.id}, username={user.username}")
+    return user
+
+
 @router.get("/{user_id}", response_model=UserOut, dependencies=[Depends(require_superuser)])
 def get_user(user_id: UUID, db: Session = Depends(get_db)) -> User:
     user = db.query(User).filter(User.id == user_id).first()
@@ -86,6 +202,8 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if payload.is_active is False and user.is_owner:
+        raise HTTPException(status_code=400, detail="Нельзя деактивировать владельца системы")
     if payload.full_name is not None:
         user.full_name = payload.full_name
     if payload.phone is not None:
@@ -169,6 +287,11 @@ def delete_user(
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Нельзя удалить самого себя")
+    if user.is_owner:
+        raise HTTPException(
+            status_code=400,
+            detail="Нельзя удалить владельца системы. Сначала передайте права другому пользователю.",
+        )
 
     username = user.username or user.email
     _reassign_blocking_references(db, user_id, current_user.id)

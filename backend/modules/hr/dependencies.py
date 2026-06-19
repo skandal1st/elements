@@ -82,6 +82,16 @@ def require_superuser(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+def require_owner(user: User = Depends(get_current_user)) -> User:
+    """Требует права владельца системы (одного на инсталляцию)."""
+    if not user.is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Требуются права владельца системы",
+        )
+    return user
+
+
 def require_can_list_users(user: User = Depends(get_current_user)) -> User:
     """
     Доступ к списку пользователей: суперпользователь, HR admin или IT admin/it_specialist.

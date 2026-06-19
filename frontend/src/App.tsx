@@ -8,6 +8,7 @@ import {
 import { useState, useEffect } from "react";
 import { Sidebar } from "./shared/components/layout/Sidebar";
 import { Header } from "./shared/components/layout/Header";
+import { LicenseExpiryBanner } from "./shared/components/notifications/LicenseExpiryBanner";
 import { useUIStore } from "./shared/store/ui.store";
 import { useNotificationStore } from "./shared/store/notification.store";
 import { useNotificationSound } from "./shared/hooks/useNotificationSound";
@@ -34,6 +35,8 @@ import { ReportsPage } from "./modules/it/pages/ReportsPage";
 import { LicensesPage } from "./modules/it/pages/LicensesPage";
 import { DictionariesPage } from "./modules/it/pages/DictionariesPage";
 import { SettingsPage } from "./modules/it/pages/SettingsPage";
+import { LicensePage } from "./modules/settings/pages/LicensePage";
+import { UpdatesPage } from "./modules/settings/pages/UpdatesPage";
 import { SettingsLayout } from "./modules/settings/SettingsLayout";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ProjectsPage } from "./modules/tasks/pages/ProjectsPage";
@@ -230,6 +233,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         className={`transition-all duration-300 ${sidebarCollapsed ? "md:ml-20" : "md:ml-[280px]"}`}
       >
         <Header />
+        <LicenseExpiryBanner />
         <main className="p-6 bg-brand-light min-h-[calc(100vh-73px)]">{children}</main>
       </div>
       {activeCall && (
@@ -338,6 +342,8 @@ function AppRoutes() {
         >
           <Route index element={<Navigate to="/settings/users" replace />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="license" element={<LicensePage />} />
+          <Route path="updates" element={<UpdatesPage />} />
           <Route path="it" element={<SettingsPage />} />
         </Route>
         <Route

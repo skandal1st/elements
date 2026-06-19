@@ -138,6 +138,39 @@ services:
       - frontend
 
   # ===========================================================================
+  # Watchdog — выполняет задачи обновления платформы
+  # ===========================================================================
+  # ВНИМАНИЕ: монтирует docker.sock и потому имеет root-доступ к хосту.
+  # Запускайте только если выбрана автоустановка обновлений через UI.
+  # Альтернатива: systemd path-unit на хосте + watchdog без docker.sock.
+  # ===========================================================================
+  watchdog:
+    build:
+      context: ./watchdog
+    container_name: elements-watchdog
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - INTERNAL_UPDATE_TOKEN=${INTERNAL_UPDATE_TOKEN}
+      - BACKEND_URL=http://backend:8000
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - COMPOSE_FILE=/workspace/docker-compose.prod.yml
+      - WORKSPACE=/workspace
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+      - ./backups:/backups
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # ===========================================================================
   # Nginx - Reverse Proxy
   # ===========================================================================
 

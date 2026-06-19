@@ -27,6 +27,7 @@ class UserOut(BaseModel):
     avatar_url: Optional[str] = None
     is_active: bool = True
     is_superuser: bool = False
+    is_owner: bool = False
     created_at: Optional[datetime] = None
     last_login_at: Optional[datetime] = None
 
@@ -46,6 +47,19 @@ class UserUpdate(BaseModel):
     phone: Optional[str] = None
     roles: Optional[dict[str, str]] = None
     is_active: Optional[bool] = None
+
+
+class SuperuserToggle(BaseModel):
+    """Изменение флага суперпользователя"""
+
+    is_superuser: bool
+
+
+class OwnerTransfer(BaseModel):
+    """Передача прав владельца системы"""
+
+    new_owner_id: UUID
+    password: str
 
 
 class PasswordReset(BaseModel):

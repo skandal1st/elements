@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import engine, Base
-from .routes import license, admin
+from .routes import license, admin, updates
 
 # Configure logging
 logging.basicConfig(
@@ -42,6 +42,7 @@ app.add_middleware(
 # Include routers
 app.include_router(license.router, prefix=settings.api_prefix)
 app.include_router(admin.router, prefix=settings.api_prefix)
+app.include_router(updates.router, prefix=settings.api_prefix)
 
 
 @app.on_event("startup")

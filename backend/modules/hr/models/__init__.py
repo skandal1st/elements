@@ -9,6 +9,7 @@ from .hr_request import HRRequest
 from .equipment import HREquipment
 from .audit_log import AuditLog
 from .system_settings import SystemSettings
+from .platform_license import PlatformLicense
 
 __all__ = [
     "User",
@@ -19,4 +20,5 @@ __all__ = [
     "HREquipment",
     "AuditLog",
     "SystemSettings",
+    "PlatformLicense",
 ]

@@ -1,8 +1,10 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Users, Settings } from "lucide-react";
+import { Download, KeyRound, Settings, Users } from "lucide-react";
 
 const links = [
   { to: "/settings/users", label: "Пользователи", icon: Users },
+  { to: "/settings/license", label: "Лицензия", icon: KeyRound },
+  { to: "/settings/updates", label: "Обновления", icon: Download },
   { to: "/settings/it", label: "Настройки ИТ", icon: Settings },
 ];
 

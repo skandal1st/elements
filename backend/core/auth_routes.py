@@ -43,6 +43,7 @@ class UserResponse(BaseModel):
     role: str | None = None
     roles: dict = {}
     is_superuser: bool = False
+    is_owner: bool = False
     is_active: bool = True
     modules: list[str] = []
 
@@ -128,8 +129,9 @@ async def login(
         role=main_role,
         roles=user.roles or {},
         is_superuser=user.is_superuser,
+        is_owner=bool(getattr(user, "is_owner", False)),
     )
-    
+
     return LoginResponse(
         access_token=token,
         token_type="bearer",
@@ -140,6 +142,7 @@ async def login(
             "role": main_role,
             "roles": user.roles or {},
             "is_superuser": user.is_superuser,
+            "is_owner": bool(getattr(user, "is_owner", False)),
             "is_active": user.is_active,
             "modules": modules,
         }
@@ -203,6 +206,7 @@ async def get_current_user_info(
         role=main_role,
         roles=user.roles or {},
         is_superuser=user.is_superuser,
+        is_owner=bool(getattr(user, "is_owner", False)),
         is_active=user.is_active,
         modules=modules,
     )
@@ -241,6 +245,7 @@ async def update_profile(
         role=main_role,
         roles=user.roles or {},
         is_superuser=user.is_superuser,
+        is_owner=bool(getattr(user, "is_owner", False)),
         is_active=user.is_active,
         modules=modules,
     )

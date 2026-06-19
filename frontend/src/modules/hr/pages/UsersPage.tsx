@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Key, Users, Shield } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Plus, Edit, Trash2, Key, Users, Shield, Crown, ShieldOff } from 'lucide-react'
 import { apiGet, apiPost, apiPatch, apiDelete } from '../../../shared/api/client'
+import { useAuthStore } from '../../../shared/store/auth.store'
+import { TransferOwnershipModal } from '../components/TransferOwnershipModal'
 
 type User = {
   id: string
@@ -11,6 +13,7 @@ type User = {
   phone?: string
   is_active: boolean
   is_superuser: boolean
+  is_owner: boolean
   created_at?: string
   last_login_at?: string
 }
@@ -68,6 +71,15 @@ export function UsersPage() {
   const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false)
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null)
   const [newPassword, setNewPassword] = useState('')
+
+  // Модальное окно передачи прав владельца
+  const [transferOpen, setTransferOpen] = useState(false)
+
+  const currentUser = useAuthStore((s) => s.user)
+  const activeSuperuserCount = useMemo(
+    () => users.filter((u) => u.is_superuser && u.is_active).length,
+    [users],
+  )
 
   const load = async () => {
     setLoading(true)
@@ -177,6 +189,22 @@ export function UsersPage() {
     }
   }
 
+  const handleToggleSuperuser = async (user: User) => {
+    const willGrant = !user.is_superuser
+    const action = willGrant ? 'Назначить' : 'Снять'
+    if (!window.confirm(`${action} права суперпользователя для "${user.full_name}"?`)) {
+      return
+    }
+    setError(null)
+    try {
+      await apiPatch(`/hr/users/${user.id}/superuser`, { is_superuser: willGrant })
+      setMessage(willGrant ? 'Права суперпользователя назначены' : 'Права суперпользователя сняты')
+      await load()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
   const openResetPassword = (user: User) => {
     setResetPasswordUser(user)
     setNewPassword('')
@@ -247,9 +275,20 @@ export function UsersPage() {
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Пользователи</h2>
             <p className="text-gray-400">Управление учётными записями системы</p>
           </div>
-          <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
-            <Plus className="w-5 h-5" /> Добавить пользователя
-          </button>
+          <div className="flex items-center gap-2">
+            {currentUser?.is_owner && (
+              <button
+                onClick={() => setTransferOpen(true)}
+                className="px-4 py-2.5 text-sm font-medium text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl hover:bg-amber-500/20 transition-all flex items-center gap-2"
+                title="Передать права владельца"
+              >
+                <Crown className="w-5 h-5" /> Передать права владельца
+              </button>
+            )}
+            <button onClick={openCreate} className="glass-button px-4 py-2.5 flex items-center gap-2">
+              <Plus className="w-5 h-5" /> Добавить пользователя
+            </button>
+          </div>
         </div>
       </div>
 
@@ -291,7 +330,11 @@ export function UsersPage() {
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
-                      {user.is_superuser && <Shield className="w-4 h-4 text-amber-400" aria-label="Суперпользователь" />}
+                      {user.is_owner ? (
+                        <Crown className="w-4 h-4 text-amber-400" aria-label="Владелец системы" />
+                      ) : user.is_superuser ? (
+                        <Shield className="w-4 h-4 text-amber-400" aria-label="Суперпользователь" />
+                      ) : null}
                       <span className="font-medium text-gray-900">{user.full_name}</span>
                     </div>
                   </td>
@@ -313,10 +356,39 @@ export function UsersPage() {
                       <button onClick={() => openEdit(user)} className="p-2 text-gray-400 hover:text-brand-green hover:bg-gray-100 rounded-lg transition-all" title="Редактировать">
                         <Edit className="w-4 h-4" />
                       </button>
+                      {(() => {
+                        const isSelf = currentUser?.id === user.id
+                        const lastSuperuser = user.is_superuser && user.is_active && activeSuperuserCount <= 1
+                        const disabled = user.is_owner || (user.is_superuser && (lastSuperuser || isSelf))
+                        const title = user.is_owner
+                          ? 'У владельца суперпользователь снять нельзя'
+                          : disabled
+                            ? lastSuperuser
+                              ? 'Это последний активный суперпользователь'
+                              : 'Нельзя снять права с самого себя'
+                            : user.is_superuser
+                              ? 'Снять права суперпользователя'
+                              : 'Назначить суперпользователем'
+                        return (
+                          <button
+                            onClick={() => handleToggleSuperuser(user)}
+                            className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={title}
+                            disabled={disabled}
+                          >
+                            {user.is_superuser ? <ShieldOff className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                          </button>
+                        )
+                      })()}
                       <button onClick={() => openResetPassword(user)} className="p-2 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Сбросить пароль">
                         <Key className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(user)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Удалить" disabled={user.is_superuser}>
+                      <button
+                        onClick={() => handleDelete(user)}
+                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={user.is_owner ? 'Владельца удалить нельзя' : 'Удалить'}
+                        disabled={user.is_owner || currentUser?.id === user.id}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -395,6 +467,25 @@ export function UsersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {transferOpen && (
+        <TransferOwnershipModal
+          candidates={users.map((u) => ({
+            id: u.id,
+            email: u.email,
+            full_name: u.full_name,
+            is_active: u.is_active,
+            is_owner: u.is_owner,
+          }))}
+          currentOwnerId={currentUser?.id}
+          onClose={() => setTransferOpen(false)}
+          onSuccess={() => {
+            setTransferOpen(false)
+            setMessage('Права владельца переданы. Войдите заново, чтобы обновить токен.')
+            load()
+          }}
+        />
       )}
 
       {resetPasswordModalOpen && resetPasswordUser && (

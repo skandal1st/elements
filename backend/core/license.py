@@ -15,7 +15,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
-import httpx
 import redis
 from redis.exceptions import RedisError
 
@@ -167,134 +166,71 @@ class LicenseClient:
         except RedisError as e:
             logger.warning(f"Redis write error: {e}")
 
-    async def validate_license(self) -> Dict[str, Any]:
+    async def validate_license(self, *_args, **_kwargs) -> Dict[str, Any]:
         """
-        Validates license with License Server.
+        Проверяет активную офлайн-лицензию из БД (platform_licenses).
 
-        In production mode, this is mandatory and will raise LicenseError if:
-        - License server is not configured
-        - Company ID is not configured
-        - License validation fails
-        - License is expired
+        В production-режиме отсутствие/невалидность лицензии — фатально (LicenseError).
+        В dev-режиме при отсутствии лицензии возвращаем permissive fallback.
+        Поддерживается grace-период GRACE_PERIOD_DAYS (см. backend.core.platform_license).
 
-        In development mode, falls back to permissive mode on errors.
-
-        Returns:
-            License data dict with keys:
-            - valid: bool
-            - edition: str
-            - expires_at: str (ISO format)
-            - modules: List[str]
-            - max_users: int or None
-            - features: dict
-
-        Raises:
-            LicenseError: In production if validation fails
+        Возвращает словарь с полями:
+            valid, edition, expires_at, modules, max_users, features
         """
-        # Check configuration
-        if not self.license_server_url:
-            if self.is_production:
-                raise LicenseError("LICENSE_SERVER_URL not configured")
-            logger.warning("LICENSE_SERVER_URL not configured, using development mode")
-            return self._dev_fallback()
-
-        if not self.company_id:
-            if self.is_production:
-                raise LicenseError("COMPANY_ID not configured")
-            logger.warning("COMPANY_ID not configured, using development mode")
-            return self._dev_fallback()
-
-        # Check cache
+        # Кэш Redis (TTL 5 мин)
         cache_key = self._get_cache_key("validation")
         cached = self._get_from_cache(cache_key)
         if cached:
             logger.debug("Using cached license validation")
             return cached
 
-        # Get hardware ID
+        # Локальные импорты, чтобы избежать циклов
+        from backend.core.database import SessionLocal
+        from backend.core.platform_license import (
+            LicenseValidationError,
+            get_license_status,
+        )
+
+        db = SessionLocal()
         try:
-            hardware_id = get_or_create_instance_id()
-        except Exception as e:
-            logger.error(f"Failed to get hardware ID: {e}")
+            try:
+                status = get_license_status(db)
+            except LicenseValidationError as exc:
+                logger.error(f"License validation failed: {exc}")
+                if self.is_production:
+                    raise LicenseError(str(exc))
+                return self._dev_fallback()
+        finally:
+            db.close()
+
+        if not status["valid"]:
+            state = status.get("state")
+            if state == "absent":
+                if self.is_production:
+                    raise LicenseError("Лицензия не установлена")
+                return self._dev_fallback()
+            error_msg = (
+                "Срок действия лицензии истёк" if state == "expired"
+                else "Лицензия недействительна"
+            )
             if self.is_production:
-                raise LicenseError(f"Hardware ID generation failed: {e}")
-            hardware_id = "dev-hardware-id"
-
-        # Request validation from License Server
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"{self.license_server_url}/api/v1/license/validate",
-                    json={
-                        "company_id": self.company_id,
-                        "hardware_id": hardware_id,
-                        "edition": os.getenv("EDITION", "core"),
-                        "version": getattr(settings, 'version', '1.0.0')
-                    }
-                )
-
-                if response.status_code == 200:
-                    data = response.json()
-
-                    if not data.get("valid", False):
-                        error_msg = data.get("error", "License invalid")
-                        logger.error(f"License validation failed: {error_msg}")
-                        if self.is_production:
-                            raise LicenseError(error_msg)
-                        return self._dev_fallback()
-
-                    # Validate edition match
-                    license_edition = data.get("edition", "")
-                    current_edition = os.getenv("EDITION", "core")
-                    if license_edition != current_edition:
-                        error_msg = f"Edition mismatch: license is for {license_edition}, but running {current_edition}"
-                        logger.error(error_msg)
-                        if self.is_production:
-                            raise LicenseError(error_msg)
-
-                    # Cache the result
-                    self._set_to_cache(cache_key, data)
-
-                    logger.info(f"License validated successfully, expires: {data.get('expires_at')}")
-                    return data
-
-                elif response.status_code == 403:
-                    error_data = response.json()
-                    error_msg = error_data.get("error", "License validation failed")
-                    logger.error(f"License validation failed: {error_msg}")
-                    if self.is_production:
-                        raise LicenseError(error_msg)
-                    return self._dev_fallback()
-
-                else:
-                    logger.error(f"License server returned {response.status_code}: {response.text}")
-                    if self.is_production:
-                        raise LicenseError(f"License server error: {response.status_code}")
-                    return self._dev_fallback()
-
-        except httpx.TimeoutException:
-            logger.error("License server timeout")
-            if self.is_production:
-                # Grace period: check if we have recently cached valid license
-                grace_key = self._get_cache_key("grace")
-                grace_data = self._get_from_cache(grace_key)
-                if grace_data:
-                    logger.warning("Using grace period - license server unavailable but recently validated")
-                    return grace_data
-                raise LicenseError("License server timeout and no grace period available")
+                raise LicenseError(error_msg)
             return self._dev_fallback()
 
-        except httpx.RequestError as e:
-            logger.error(f"License server request error: {e}")
-            if self.is_production:
-                raise LicenseError(f"License server unavailable: {e}")
-            return self._dev_fallback()
-
-        except Exception as e:
-            logger.error(f"Unexpected error during license validation: {e}")
-            if self.is_production:
-                raise LicenseError(f"License validation error: {e}")
-            return self._dev_fallback()
+        lic = status["license"] or {}
+        data = {
+            "valid": True,
+            "edition": lic.get("edition", ""),
+            "expires_at": lic.get("expires_at"),
+            "modules": list(lic.get("modules") or []),
+            "max_users": lic.get("max_users"),
+            "features": dict(lic.get("features") or {}),
+            "state": status.get("state"),
+            "days_until_expiry": status.get("days_until_expiry"),
+        }
+        self._set_to_cache(cache_key, data)
+        logger.info(f"License validated from DB, expires: {data['expires_at']} (state={data['state']})")
+        return data
 
     def _dev_fallback(self) -> Dict[str, Any]:
         """Returns permissive license data for development."""
@@ -343,12 +279,12 @@ class LicenseClient:
             logger.error(f"Feature access check failed: {e}")
             return False
 
-    async def get_available_modules(self) -> List[str]:
+    async def get_available_modules(self, *_args, **_kwargs) -> List[str]:
         """
-        Gets list of modules available according to license.
+        Список модулей, доступных по активной лицензии.
 
-        Returns:
-            List of module names
+        Дополнительные аргументы игнорируются (обратная совместимость с вызовами,
+        передающими company_id).
         """
         try:
             license_data = await self.validate_license()

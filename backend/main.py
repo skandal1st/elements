@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.core.config import settings
+from backend.core.version import BUILD, VERSION
 from backend.core import auth_routes
 from backend.modules.portal import api as portal_api
 from backend.modules.hr import api as hr_api
@@ -21,6 +22,7 @@ from backend.modules.tasks import api as tasks_api
 from backend.modules.documents import api as documents_api
 from backend.modules.contracts import api as contracts_api
 from backend.modules.mail import api as mail_api
+from backend.modules.platform import api as platform_api
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -31,7 +33,7 @@ DEBUG_LOG = "/home/skandal1st/Elements/.cursor/debug.log"
 app = FastAPI(
     title=settings.app_name,
     description="Единая платформа Elements",
-    version="1.0.0"
+    version=VERSION,
 )
 
 # Static: раздача вложений тикетов (/uploads/...)
@@ -87,6 +89,7 @@ app.include_router(tasks_api.router)
 app.include_router(documents_api.router)
 app.include_router(contracts_api.router)
 app.include_router(mail_api.router)
+app.include_router(platform_api.router)
 
 
 @app.get("/health")
@@ -95,7 +98,9 @@ async def health_check():
     return {
         "status": "ok",
         "service": "elements-platform",
-        "modules": settings.get_enabled_modules()
+        "version": VERSION,
+        "build": BUILD,
+        "modules": settings.get_enabled_modules(),
     }
 
 
